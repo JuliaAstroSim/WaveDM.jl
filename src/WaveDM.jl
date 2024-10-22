@@ -39,8 +39,10 @@ export RAR, Milgrom
 export RAR_inv, Milgrom_inv
 export modelRAR
 
+export load_SPARC_data, load_li2018_SPARC
 
 
+include("data.jl")
 
 include("RAR.jl")
 include("SPE.jl")
