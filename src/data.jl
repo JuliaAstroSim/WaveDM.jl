@@ -1,6 +1,15 @@
 """
 $(TYPEDSIGNATURES)
 """
+function load_SPARC_RC()
+    df_SPARC_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC/MassModels_Lelli2016c.mrt.txt"), skipto=26, delim=" ", ignorerepeated=true, header=false));
+    rename!(df_SPARC_RC, ["Galaxy", "D", "R", "Vobs", "e_Vobs", "Vgas", "Vdisk", "Vbul", "SBdisk", "SBbul"])
+    return df_SPARC_RC
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
 function load_SPARC_data(;
     exclude_list = ["F561-1"], #TODO
     prior = "LCDM",
@@ -47,6 +56,8 @@ function load_SPARC_data(;
     #? Exclude galaxies with large error in rotation curves
 
     # find the radius of Vflat
+    df_SPARC_RC = load_SPARC_RC()
+
     df[!, :Rflat] = zeros(size(df,1))
     for i in 1:size(df,1)
         df_galaxy = filter(:Galaxy => x->x==df.Galaxy[i], df_SPARC_RC)
