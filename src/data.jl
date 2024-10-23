@@ -1,4 +1,20 @@
 """
+Return Rd in kpc. RHI in kpc
+"""
+function Rd_from_RHI(RHI, MHI)
+    f(x) = log(1e3 * MHI / (2π)) - 2 * log(x) - RHI/x
+    
+    x = collect(0.01:0.01:50) * RHI
+    index = findfirstzero(f.(x))
+    if isnothing(index)
+        return 0
+    else
+        return x[index]
+    end
+end
+#TODO test
+
+"""
 $(TYPEDSIGNATURES)
 """
 function load_SPARC_RC()
