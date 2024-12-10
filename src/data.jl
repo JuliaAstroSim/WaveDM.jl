@@ -18,7 +18,7 @@ end
 $(TYPEDSIGNATURES)
 """
 function load_SPARC_RC()
-    df_SPARC_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC/MassModels_Lelli2016c.mrt.txt"), skipto=26, delim=" ", ignorerepeated=true, header=false));
+    df_SPARC_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_LTGs/MassModels_Lelli2016c.mrt.txt"), skipto=26, delim=" ", ignorerepeated=true, header=false));
     rename!(df_SPARC_RC, ["Galaxy", "D", "R", "Vobs", "e_Vobs", "Vgas", "Vdisk", "Vbul", "SBdisk", "SBbul"])
     return df_SPARC_RC
 end
@@ -32,14 +32,14 @@ function load_SPARC_data(;
     model = "NFW",
 )
     ### Load data
-    df_SPARC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC/SPARC_Lelli2016c.mrt.txt"), skipto=99, delim=" ", ignorerepeated=true, header=false))
+    df_SPARC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_LTGs/SPARC_Lelli2016c.mrt.txt"), skipto=99, delim=" ", ignorerepeated=true, header=false))
     rename!(df_SPARC, ["Galaxy", "T", "D", "e_D", "f_D", "Inc", "e_Inc", "L", "e_L", "Reff", "SBeff", "Rdisk", "SBdisk", "MHI", "RHI", "Vflat", "e_Vflat", "Q", "Ref"])
 
-    df_SPARC_bulges = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC/Bulges.mrt.txt"), skipto=8, delim="\t", ignorerepeated=true, header=false))
+    df_SPARC_bulges = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_LTGs/Bulges.mrt.txt"), skipto=8, delim="\t", ignorerepeated=true, header=false))
     rename!(df_SPARC_bulges, ["Galaxy", "Lbul"])
 
     # Halo
-    df_SPARC_halo = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC/Halo/parameter_$(model)_$(prior).mrt"), skipto=33, delim=" ", ignorerepeated=true, header=false))
+    df_SPARC_halo = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_LTGs/Halo/parameter_$(model)_$(prior).mrt"), skipto=33, delim=" ", ignorerepeated=true, header=false))
     rename!(df_SPARC_halo, ["Galaxy", "Ydisk", "e_Ydisk", "Ybul", "e_Ybul", "D", "e_D", "inc", "e_inc", "V200", "e_V200", "C200", "e_C200", "rs", "e_rs", "log_rhos", "e_log_rhos", "log_M200", "e_log_M200", "Chi"])
 
     ### Clean data
@@ -99,7 +99,7 @@ function load_SPARC_data(;
 end
 
 function load_li2018_SPARC()
-    df_li2018 = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC/Li2018_SPARC_RAR.txt"), delim="\t", ignorerepeated=true, header=2))
+    df_li2018 = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_LTGs/Li2018_SPARC_RAR.txt"), delim="\t", ignorerepeated=true, header=2))
     df_li2018.LMR_disk = parse.(Measurements.Measurement{Float64}, df_li2018.LMR_disk)
     df_li2018.LMR_bulge = parse.(Measurements.Measurement{Float64}, df_li2018.LMR_bulge)
     df_li2018.D = parse.(Measurements.Measurement{Float64}, df_li2018.D)
