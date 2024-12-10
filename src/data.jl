@@ -17,7 +17,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function load_SPARC_RC()
+function load_SPARC_LTGs_RC()
     df_SPARC_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_LTGs/MassModels_Lelli2016c.mrt.txt"), skipto=26, delim=" ", ignorerepeated=true, header=false));
     rename!(df_SPARC_RC, ["Galaxy", "D", "R", "Vobs", "e_Vobs", "Vgas", "Vdisk", "Vbul", "SBdisk", "SBbul"])
     return df_SPARC_RC
@@ -26,7 +26,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function load_SPARC_data(;
+function load_SPARC_LTGs_data(;
     exclude_list = ["F561-1"], #TODO
     prior = "LCDM",
     model = "NFW",
@@ -72,7 +72,7 @@ function load_SPARC_data(;
     #? Exclude galaxies with large error in rotation curves
 
     # find the radius of Vflat
-    df_SPARC_RC = load_SPARC_RC()
+    df_SPARC_RC = load_SPARC_LTGs_RC()
 
     df[!, :Rflat] = zeros(size(df,1))
     for i in 1:size(df,1)
@@ -105,4 +105,52 @@ function load_li2018_SPARC()
     df_li2018.D = parse.(Measurements.Measurement{Float64}, df_li2018.D)
     df_li2018.Inc = parse.(Measurements.Measurement{Float64}, df_li2018.Inc)
     return df_li2018
+end
+
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function load_SPARC_ETGs_Xray_data()
+    df_SPARC_ETGs_Xray_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/Xray_ETGs_Lelli2017.txt"), skipto=4, delim=" ", ignorerepeated=true, header=false));
+    rename!(df_SPARC_ETGs_Xray_RC, ["Galaxy", "T", "D", "errD", "L", "errL", "Reff", "SBeff"])
+    return df_SPARC_ETGs_Xray_RC
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function load_SPARC_ETGs_rotating_data()
+    df_SPARC_ETGs_rotating_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/rotating_ETGs_Lelli2017.mrt.txt"), skipto=3, delim=" ", ignorerepeated=true, header=false));
+    rename!(df_SPARC_ETGs_rotating_RC, ["Galaxy", "Dist", "errD", "M", "Inc", "erI", "L", "effL", "Reff", "SBeff", "Rexp", "SBexp", "Aobs1", "eAobs1", "Aobs2", "eAobs2", "Abar1", "eAbar1", "Abar2", "eAbar2"])
+    return df_SPARC_ETGs_rotating_RC
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function load_SPARC_ETGs_rotating_RC(GalaxyName::AbstractString, mode::Symbol;
+    folder = joinpath(@__DIR__, "../data/SPARC_ETGs/Rotmod_ETG/"),
+)
+    if mode == :bulge
+        skipto = 6
+    elseif mode == :disk
+        skipto = 9
+    else
+        error("Unsupported baryonic component! (supported `Symbol`: `:bulge`, `:disk`)")
+    end
+    dfRC = DataFrame(CSV.File(joinpath(folder, "$(GalaxyName)_$(string(mode)).dat"); skipto, delim=" ", ignorerepeated=true, header=false));
+    rename!(dfRC, ["r", "rho", "vc"])
+    return dfRC
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function load_SPARC_ETGs_rotating_rotmod(GalaxyName::AbstractString;
+    folder = joinpath(@__DIR__, "../data/SPARC_ETGs/Rotmod_ETG/"),
+)
+    dfRC = DataFrame(CSV.File(joinpath(folder, "$(GalaxyName)_rotmod.dat"); skipto=4, delim="\t", ignorerepeated=true, header=false));
+    rename!(dfRC, ["r", "Vobs", "errV", "Vgas", "Vdisk", "Vbul"])
+    return dfRC
 end
