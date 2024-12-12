@@ -111,25 +111,25 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function load_SPARC_ETGs_Xray_data()
-    df_SPARC_ETGs_Xray_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/Xray_ETGs_Lelli2017.txt"), skipto=4, delim=" ", ignorerepeated=true, header=false));
-    rename!(df_SPARC_ETGs_Xray_RC, ["Galaxy", "T", "D", "errD", "L", "errL", "Reff", "SBeff"])
-    return df_SPARC_ETGs_Xray_RC
+function load_SPARC_Xray_ETGs_data()
+    df_SPARC_Xray_ETGs = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/Xray_ETGs_Lelli2017.txt"), skipto=4, delim=" ", ignorerepeated=true, header=false));
+    rename!(df_SPARC_Xray_ETGs, ["Galaxy", "T", "D", "errD", "L", "errL", "Reff", "SBeff"])
+    return df_SPARC_Xray_ETGs
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function load_SPARC_ETGs_rotating_data()
-    df_SPARC_ETGs_rotating_RC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/rotating_ETGs_Lelli2017.mrt.txt"), skipto=3, delim=" ", ignorerepeated=true, header=false));
-    rename!(df_SPARC_ETGs_rotating_RC, ["Galaxy", "Dist", "errD", "M", "Inc", "erI", "L", "effL", "Reff", "SBeff", "Rexp", "SBexp", "Aobs1", "eAobs1", "Aobs2", "eAobs2", "Abar1", "eAbar1", "Abar2", "eAbar2"])
-    return df_SPARC_ETGs_rotating_RC
+function load_SPARC_rotating_ETGs_data()
+    df_SPARC_rotating_ETGs = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/rotating_ETGs_Lelli2017.mrt.txt"), skipto=3, delim=" ", ignorerepeated=true, header=false));
+    rename!(df_SPARC_rotating_ETGs, ["Galaxy", "Dist", "errD", "M", "Inc", "erI", "L", "effL", "Reff", "SBeff", "Rexp", "SBexp", "Aobs1", "eAobs1", "Aobs2", "eAobs2", "Abar1", "eAbar1", "Abar2", "eAbar2"])
+    return df_SPARC_rotating_ETGs
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function load_SPARC_ETGs_rotating_RC(GalaxyName::AbstractString, mode::Symbol;
+function load_SPARC_rotating_ETGs_RC(GalaxyName::AbstractString, mode::Symbol;
     folder = joinpath(@__DIR__, "../data/SPARC_ETGs/Rotmod_ETG/"),
 )
     if mode == :bulge
@@ -140,14 +140,14 @@ function load_SPARC_ETGs_rotating_RC(GalaxyName::AbstractString, mode::Symbol;
         error("Unsupported baryonic component! (supported `Symbol`: `:bulge`, `:disk`)")
     end
     dfRC = DataFrame(CSV.File(joinpath(folder, "$(GalaxyName)_$(string(mode)).dat"); skipto, delim=" ", ignorerepeated=true, header=false));
-    rename!(dfRC, ["r", "rho", "vc"])
+    rename!(dfRC, ["r", "Σ", "vc"])
     return dfRC
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function load_SPARC_ETGs_rotating_rotmod(GalaxyName::AbstractString;
+function load_SPARC_rotating_ETGs_rotmod(GalaxyName::AbstractString;
     folder = joinpath(@__DIR__, "../data/SPARC_ETGs/Rotmod_ETG/"),
 )
     dfRC = DataFrame(CSV.File(joinpath(folder, "$(GalaxyName)_rotmod.dat"); skipto=4, delim="\t", ignorerepeated=true, header=false));

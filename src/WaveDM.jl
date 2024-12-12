@@ -40,7 +40,7 @@ export RAR_inv, Milgrom_inv
 export modelRAR
 
 export load_SPARC_LTGs_RC, load_SPARC_LTGs_data, load_li2018_SPARC
-export load_SPARC_ETGs_Xray_data, load_SPARC_ETGs_rotating_data, load_SPARC_ETGs_rotating_RC, load_SPARC_ETGs_rotating_rotmod
+export load_SPARC_Xray_ETGs_data, load_SPARC_rotating_ETGs_data, load_SPARC_rotating_ETGs_RC, load_SPARC_rotating_ETGs_rotmod
 
 
 include("data.jl")
