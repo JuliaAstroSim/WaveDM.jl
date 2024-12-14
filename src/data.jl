@@ -95,6 +95,8 @@ function load_SPARC_LTGs_data(;
     df[!, :M_b] = zeros(size(df,1))
     df[!, :MHI_sim] = zeros(size(df,1))
     df[!, :M_h] = zeros(size(df,1))
+    df[!, :chi2RC] = zeros(size(df,1))
+    df[!, :chi2RAR] = zeros(size(df,1))
     return df
 end
 
@@ -112,18 +114,38 @@ end
 $(TYPEDSIGNATURES)
 """
 function load_SPARC_Xray_ETGs_data()
-    df_SPARC_Xray_ETGs = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/Xray_ETGs_Lelli2017.txt"), skipto=4, delim=" ", ignorerepeated=true, header=false));
-    rename!(df_SPARC_Xray_ETGs, ["Galaxy", "T", "D", "errD", "L", "errL", "Reff", "SBeff"])
-    return df_SPARC_Xray_ETGs
+    df = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/Xray_ETGs_Lelli2017.txt"), skipto=4, delim=" ", ignorerepeated=true, header=false));
+    rename!(df, ["Galaxy", "T", "D", "errD", "L", "errL", "Reff", "SBeff"])
+
+    df[!, :a0_mean] = zeros(size(df,1))
+    df[!, :a0_std] = zeros(size(df,1))
+    df[!, :b_r_IC] = zeros(size(df,1))
+    df[!, :b_r] = zeros(size(df,1))
+    df[!, :M_b] = zeros(size(df,1))
+    df[!, :MHI_sim] = zeros(size(df,1))
+    df[!, :M_h] = zeros(size(df,1))
+    df[!, :chi2RC] = zeros(size(df,1))
+    df[!, :chi2RAR] = zeros(size(df,1))
+    return df
 end
 
 """
 $(TYPEDSIGNATURES)
 """
 function load_SPARC_rotating_ETGs_data()
-    df_SPARC_rotating_ETGs = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/rotating_ETGs_Lelli2017.mrt.txt"), skipto=3, delim=" ", ignorerepeated=true, header=false));
-    rename!(df_SPARC_rotating_ETGs, ["Galaxy", "Dist", "errD", "M", "Inc", "erI", "L", "effL", "Reff", "SBeff", "Rexp", "SBexp", "Aobs1", "eAobs1", "Aobs2", "eAobs2", "Abar1", "eAbar1", "Abar2", "eAbar2"])
-    return df_SPARC_rotating_ETGs
+    df = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_ETGs/rotating_ETGs_Lelli2017.mrt.txt"), skipto=3, delim=" ", ignorerepeated=true, header=false));
+    rename!(df, ["Galaxy", "Dist", "errD", "M", "Inc", "erI", "L", "effL", "Reff", "SBeff", "Rexp", "SBexp", "Aobs1", "eAobs1", "Aobs2", "eAobs2", "Abar1", "eAbar1", "Abar2", "eAbar2"])
+
+    df[!, :a0_mean] = zeros(size(df,1))
+    df[!, :a0_std] = zeros(size(df,1))
+    df[!, :b_r_IC] = zeros(size(df,1))
+    df[!, :b_r] = zeros(size(df,1))
+    df[!, :M_b] = zeros(size(df,1))
+    df[!, :MHI_sim] = zeros(size(df,1))
+    df[!, :M_h] = zeros(size(df,1))
+    df[!, :chi2RC] = zeros(size(df,1))
+    df[!, :chi2RAR] = zeros(size(df,1))
+    return df
 end
 
 """
