@@ -28,8 +28,8 @@ $(TYPEDSIGNATURES)
 """
 function load_SPARC_LTGs_data(;
     exclude_list = ["F561-1"], #TODO
-    prior = "LCDM",
-    model = "NFW",
+    prior::AbstractString = "LCDM",
+    model::AbstractString = "NFW",
 )
     ### Load data
     df_SPARC = DataFrame(CSV.File(joinpath(@__DIR__, "../data/SPARC_LTGs/SPARC_Lelli2016c.mrt.txt"), skipto=99, delim=" ", ignorerepeated=true, header=false))
