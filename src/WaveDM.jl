@@ -21,7 +21,6 @@ using RollingFunctions, SpecialFunctions, Roots
 
 using LsqFit
 using Dierckx
-using DSP
 using DifferentialEquations
 using ProgressMeter
 
@@ -58,6 +57,7 @@ include("statistics.jl")
 include("RAR.jl")
 include("SPE.jl")
 
+include("plot.jl")
 
 include("precompile.jl")
 
