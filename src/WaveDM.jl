@@ -26,6 +26,8 @@ using ProgressMeter
 
 using Sundials
 
+using GLMakie
+
 # JuliaAstroSim encosystem
 using AstroSimBase
 using PhysicalParticles
