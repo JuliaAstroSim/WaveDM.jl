@@ -63,7 +63,7 @@ function plot_MW_RC_SPE(dfAcc;
             [s3, e3],
         ],
         [
-            "WaveDM",
+            "WaveDM χ²=$(@sprintf("%.2f", chi2RC))",
             "RAR",
             "Eilers 2019",
             # "Mroz 2019",
