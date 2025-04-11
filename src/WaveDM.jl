@@ -20,6 +20,7 @@ using FFTW
 using RollingFunctions, SpecialFunctions, Roots
 
 using LsqFit
+using Optim
 using Dierckx
 using DifferentialEquations
 using ProgressMeter
