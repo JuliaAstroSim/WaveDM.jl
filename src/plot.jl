@@ -126,5 +126,5 @@ function plot_MW_RC_SPE(dfAcc;
         margin = (10, 10, 10, 10),
     )
 
-    fig, chi2RC_min
+    fig, chi2RC_min, mass_ratio
 end
