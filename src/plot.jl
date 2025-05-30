@@ -6,6 +6,7 @@ function plot_MW_RC_SPE(dfAcc;
     size = (1200, 600),
     average = false,
     section = 100,
+    FDM_mass_ratio = 1.0,
     best_fit_halo_mass = false,
     fontsize = 18,
 )
@@ -34,8 +35,8 @@ function plot_MW_RC_SPE(dfAcc;
         # Find the minimum chi2RC by tunning the DM halo mass
 
         function merit_function(params)
-            mass_ratio = params[1]
-            merit_chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean * mass_ratio, r_mean; DOF = 2)
+            mass_fix_ratio = params[1]
+            merit_chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean * mass_fix_ratio, r_mean; DOF = 2)
             return merit_chi2RC
         end
 
@@ -55,11 +56,13 @@ function plot_MW_RC_SPE(dfAcc;
         )
 
         chi2RC_min = Optim.minimum(result)[1]
-        mass_ratio = Optim.minimizer(result)[1]
+        mass_fix_ratio = Optim.minimizer(result)[1]
     else
         chi2RC_min = chi2RC
-        mass_ratio = 1
+        mass_fix_ratio = 1
     end
+
+    mass_ratio = mass_fix_ratio * FDM_mass_ratio
 
     @info "chi2RC = $(chi2RC)"
     @info "chi2RC_min = $(chi2RC_min)"
@@ -88,8 +91,8 @@ function plot_MW_RC_SPE(dfAcc;
     s3 = Makie.scatter!(ax, dfRCstddev.r, dfRCstddev.v, marker = :x, color = :gray)
     e3 = Makie.errorbars!(ax, dfRCstddev.r, dfRCstddev.v, dfRCstddev.σ_v, color = :gray)
 
-    s1 = Makie.scatter!(ax, r_mean, vc_mean * mass_ratio, color = :red, markersize = 5.0, marker = :x)
-    e1 = Makie.errorbars!(ax, r_mean, vc_mean * mass_ratio, vc_std, color = :red)
+    s1 = Makie.scatter!(ax, r_mean, vc_mean * mass_fix_ratio, color = :red, markersize = 5.0, marker = :x)
+    e1 = Makie.errorbars!(ax, r_mean, vc_mean * mass_fix_ratio, vc_std, color = :red)
 
     s2 = Makie.scatter!(ax, r_mean, vc_MOND_mean, color = :blue, markersize = 5.0)
     e2 = Makie.errorbars!(ax, r_mean, vc_MOND_mean, vc_MOND_std, color = :blue)
@@ -126,5 +129,5 @@ function plot_MW_RC_SPE(dfAcc;
         margin = (10, 10, 10, 10),
     )
 
-    fig, chi2RC_min, mass_ratio
+    fig, chi2RC_min, mass_fix_ratio
 end
