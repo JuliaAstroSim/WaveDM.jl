@@ -29,7 +29,11 @@ chi2(obs, sigma, pred) = sum(((obs.-pred)./sigma).^2)
 
 chi2reduced(obs, sigma, pred; DOF=0) = sum(((obs.-pred)./sigma).^2) / (length(pred)-DOF)
 
+chi2reduced(obs, sigma, pred, err; DOF=0) = sum((obs.-pred).^2 ./ (sigma.^2 + err.^2)) / (length(pred)-DOF)
+
 """
+$(TYPEDSIGNATURES)
+
 χ²
 
 The observation and prediction are not one-to-one.
@@ -50,7 +54,8 @@ function chi2(obs, sigma, obs_r, pred, r;
 end
 
 """
-χ²
+$(TYPEDSIGNATURES)
+reduced χ²
 
 The observation and prediction are not one-to-one.
 Interpolate the discrete observational data using 1D spline and compute χ² within observational region
@@ -70,6 +75,31 @@ function chi2reduced(obs, sigma, obs_r, pred, r;
         DOF,
     )
 end
+
+"""
+$(TYPEDSIGNATURES)
+reduced χ² with erros from prediction
+
+The observation and prediction are not one-to-one.
+Interpolate the discrete observational data using 1D spline and compute χ² within observational region
+"""
+function chi2reduced(obs, sigma, obs_r, pred, err, r; 
+    k = 1, # 1, linear; 2, quadratic; 3, cubic
+    DOF = 0,
+    kw...
+)
+    rMin = minimum(obs_r)
+    rMax = maximum(obs_r)
+    indices = rMin .<= r .<= rMax
+    return chi2reduced(
+        interp1(obs_r, obs, r[indices]; k, kw...),
+        interp1(obs_r, sigma, r[indices]; k, kw...),
+        pred[indices],
+        err[indices];
+        DOF,
+    )
+end
+
 
 function velocity_anisotropy(vx, vy, vz)
     σ = [std(vx), std(vy), std(vz)]
