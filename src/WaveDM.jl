@@ -22,7 +22,7 @@ using RollingFunctions, SpecialFunctions, Roots
 using LsqFit
 using Optim
 using Dierckx
-using DifferentialEquations
+# using DifferentialEquations
 using ProgressMeter
 
 using Sundials
