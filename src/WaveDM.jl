@@ -46,13 +46,14 @@ export modelRAR
 export load_SPARC_LTGs_RC, load_SPARC_LTGs_data, load_li2018_SPARC
 export load_SPARC_Xray_ETGs_data, load_SPARC_rotating_ETGs_data, load_SPARC_rotating_ETGs_RC, load_SPARC_rotating_ETGs_rotmod
 
-
 const C = Constant(uAstro)
 astro()
 
 const η₀ = sqrt(C.μ_0 / C.ε_0)
 const ħ = C.h/2/π
 
+include("coordinates.jl")
+export vec_cartesian_to_spherical, vec_cartesian_to_cylindrical
 
 include("data.jl")
 include("statistics.jl")
