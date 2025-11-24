@@ -1,8 +1,4 @@
 function plot_MW_RC_SPE(dfAcc;
-    fileEilers2019 = joinpath(@__DIR__, "../data/MilkyWay/MW_RC_Eilers2019.dat"),
-    fileMroz2019 = joinpath(@__DIR__, "../data/MilkyWay/MW_RC_Mroz2019.dat"),
-    fileRCstddev = joinpath(@__DIR__, "../data/MilkyWay/MW_RC_stddev_W21.txt"),
-    fileDS_W21 = joinpath(@__DIR__, "../data/MilkyWay/MW_dsvel-W21-RC.txt"),
     size = (1200, 600),
     average = false,
     section = 100,
@@ -10,17 +6,10 @@ function plot_MW_RC_SPE(dfAcc;
     best_fit_halo_mass = false,
     fontsize = 18,
 )
-    dfEilers2019 = DataFrame(CSV.File(fileEilers2019; header = false, delim=" ", ignorerepeated = true))
-    rename!(dfEilers2019, [:r, :v, :σ_low, :σ_high])
-
-    dfMroz2019 = DataFrame(CSV.File(fileMroz2019; header = false, delim=" ", ignorerepeated = true))
-    rename!(dfMroz2019, [:r, :v, :σ_low, :σ_high])
-
-    dfRCstddev = DataFrame(CSV.File(fileRCstddev; header = false, delim=" ", ignorerepeated = true))
-    rename!(dfRCstddev, [:id, :r, :v, :σ_v, :σ_r])
-
-    dfDS_W21 = DataFrame(CSV.File(fileDS_W21; header = false, skipto=3, delim="\t", ignorerepeated = true))
-    rename!(dfDS_W21, [:r, :v_b, :v_CDM, :v_QUMOND, :v_MOG])
+    dfEilers2019 = load_MW_RC_Eilers2019()
+    dfMroz2019 = load_MW_RC_Mroz2019()
+    dfRCstddev = load_MW_RC_stddev_W21()
+    dfDS_W21 = load_MW_RC_DS_W21()
 
     if average
         vc = ustrip.(u"km/s", sqrt.(dfAcc.a_all_averaged * u"m/s^2" .* dfAcc.r * u"kpc"))
