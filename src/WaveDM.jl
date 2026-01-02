@@ -29,6 +29,18 @@ using Sundials
 
 using GLMakie
 
+# Additional imports from temporary files
+using Distributed
+using Dagger
+using Strided
+using GridInterpolations
+using Zygote
+using Tullio
+using PaddedViews
+using OffsetArrays
+using DSP
+using Dates
+
 # JuliaAstroSim encosystem
 using AstroSimBase
 using PhysicalParticles
@@ -54,9 +66,22 @@ include("coordinates.jl")
 export vec_cartesian_to_spherical, vec_cartesian_to_cylindrical
 
 include("statistics.jl")
+include("utils.jl")
+include("auxiliary.jl")
 
 include("RAR.jl")
+
+# Include MOND modules
+include("MOND/initial_conditions.jl")
+include("MOND/analysis.jl")
+
+# Include constraints module
+include("constraints.jl")
+
+# Include high-level API module
+include("SPE/init.jl")
 include("SPE.jl")
+include("highlevel.jl")
 
 include("plot.jl")
 
