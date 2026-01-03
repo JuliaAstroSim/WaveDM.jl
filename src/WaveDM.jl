@@ -70,12 +70,13 @@ include("statistics.jl")
 include("utils.jl")
 include("auxiliary.jl")
 
-include("RAR.jl")
+# include("RAR.jl")
 
 # Include MOND modules
 include("init.jl")
 include("initial_conditions.jl")
-# include("MOND/analysis.jl")
+
+include("MOND/analysis.jl")
 
 # Include constraints module
 # include("constraints.jl")
