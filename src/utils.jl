@@ -9,7 +9,7 @@ const kernel11 = ones(11,11,11) ./ 11^3
 const kernel15 = ones(15,15,15) ./ 15^3
 
 """
-    filter_min_rho(rho, r, spl)
+$(TYPEDSIGNATURES)
 
 Check if density `rho` is above the minimum threshold defined by spline `spl` at radius `r`.
 """
@@ -22,7 +22,7 @@ function filter_min_rho(rho, r, spl)
 end
 
 """
-    func_dθ_dt(phase_last_t, phase, dt)
+$(TYPEDSIGNATURES)
 
 Compute the time derivative of phase using unwrapped phases.
 """
@@ -32,7 +32,7 @@ function func_dθ_dt(phase_last_t, phase, dt)
 end
 
 """
-    extract_ma_number(s::AbstractString)
+$(TYPEDSIGNATURES)
 
 Extract the ma number from a string like "ma(3.0)".
 """

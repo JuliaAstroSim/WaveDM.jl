@@ -44,6 +44,7 @@ using Dates
 # JuliaAstroSim encosystem
 using AstroSimBase
 using PhysicalParticles
+using PhysicalParticles.NumericalIntegration
 using PhysicalFDM
 using PhysicalFFT
 using PhysicalMeshes
@@ -72,16 +73,15 @@ include("auxiliary.jl")
 include("RAR.jl")
 
 # Include MOND modules
-include("MOND/initial_conditions.jl")
-include("MOND/analysis.jl")
+include("init.jl")
+include("initial_conditions.jl")
+# include("MOND/analysis.jl")
 
 # Include constraints module
-include("constraints.jl")
+# include("constraints.jl")
 
 # Include high-level API module
-include("SPE/init.jl")
-include("SPE.jl")
-include("highlevel.jl")
+# include("SPE.jl")
 
 include("plot.jl")
 

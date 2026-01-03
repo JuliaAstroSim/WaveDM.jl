@@ -1,6 +1,35 @@
 # SPE initialization module
 
 """
+$(TYPEDSIGNATURES)
+
+Solve vector equation ∇θ = v for phase θ given velocity field v.
+"""
+function solve_vector_equation(vx, vy, vz, Δx, Δy, Δz)
+    Nx, Ny, Nz = size(vx)
+    θ = zeros(Nx, Ny, Nz)
+    x = collect(0:Nx-1) * Δx
+    y = collect(0:Ny-1) * Δy
+    z = collect(0:Nz-1) * Δz
+    for k in 1:Nz
+        for j in 1:Ny
+            θ[:,j,k] .+= cumul_integrate(x, vx[:,j,k])
+        end
+    end
+    for k in 1:Nz
+        for i in 1:Nx
+            θ[i,:,k] .+= cumul_integrate(y, vy[i,:,k])
+        end
+    end
+    for j in 1:Ny
+        for i in 1:Nx
+            θ[i,j,:] .+= cumul_integrate(z, vz[i,j,:])
+        end
+    end
+    return θ
+end
+
+"""
     setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
 
 Setup computational grid and coordinates.
@@ -52,6 +81,7 @@ function compute_timestep(Δx, Φ_all, κ, ψ, Tmax, Nt, autoset_timestep, autos
     Δt_phase = 2 * Δx^2 / π
     Δt_grav = 2π / maximum(abs.(Φ_all))
     Δt_SI = 2π / abs(κ) / maximum(abs.(ψ))
+    @info "Suggested Δt less than [2(Δx)²/π, 2π/max{Φ}, 2π/(|κ| max{ψ})] = [$(Δt_phase), $(Δt_grav), $(Δt_SI)]"
     
     if autoset_timestep
         Δt_limit = min(Δt_phase, Δt_grav, Δt_SI)

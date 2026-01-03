@@ -1,5 +1,5 @@
 """
-    optimize_massive_dwarfs_RC_stellar_fitting(r_RC, v_RC, lower, upper, ic; NumSamples_stellar, thickness_ratio_stellar)
+$(TYPEDSIGNATURES)
 
 Optimize dwarf galaxy rotation curve stellar fitting.
 """
