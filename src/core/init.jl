@@ -89,7 +89,7 @@ function compute_timestep(Δx, Φ_all, κ, ψ, Tmax, Nt, autoset_timestep, autos
     end
     
     t = collect(LinRange(0, Tmax, Nt))
-    dt = Tmax / Nt
+    dt = Float32(Tmax / Nt)
     
     return t, dt, Nt
 end

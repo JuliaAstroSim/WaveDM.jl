@@ -238,6 +238,3 @@ function compute_RAR(dfAcc;
 
     f
 end
-
-# Export functions
-export compute_RAR

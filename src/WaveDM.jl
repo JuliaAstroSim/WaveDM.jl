@@ -52,39 +52,33 @@ using AstroIC
 using AstroNbodySim
 using AstroPlot
 
-export RAR, Milgrom
-export RAR_inv, Milgrom_inv
-export modelRAR
-
-
 const C = Constant(uAstro)
 astro()
 
 const η₀ = sqrt(C.μ_0 / C.ε_0)
 const ħ = C.h/2/π
 
-include("coordinates.jl")
-export vec_cartesian_to_spherical, vec_cartesian_to_cylindrical
+include("core/coordinates.jl")
 
-include("statistics.jl")
-include("utils.jl")
-include("auxiliary.jl")
+include("core/statistics.jl")
+include("core/utils.jl")
+include("core/init.jl")
 
-# include("RAR.jl")
-
-# Include MOND modules
-include("init.jl")
 include("initial_conditions.jl")
+include("plot/plot_runtime.jl")
 
-include("MOND/analysis.jl")
+include("MOND.jl")
 
-# Include constraints module
-# include("constraints.jl")
+include("solver/gravity.jl")
+include("solver/tidal_fields.jl")
+include("solver/KDK.jl")
+include("solver/best_fit_extraction.jl")
 
-# Include high-level API module
-# include("SPE.jl")
+include("initial_conditions.jl")
+include("simulation.jl")
 
-include("plot.jl")
+include("auxiliary.jl")
+include("plot/plot.jl")
 
 include("precompile.jl")
 
