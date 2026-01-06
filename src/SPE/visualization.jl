@@ -5,7 +5,7 @@ $(TYPEDSIGNATURES)
 
 Setup initial visualization figure with multiple panels.
 """
-function setup_visualization(Xmax, t, Δ, rho, rho_max_id, total_halo_mass, radii,
+function setup_visualization(Xmax, t, Δ, x, y, z, rho, rho_max_id, total_halo_mass, radii,
     uT, uL, title, suffix, distributed_memory;
     size = (2400, 1400)
 )
@@ -95,7 +95,7 @@ function setup_visualization(Xmax, t, Δ, rho, rho_max_id, total_halo_mass, radi
     ArrayR8 = Observable([radii[8] * uL])
     ArrayR9 = Observable([radii[9] * uL])
 
-    ColorRange = Observable((0, maximum(abs.(ψ).^2)/10))
+    ColorRange = Observable((0, maximum(rho)/10))
     Makie.heatmap!(AxisXY, x * uL, y * uL, SliceXY; colorrange = ColorRange)
     Makie.heatmap!(AxisYZ, y * uL, z * uL, SliceYZ; colorrange = ColorRange)
     hmXZ = Makie.heatmap!(AxisXZ, x * uL, z * uL, SliceXZ; colorrange = ColorRange)
@@ -358,6 +358,132 @@ function setup_density_profile_visualization!(fig, AxisDensityProfile,
     )
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Update progress bar with Unicode plots if enabled.
+This function encapsulates the `if unicode_plot` code block from SPE3D_MOND.
+"""
+function update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id,
+    Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, _profile_r_mean, _profile_ρ_mean,
+    best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star,
+    unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
+    
+    if unicode_plot
+        if distributed_memory
+            slice_rho = dropdims(collect(rho[:, :, rho_max_id[3]]), dims=3)
+        else
+            slice_rho = rho[:, :, rho_max_id[3]]
+        end
+
+        unicode_p1 = UnicodePlots.heatmap(log10.(slice_rho);
+            xoffset = -Xmax*uL,
+            yoffset = -Ymax*uL,
+            xfact = 2*Xmax*uL/Nx,
+            yfact = 2*Xmax*uL/Nx,
+            height = unicode_heatmap_width,
+            width = unicode_heatmap_width,
+        )
+
+        if Realtime && iszero(mod(i, StepsBetweenSnapshots))
+            unicode_p2 = UnicodePlots.lineplot(r_target, ρ_halo_target;
+                xscale=:log10,
+                yscale=:log10,
+                xlim = (0.5*Δ[1]*uL, Xmax*uL),
+                ylim = (1e3, 1e10),
+                color = :blue,
+                xlabel = "log10(r [kpc])",
+                ylabel = "log10(ρ [Msun/kpc³])",
+            )
+            UnicodePlots.lineplot!(unicode_p2, _profile_r_mean, _profile_ρ_mean;
+                color = :red,
+            )
+        else
+            unicode_p2 = nothing
+        end
+
+        next!(progress; showvalues = [
+            ("iter", i),
+            ("t [Gyr]", t[i] * uT),
+            ("density", unicode_p1),
+            ("profile", unicode_p2),
+            ("best_fit_t", best_fit_t),
+            ("best_fit_error", best_fit_error),
+            ("current_fit_error", current_fit_error),
+            ("best_fit_beta_star_error", best_fit_beta_star_error),
+            ("best_fit_beta_star", best_fit_beta_star),
+            ("current_beta_star", current_beta_star),
+        ])
+    else
+        next!(progress; showvalues = [
+            ("iter", i),
+            ("t [Gyr]", t[i] * uT),
+            ("best_fit_t", best_fit_t),
+            ("best_fit_error", best_fit_error),
+            ("current_fit_error", current_fit_error),
+            ("best_fit_beta_star_error", best_fit_beta_star_error),
+            ("best_fit_beta_star", best_fit_beta_star),
+            ("current_beta_star", current_beta_star),
+        ])
+    end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Plot MOND acceleration comparison.
+This function encapsulates the `plotMOND` inner function from SPE3D_MOND.
+"""
+function plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section;
+    filename = title)
+    
+    rMOND = r[:, :, div(end,2)][:] * ustrip(length_astro)
+    a_b = sqrt.(ax_b[:, :, div(end,2)].^2 .+ ay_b[:, :, div(end,2)].^2 .+ az_b[:, :, div(end,2)].^2)
+    a_all = sqrt.(ax_all[:, :, div(end,2)].^2 .+ ay_all[:, :, div(end,2)].^2 .+ az_all[:, :, div(end,2)].^2)
+
+    a_mond = a_b ./ (1 .- exp.(-sqrt.(a_b./a0)))
+
+    figMOND = Figure(size = (1600, 900));
+    ax = Axis(figMOND[1,1];
+        xlabel = "r [kpc]",
+        ylabel = "acc [m/s²]",
+    )
+
+    r_mean, a_b_mean, r_std, a_b_std = distribution(rMOND[:], a_b[:]; section)
+    _, a_all_mean, _, a_all_std = distribution(rMOND[:], a_all[:];    section)
+    _, a_mond_mean, _, a_mond_std = distribution(rMOND[:], a_mond[:]; section)
+
+    # relative error of accelerations in region [minR, maxR]
+    indexMinR = findfirst(x->x>ustrip(u"kpc", minR), r_mean)
+    indexMaxR = findfirst(x->x>ustrip(u"kpc", maxR), r_mean)
+    a_all_measurement = measurement.(a_all_mean[indexMinR:indexMaxR], a_all_std[indexMinR:indexMaxR])
+    a_mond_measurement = measurement.(a_mond_mean[indexMinR:indexMaxR], a_mond_std[indexMinR:indexMaxR])
+    MOND_errorrel = mean((a_all_measurement .- a_mond_measurement) ./ a_mond_measurement)
+    
+    uAcc = ustrip(acc_astro)
+
+    f1 = Makie.scatter!(ax, rMOND[:], a_b[:] * uAcc, markersize = 2, color = :red)
+    f1a = Makie.lines!(ax, r_mean, a_b_mean * uAcc, color = :red)
+    f1b = Makie.band!(ax, r_mean, (a_b_mean - a_b_std) * uAcc, (a_b_mean + a_b_std) * uAcc, color = (:red, 0.2))
+
+    f2 = Makie.scatter!(ax, rMOND[:], a_all[:] * uAcc, markersize = 2, color = :black)
+    f2a = Makie.lines!(ax, r_mean, a_all_mean * uAcc, color = :black)
+    f2b = Makie.band!(ax, r_mean, (a_all_mean - a_all_std) * uAcc, (a_all_mean + a_all_std) * uAcc, color = (:black, 0.2))
+
+    f3 = Makie.scatter!(ax, rMOND[:], a_mond[:] * uAcc, markersize = 2, color = :green)
+    f3a = Makie.lines!(ax, r_mean, a_mond_mean * uAcc, color = :green)
+    f3b = Makie.band!(ax, r_mean, (a_mond_mean - a_mond_std) * uAcc, (a_mond_mean + a_mond_std) * uAcc, color = (:green, 0.2))
+
+    f4 = Makie.hlines!(ax, [a0 * uAcc], color = :blue)
+    
+    Legend(figMOND[1,2], [[f1, f1a, f1b], [f2, f2a, f2b], [f3, f3a, f3b], f4], ["baryon", "all", "mond", "a0"])
+    Makie.xlims!(ax, 0, ustrip(u"kpc", 1.5 * maxR))
+    Makie.ylims!(ax, 1.0e-11, 1.0e-9)
+    Makie.save(joinpath(outputdir, filename * "- RAR, $(suffix).png"), figMOND)
+    return figMOND, MOND_errorrel
+end
+
 # Export functions
-export setup_visualization, setup_virial_visualization, update_visualization!
+export setup_visualization, setup_virial_visualization
 export update_virial_terms!, update_virial_visualization!, setup_density_profile_visualization!
+export update_unicode_progress!, plotMOND
