@@ -362,7 +362,6 @@ end
 $(TYPEDSIGNATURES)
 
 Update progress bar with Unicode plots if enabled.
-This function encapsulates the `if unicode_plot` code block from SPE3D_MOND.
 """
 function update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id,
     Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, _profile_r_mean, _profile_ρ_mean,
