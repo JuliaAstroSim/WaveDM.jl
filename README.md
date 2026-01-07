@@ -105,7 +105,7 @@ If you use WaveDM.jl in your research, please cite:
 ## Acknowledgments
 
 WaveDM.jl development was supported by:
-- Yunnan Astronomical Observatory, National Astronomical Observatories, Chinese Academy of Sciences
+- Yunnan Observatories, Chinese Academy of Sciences (YNAO)
 - National Natural Science Foundation of China (NSFC)
 
 ## Related Packages
