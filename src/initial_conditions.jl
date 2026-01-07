@@ -42,12 +42,12 @@ function generate_milkyway_initial_conditions(xxx, yyy, zzz, r, Δ, unit_cell_vo
             particles = generate_milkyway_baryon_particles(Np)
             
             sim_force_baryon = Simulation(particles;
-                GravitySolver,
+                GravitySolver = init_config.GravitySolver,
                 pids,
             )
-            @info "Computing baryonic potentials and forces with $(traitstring(GravitySolver)) solver"
-            @time Φ_b = compute_potential(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()) ./ potential_astro
-            @time acc_b = StructArray(compute_force(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()))
+            @info "Computing baryonic potentials and forces with $(traitstring(init_config.GravitySolver)) solver"
+            @time Φ_b = compute_potential(sim_force_baryon, pos, init_config.SofteningLength, init_config.GravitySolver, CPU()) ./ potential_astro
+            @time acc_b = StructArray(compute_force(sim_force_baryon, pos, init_config.SofteningLength, init_config.GravitySolver, CPU()))
             ax_b = upreferred.(acc_b.x ./ acc_astro)
             ay_b = upreferred.(acc_b.y ./ acc_astro)
             az_b = upreferred.(acc_b.z ./ acc_astro)
@@ -72,17 +72,42 @@ function sampling_density(r, model, length_astro, density_astro)
 end
 
 # Generate initial conditions for different models
-function generate_initial_conditions(
-    model, xxx, yyy, zzz, r, Δ, unit_cell_volumn, FDM_mass_ratio, FDM_radius_ratio,
-    baryon_mode, Np, GravitySolver, SofteningLength,
-    length_astro, density_astro, potential_astro, acc_astro, pids,
-    baryon_β, baryon_ρ0, baryon_r0, halo_β, halo_ρ0, halo_r0, halo_α, halo_γ, halo_Q,
-    stellar_TotalMass, stellar_ScaleRadius, thickness_ratio_stellar, gases_TotalMass, gases_ScaleRadius, thickness_ratio_gases
-)
+function generate_initial_conditions(init_config::InitialConditionsConfig, grid::SimulationGrid, density_config::DensityProfileConfig, astro_config::AstroUnitsConfig)::Tuple{Array{Float64, 3}, Union{Array{Float64, 3}, Nothing}, Union{Array{Float64, 3}, Nothing}, Union{Array{Float64, 3}, Nothing}, Union{Array{Float64, 3}, Nothing}, Union{Array{Float64, 3}, Nothing}, Any}
+    model = init_config.model
+    xxx = grid.xxx
+    yyy = grid.yyy
+    zzz = grid.zzz
+    r = grid.r
+    Δ = grid.Δ
+    unit_cell_volumn = grid.unit_cell_volumn
+    FDM_mass_ratio = init_config.FDM_mass_ratio
+    FDM_radius_ratio = init_config.FDM_radius_ratio
+    baryon_mode = init_config.baryon_mode
+    Np = init_config.Np
+    pids = init_config.pids
+    length_astro = astro_config.length_astro
+    density_astro = astro_config.density_astro
+    potential_astro = astro_config.potential_astro
+    acc_astro = astro_config.acc_astro
+    baryon_β = density_config.baryon_β
+    baryon_ρ0 = density_config.baryon_ρ0
+    baryon_r0 = density_config.baryon_r0
+    halo_β = density_config.halo_β
+    halo_ρ0 = density_config.halo_ρ0
+    halo_r0 = density_config.halo_r0
+    halo_α = density_config.halo_α
+    halo_γ = density_config.halo_γ
+    halo_Q = density_config.halo_Q
+    stellar_TotalMass = density_config.stellar_TotalMass
+    stellar_ScaleRadius = density_config.stellar_ScaleRadius
+    thickness_ratio_stellar = density_config.thickness_ratio_stellar
+    gases_TotalMass = density_config.gases_TotalMass
+    gases_ScaleRadius = density_config.gases_ScaleRadius
+    thickness_ratio_gases = density_config.thickness_ratio_gases
     if model == :MW
         ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon = generate_milkyway_initial_conditions(
             xxx, yyy, zzz, r, Δ, unit_cell_volumn, model, FDM_mass_ratio, FDM_radius_ratio, 
-            baryon_mode, Np, GravitySolver, SofteningLength, 
+            baryon_mode, Np, init_config.GravitySolver, init_config.SofteningLength, 
             length_astro, density_astro, potential_astro, acc_astro, 
             pids
         )
@@ -130,6 +155,10 @@ function generate_initial_conditions(
 
         if baryon_mode == :ignored
             ρ_baryon = nothing
+            Φ_b = nothing
+            ax_b = nothing
+            ay_b = nothing
+            az_b = nothing
             total_mass_baryon = 0.0u"Msun"
         elseif baryon_mode == :particles_static
             @info "Sampling stars"
@@ -163,12 +192,12 @@ function generate_initial_conditions(
             end
 
             sim_force_baryon = Simulation(particles;
-                GravitySolver,
+                GravitySolver = init_config.GravitySolver,
                 pids,
             )
-            @info "Computing baryonic potentials and forces with $(traitstring(GravitySolver)) solver"
-            @time Φ_b = compute_potential(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()) ./ potential_astro
-            @time acc_b = StructArray(compute_force(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()))
+            @info "Computing baryonic potentials and forces with $(traitstring(init_config.GravitySolver)) solver"
+            @time Φ_b = compute_potential(sim_force_baryon, pos, init_config.SofteningLength, init_config.GravitySolver, CPU()) ./ potential_astro
+            @time acc_b = StructArray(compute_force(sim_force_baryon, pos, init_config.SofteningLength, init_config.GravitySolver, CPU()))
             ax_b = upreferred.(acc_b.x ./ acc_astro)
             ay_b = upreferred.(acc_b.y ./ acc_astro)
             az_b = upreferred.(acc_b.z ./ acc_astro)

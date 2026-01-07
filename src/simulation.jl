@@ -210,6 +210,7 @@ function SPE3D_MOND(;
         end
     elseif baryon_mode == :particles_dynamic #TODO
     elseif baryon_mode == :ignored
+        Φ_b = nothing
     end
 
     @info "Solving IC potential"
@@ -287,8 +288,14 @@ function SPE3D_MOND(;
     radii = quantile(r_mass_center[:], weights(rho[:]), 0.1:0.1:0.9)
 
     @info("Start visualization...")
+    astro_config = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
+                                    uT, uL, uVel, uAcc, uRho, uMomentum, h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0)
+    grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, r, oneMatrix, unit_cell_volumn)
+    vis_config = VisualizationConfig(title, suffix, size, StepsBetweenSnapshots, Realtime, dynamic_colorrange, plot_virial, plotOptical, plotWaveDM)
+    data_config = VisualizationData(rho, rho_max_id, total_halo_mass, radii, r_mass_center, target_profile_model, target_profile_error)
+    
     fig, ArrayT, ArrayT_Snap, AxisR, AxisVirial, AxisDensityProfile, SliceXY, SliceYZ, SliceXZ, ArrayTotalMass, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ColorRange = setup_visualization(
-        Xmax, t, Δ, x, y, z, r, rho, rho_max_id, total_halo_mass, radii, uT, uL, title, suffix, distributed_memory; size
+        grid, t, vis_config, data_config, astro_config, distributed_memory
     )
 
     if baryon_mode == :ignored
@@ -384,6 +391,11 @@ function SPE3D_MOND(;
         elseif extract_mode == :profile
             @info "extracting snapshot that best-fitting the density profile"
         end
+
+        profile_config = ProfileFitConfig(target_profile_ρ0, target_profile_ρ0_u, target_profile_ρ0_d, target_profile_rs, target_profile_rs_u, target_profile_rs_d, 
+                                                target_profile_α, target_profile_α_u, target_profile_α_d, target_profile_β, target_profile_β_u, target_profile_β_d, 
+                                                target_profile_γ, target_profile_γ_u, target_profile_γ_d, target_fitting_rs_ratio, uniform_interval)
+        rc_config = RCFitConfig(target_beta_star, target_beta_star_u, target_beta_star_d, target_beta_star_r_min, target_beta_star_r_max, beta_star_error_threshold, Galaxy_i)
     else
         best_fit_t = nothing
     end
@@ -408,13 +420,19 @@ function SPE3D_MOND(;
     progress = Progress(Nt-1)
     breakflag = false
     ψ_last_t = similar(ψ)
+    
+    grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, r, oneMatrix, unit_cell_volumn)
+    gravity_config = GravityConfig(boundary, Φ_b, sim_mesh_force, mesh_particles, SofteningLength, baryon_mode, GravitySolver, mass_astro)
+    device_config = DeviceConfig(gpu, DeviceArray, DA)
+    tidal_config = TidalFieldConfig(MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL, MW_grid, MW_Phi, spl_pot, sim_force_baryon, particles_LMC, sim_traj_LMC)
+    
     Makie.record(fig, joinpath(outputdir, "$(title), $(suffix) - Overview.mp4")) do io
         for i in 2:Nt
             ### Kick
             dt_kick = KDK_flag ? 0.5 * dt : dt
-            Φ_all, spec = apply_kick_step!(device_ψ, ψ, V, xxx, yyy, zzz, boundary, Δ, Nx, Ny, Nz, MW_grid, MW_Phi, spl_pot, sim_force_baryon,
-                unit_cell_volumn, gpu, Φ_b, DeviceArray, sim_mesh_force, MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL,
-                mesh_particles, SofteningLength, potential_astro, baryon_mode, GravitySolver, particles_LMC, sim_traj_LMC, rho_max, rho_max_id, oneMatrix, mass_astro, dt_kick)
+            
+            # Pass individual parameters to apply_kick_step! instead of KickStepConfig
+            Φ_all, spec = apply_kick_step!(device_ψ, ψ, V, rho_max, rho_max_id, grid, gravity_config, tidal_config, device_config, dt_kick, i, t)
             
             ### Drift
             device_ψ = apply_drift_step!(spec, linear_phase, boarder, gpu, DeviceArray)
@@ -506,11 +524,11 @@ function SPE3D_MOND(;
 
             if extract_dwarf_granule && (t[i] * time_astro >= extract_min_t)
                 if extract_mode == :profile
-                    current_fit_error = compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, target_profile_model, target_profile_ρ0, target_profile_rs, target_profile_α, target_profile_β, target_profile_γ, density_astro, uniform_interval)
+                    current_fit_error = compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density_astro, profile_config, target_profile_model, uniform_interval)
                 elseif extract_mode == :RC
-                    current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, target_profile_rs, length_astro, Δ, velocity_astro, uL, df_CO_RC, uniform_interval)
+                    current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, astro_config, df_CO_RC, uniform_interval)
                 end
-                best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star = update_best_fit!(best_fit_error, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, target_beta_star, beta_star_error_threshold, fig, outputdir, title, suffix, r_mass_center, rho, length_astro, target_beta_star_r_min, target_beta_star_r_max)
+                best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star = update_best_fit!(best_fit_error, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
             end
 
             update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, _profile_r_mean, _profile_ρ_mean, best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
@@ -697,13 +715,33 @@ function test_MW_MOND(;
         r_in_range = collect(rrr .< upreferred(massRadius / length_astro))
 
         @info "Sampling IC density"
-        ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon = generate_initial_conditions(
-            model, xxx, yyy, zzz, rrr, Δ, unit_cell_volumn, FDM_mass_ratio, FDM_radius_ratio,
-            baryon_mode, Np, GravitySolver, SofteningLength,
-            length_astro, density_astro, potential_astro, acc_astro, pids,
-            baryon_β, baryon_ρ0, baryon_r0, halo_β, halo_ρ0, halo_r0, halo_α, halo_γ, halo_Q,
-            stellar_TotalMass, stellar_ScaleRadius, thickness_ratio_stellar, gases_TotalMass, gases_ScaleRadius, thickness_ratio_gases
+        
+        # Define unit conversion factors (needed for AstroUnitsConfig)
+        uT = ustrip(u"Gyr", time_astro)
+        uL = ustrip(u"kpc", length_astro)
+        uVel = ustrip(u"km/s", velocity_astro)
+        uAcc = ustrip(u"m/s^2", acc_astro)
+        uRho = ustrip(u"Msun/kpc^3", density_astro)
+        uMomentum = ustrip(u"Msun*kpc/Gyr", mass_astro * velocity_astro)
+        
+        # Create astrophysical units configuration
+        astro_config = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
+                                        uT, uL, uVel, uAcc, uRho, uMomentum, h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0_astro)
+        
+        # Create simulation grid
+        grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, rrr, oneMatrix, unit_cell_volumn)
+        
+        # Create initial conditions configuration
+        init_config = InitialConditionsConfig(model, baryon_mode, Np, pids, bulk_perturb, bulk_size, bulk_shift_size, bulk_center_size, 
+                                            reset_velocity, static, FDM_mass_ratio, FDM_radius_ratio, GravitySolver, SofteningLength)
+        
+        # Create density profile configuration - use original physical quantities with units
+        density_config = DensityProfileConfig(
+            baryon_β, baryon_ρ0, baryon_r0, halo_β, halo_ρ0, halo_r0, halo_α, halo_γ, halo_Q, stellar_TotalMass, stellar_ScaleRadius, thickness_ratio_stellar, gases_TotalMass, gases_ScaleRadius, thickness_ratio_gases
         )
+        
+        # Call generate_initial_conditions with new struct parameters
+        ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon = generate_initial_conditions(init_config, grid, density_config, astro_config)
         
         total_mass_halo_IC = sum(ρ_halo[r_in_range]) * prod(Δ) * mass_astro
         

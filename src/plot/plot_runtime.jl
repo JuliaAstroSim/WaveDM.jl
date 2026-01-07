@@ -5,10 +5,22 @@ $(TYPEDSIGNATURES)
 
 Setup initial visualization figure with multiple panels.
 """
-function setup_visualization(Xmax, t, Δ, x, y, z, r, rho, rho_max_id, total_halo_mass, radii,
-    uT, uL, title, suffix, distributed_memory;
-    size = (2400, 1400)
-)
+function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::VisualizationConfig, data_config::VisualizationData, astro_config::AstroUnitsConfig, distributed_memory::Bool)::Tuple{Figure, Observable{Vector{Any}}, Observable{Vector{Any}}, Axis, Axis, Axis, Observable{Matrix{Float64}}, Observable{Matrix{Float64}}, Observable{Matrix{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Tuple{Float64, Float64}}}
+    Xmax = grid.Xmax
+    Δ = grid.Δ
+    x = grid.x
+    y = grid.y
+    z = grid.z
+    r = grid.r
+    rho = data_config.rho
+    rho_max_id = data_config.rho_max_id
+    total_halo_mass = data_config.total_halo_mass
+    radii = data_config.radii
+    uT = astro_config.uT
+    uL = astro_config.uL
+    title = vis_config.title
+    suffix = vis_config.suffix
+    size = vis_config.size
     fig = Figure(; size)
     
     ArrayT = Observable([t[1] * uT])
@@ -113,27 +125,27 @@ function setup_visualization(Xmax, t, Δ, x, y, z, r, rho, rho_max_id, total_hal
 
     supertitle = Label(fig[0, :], "$(title), $(suffix)")
     return (
-        fig = fig,
-        ArrayT = ArrayT,
-        ArrayT_Snap = ArrayT_Snap,
-        AxisR = AxisR,
-        AxisVirial = AxisVirial,
-        AxisDensityProfile = AxisDensityProfile,
-        SliceXY = SliceXY,
-        SliceYZ = SliceYZ,
-        SliceXZ = SliceXZ,
-        ArrayTotalMass = ArrayTotalMass,
-        ArrayR = ArrayR,
-        ArrayR1 = ArrayR1,
-        ArrayR2 = ArrayR2,
-        ArrayR3 = ArrayR3,
-        ArrayR4 = ArrayR4,
-        ArrayR5 = ArrayR5,
-        ArrayR6 = ArrayR6,
-        ArrayR7 = ArrayR7,
-        ArrayR8 = ArrayR8,
-        ArrayR9 = ArrayR9,
-        ColorRange = ColorRange,
+        fig,
+        ArrayT,
+        ArrayT_Snap,
+        AxisR,
+        AxisVirial,
+        AxisDensityProfile,
+        SliceXY,
+        SliceYZ,
+        SliceXZ,
+        ArrayTotalMass,
+        ArrayR,
+        ArrayR1,
+        ArrayR2,
+        ArrayR3,
+        ArrayR4,
+        ArrayR5,
+        ArrayR6,
+        ArrayR7,
+        ArrayR8,
+        ArrayR9,
+        ColorRange,
     )
 end
 

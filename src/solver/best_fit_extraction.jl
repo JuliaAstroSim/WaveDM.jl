@@ -4,9 +4,12 @@ $(TYPEDSIGNATURES)
 Compute density profile fitting error.
 This function encapsulates the profile fitting error computation from SPE3D_MOND.
 """
-function compute_profile_fit_error(r_mass_center, rho, length_astro, Δ,
-    target_profile_model, target_profile_ρ0, target_profile_rs, target_profile_α,
-    target_profile_β, target_profile_γ, density_astro, uniform_interval)
+function compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density_astro, profile_config::ProfileFitConfig, target_profile_model, uniform_interval)
+    target_profile_ρ0 = profile_config.target_profile_ρ0
+    target_profile_rs = profile_config.target_profile_rs
+    target_profile_α = profile_config.target_profile_α
+    target_profile_β = profile_config.target_profile_β
+    target_profile_γ = profile_config.target_profile_γ
     
     r_filter_3D = 0 .< r_mass_center .<= target_profile_rs * 1.0 / length_astro  # 3D filter
     r_mean, rho_mean, r_std, rho_std = distribution(r_mass_center[r_filter_3D], collect(rho)[r_filter_3D];
@@ -41,9 +44,10 @@ $(TYPEDSIGNATURES)
 Compute rotation curve fitting error.
 This function encapsulates the RC fitting error computation from SPE3D_MOND.
 """
-function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz,
-    rho_max_id, target_profile_rs, length_astro, Δ, velocity_astro, uL,
-    df_CO_RC, uniform_interval)
+function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, astro_config::AstroUnitsConfig, df_CO_RC, uniform_interval)
+    target_profile_rs = 0.1  # TODO: Get this from profile config
+    velocity_astro = astro_config.velocity_astro
+    uL = astro_config.uL
     
     r_filter_3D = 0 .< r_mass_center .<= target_profile_rs * 1.0 / length_astro  # 3D filter
     ar_all = vec_cartesian_to_spherical(ax_all, ay_all, az_all, xxx.-xxx[rho_max_id], yyy.-yyy[rho_max_id], zzz.-zzz[rho_max_id], r_mass_center)[1];
@@ -83,10 +87,12 @@ $(TYPEDSIGNATURES)
 Update best fit snapshot based on fitting errors.
 This function encapsulates the optimization update logic from SPE3D_MOND.
 """
-function update_best_fit!(best_fit_error, current_fit_error, t, i, time_astro,
-    best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all,
-    target_beta_star, beta_star_error_threshold, fig, outputdir, title, suffix,
-    r_mass_center, rho, length_astro, target_beta_star_r_min, target_beta_star_r_max)
+function update_best_fit!(best_fit_error, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, 
+                          rc_config::RCFitConfig, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
+    target_beta_star = rc_config.target_beta_star
+    beta_star_error_threshold = rc_config.beta_star_error_threshold
+    target_beta_star_r_min = rc_config.target_beta_star_r_min
+    target_beta_star_r_max = rc_config.target_beta_star_r_max
     
     if isnan(target_beta_star)  # constrain the profile only
         if current_fit_error < best_fit_error

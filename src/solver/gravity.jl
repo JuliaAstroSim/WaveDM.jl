@@ -1,28 +1,33 @@
 """
 $(TYPEDSIGNATURES)
 
-Compute gravitational potential from density.
+Compute gravitational potential from density using config objects.
+Accesses config fields directly without internal unpacking.
 """
-function compute_gravitational_potential(device_ψ, boundary, Δ, Nx, Ny, Nz, unit_cell_volumn, gpu, Φ_b, DeviceArray,
-                                         sim_mesh_force, mesh_particles, SofteningLength, potential_astro, baryon_mode, mass_astro, rho_max, rho_max_id)
+function compute_gravitational_potential(
+    device_ψ,
+    gravity_config::GravityConfig,
+    grid::SimulationGrid,
+    device_config::DeviceConfig,
+)
     ψ² = abs.(device_ψ).^2
     ψ² .-= mean(ψ²)
 
-    if boundary isa Vacuum
-        sim_mesh_force.simdata.tree.data.Mass .= ψ²[:] * unit_cell_volumn * mass_astro
-        AstroNbodySim.rebuild_tree(sim_mesh_force)
-        Φ_WaveDM = compute_potential(sim_mesh_force, mesh_particles.Pos, SofteningLength, Tree(), CPU()) ./ potential_astro
-        potential_grav = DeviceArray(Φ_WaveDM) + DeviceArray(Φ_b)
+    if gravity_config.boundary isa Vacuum
+        gravity_config.sim_mesh_force.simdata.tree.data.Mass .= ψ²[:] * grid.unit_cell_volumn * gravity_config.mass_astro
+        AstroNbodySim.rebuild_tree(gravity_config.sim_mesh_force)
+        Φ_WaveDM = compute_potential(gravity_config.sim_mesh_force, gravity_config.mesh_particles.Pos, gravity_config.SofteningLength, Tree(), CPU()) ./ gravity_config.mass_astro
+        potential_grav = device_config.DeviceArray(Φ_WaveDM) + device_config.DeviceArray(gravity_config.Φ_b)
     else
-        if baryon_mode == :ignored
-            potential_grav = 4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ψ², Periodic(), gpu ? GPU() : CPU()) #TODO: optimize performance
+        if gravity_config.baryon_mode == :ignored
+            potential_grav = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), device_config.gpu ? GPU() : CPU())
         else
-            device_Φ_b = DeviceArray(Φ_b)
-            Φ_WaveDM = 4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ψ², Periodic(), gpu ? GPU() : CPU())
+            device_Φ_b = device_config.DeviceArray(gravity_config.Φ_b)
+            Φ_WaveDM = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), device_config.gpu ? GPU() : CPU())
             potential_grav = Φ_WaveDM + device_Φ_b
             
-            gpu && CUDA.unsafe_free!(device_Φ_b)
-            gpu && CUDA.unsafe_free!(Φ_WaveDM)
+            device_config.gpu && CUDA.unsafe_free!(device_Φ_b)
+            device_config.gpu && CUDA.unsafe_free!(Φ_WaveDM)
         end
     end
     

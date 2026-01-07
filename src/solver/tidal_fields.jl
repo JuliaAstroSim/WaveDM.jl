@@ -38,60 +38,59 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Compute tidal potential at current simulation time.
-This function encapsulates the tidal potential computation during the main loop.
+Compute tidal potential at current simulation time using config objects.
+Accesses config fields directly without internal unpacking.
 """
-function add_tidal_potential!(Φ_all, MW_tidal_interpolate, LMC_tidal_field,
-    t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, xxx, yyy, zzz, length_astro, uL,
-    MW_grid, MW_Phi, spl_pot, sim_force_baryon, SofteningLength, GravitySolver,
-    particles_LMC, sim_traj_LMC, rho_max_id, oneMatrix, Nx, Ny, Nz)
-    
-    ## get current pos
-    id_t = findfirstvalue(ustrip(u"Gyr", tidal_lookback_time) .- df_traj.time, t[i] * uT)
-    # if ustrip(u"Gyr", tidal_lookback_time) <= t[i] * uT
+function add_tidal_potential!(
+    Φ_all,
+    tidal_config::TidalFieldConfig,
+    grid::SimulationGrid,
+    gravity_config::GravityConfig,
+    i::Int,
+    t::Vector{<:Real}
+)
+    id_t = findfirstvalue(ustrip(u"Gyr", tidal_config.tidal_lookback_time) .- tidal_config.df_traj.time, t[i] * tidal_config.uT)
     if isnothing(id_t)
         @warn "Current time $(t[i]*time_astro): setting lookback time = 0 Gyr"
         id_t = 1
     end
     
     traj_pos = PVector{Float64}[]
-    if LMC_tidal_field || !MW_tidal_interpolate
-        traj_center = PVector(df_traj.x[id_t], df_traj.y[id_t], df_traj.z[id_t]) * u"kpc"
-        traj_pos = PVector.(xxx * length_astro, yyy * length_astro, zzz * length_astro) .+ traj_center
+    if tidal_config.LMC_tidal_field || !tidal_config.MW_tidal_interpolate
+        traj_center = PVector(tidal_config.df_traj.x[id_t], tidal_config.df_traj.y[id_t], tidal_config.df_traj.z[id_t]) * u"kpc"
+        traj_pos = PVector.(grid.xxx * tidal_config.length_astro, grid.yyy * tidal_config.length_astro, grid.zzz * tidal_config.length_astro) .+ traj_center
     end
 
-    ## MW background potential
-    if MW_tidal_interpolate
-        pot_tidal = GridInterpolations.interpolate.(Ref(MW_grid), Ref(MW_Phi), collect.(zip(xxx .+ df_traj.x[id_t]/uL, yyy .+ df_traj.y[id_t]/uL, zzz .+ df_traj.z[id_t]/uL)))
+    if tidal_config.MW_tidal_interpolate
+        pot_tidal = GridInterpolations.interpolate.(Ref(tidal_config.MW_grid), Ref(tidal_config.MW_Phi), collect.(zip(grid.xxx .+ tidal_config.df_traj.x[id_t]/tidal_config.uL, grid.yyy .+ tidal_config.df_traj.y[id_t]/tidal_config.uL, grid.zzz .+ tidal_config.df_traj.z[id_t]/tidal_config.uL)))
     else
         traj_r = norm.(traj_pos)
-        pot_DM = spl_pot.(ustrip.(u"kpc", traj_r)) * u"kpc^2/Gyr^2"
-        if isnothing(sim_force_baryon)
-            pot_tidal = pot_DM / potential_astro
+        pot_DM = tidal_config.spl_pot.(ustrip.(u"kpc", traj_r)) * u"kpc^2/Gyr^2"
+        if isnothing(tidal_config.sim_force_baryon)
+            pot_tidal = pot_DM / gravity_config.mass_astro
         else
-            pot_b = compute_potential(sim_force_baryon, traj_pos, SofteningLength, sim_force_baryon.config.solver.grav, CPU())
-            pot_tidal = (pot_b + pot_DM) / potential_astro
+            pot_b = compute_potential(tidal_config.sim_force_baryon, traj_pos, gravity_config.SofteningLength, tidal_config.sim_force_baryon.config.solver.grav, CPU())
+            pot_tidal = (pot_b + pot_DM) / gravity_config.mass_astro
         end
     end
 
-    ## LMC time-dependent potential
-    if LMC_tidal_field
-        id_t_LMC = findfirstvalue(ustrip(u"Gyr", tidal_lookback_time) .- df_traj_LMC.time, t[i] * uT)
-        if ustrip(u"Gyr", tidal_lookback_time) <= t[i] * uT
+    if tidal_config.LMC_tidal_field
+        id_t_LMC = findfirstvalue(ustrip(u"Gyr", tidal_config.tidal_lookback_time) .- tidal_config.df_traj_LMC.time, t[i] * tidal_config.uT)
+        if ustrip(u"Gyr", tidal_config.tidal_lookback_time) <= t[i] * tidal_config.uT
             id_t_LMC = 1
         end
-        if GravitySolver isa DirectSum
-            sim_traj_LMC.simdata.Pos .= particles_LMC.Pos .+ PVector(df_traj_LMC.x[id_t_LMC], df_traj_LMC.y[id_t_LMC], df_traj_LMC.z[id_t_LMC]) * u"kpc"
-        elseif GravitySolver isa Tree
-            sim_traj_LMC.simdata.tree.data.Pos .= particles_LMC.Pos .+ PVector(df_traj_LMC.x[id_t_LMC], df_traj_LMC.y[id_t_LMC], df_traj_LMC.z[id_t_LMC]) * u"kpc"
-            AstroNbodySim.rebuild_tree(sim_traj_LMC)
+        if gravity_config.GravitySolver isa DirectSum
+            tidal_config.sim_traj_LMC.simdata.Pos .= tidal_config.particles_LMC.Pos .+ PVector(tidal_config.df_traj_LMC.x[id_t_LMC], tidal_config.df_traj_LMC.y[id_t_LMC], tidal_config.df_traj_LMC.z[id_t_LMC]) * u"kpc"
+        elseif gravity_config.GravitySolver isa Tree
+            tidal_config.sim_traj_LMC.simdata.tree.data.Pos .= tidal_config.particles_LMC.Pos .+ PVector(tidal_config.df_traj_LMC.x[id_t_LMC], tidal_config.df_traj_LMC.y[id_t_LMC], tidal_config.df_traj_LMC.z[id_t_LMC]) * u"kpc"
+            AstroNbodySim.rebuild_tree(tidal_config.sim_traj_LMC)
         end
-        pot_LMC = AstroNbodySim.compute_potential(sim_traj_LMC, traj_pos, SofteningLength, GravitySolver, CPU()) / potential_astro
+        pot_LMC = AstroNbodySim.compute_potential(tidal_config.sim_traj_LMC, traj_pos, gravity_config.SofteningLength, gravity_config.GravitySolver, CPU()) / gravity_config.mass_astro
         pot_tidal = pot_tidal + pot_LMC
     end
     
-    pot_tidal .-= pot_tidal[rho_max_id]
-    cancel_field_gradient_at_center!(pot_tidal, rho_max_id, oneMatrix, Nx, Ny, Nz)
+    pot_tidal .-= pot_tidal[grid.rho_max_id]
+    cancel_field_gradient_at_center!(pot_tidal, grid.rho_max_id, grid.oneMatrix, grid.Nx, grid.Ny, grid.Nz)
 
     Φ_all += pot_tidal
 end
@@ -103,12 +102,10 @@ Cancel out gradient of a field at a specified center point.
 This is a generic function that can be used for both potential fields and tidal fields.
 """
 function cancel_field_gradient_at_center!(field, center_id, oneMatrix, Nx, Ny, Nz)
-    # Compute gradient at center using central difference
     dp_dx = (field[center_id[1]+1, center_id[2],   center_id[3]]   - field[center_id[1]-1, center_id[2],   center_id[3]])/2
     dp_dy = (field[center_id[1],   center_id[2]+1, center_id[3]]   - field[center_id[1],   center_id[2]-1, center_id[3]])/2
     dp_dz = (field[center_id[1],   center_id[2],   center_id[3]+1] - field[center_id[1],   center_id[2],   center_id[3]-1])/2
     
-    # Subtract linear gradient to cancel acceleration at center
     field -= oneMatrix .* (collect(1:Nx) .- div(Nx,2)) * dp_dx
     field -= oneMatrix .* (collect(1:Ny) .- div(Ny,2))' * dp_dy
     field -= oneMatrix .* reshape(collect(1:Nz) .- div(Nz,2), 1, 1, Nz) * dp_dz
