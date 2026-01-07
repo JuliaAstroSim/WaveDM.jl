@@ -7,7 +7,7 @@ Setup Milky Way tidal field interpolation.
 This function encapsulates the MW tidal field setup code from SPE3D_MOND.
 """
 function setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_pot_N,
-    length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength, CPU())
+    length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength)
     if isnothing(MW_pot)
         @info "MW tidal force: computing potential on interpolation grid"
         MW_x = collect(LinRange(-MW_pot_Xmax, MW_pot_Xmax, MW_pot_N)) ./ length_astro
@@ -41,7 +41,7 @@ $(TYPEDSIGNATURES)
 Compute tidal potential at current simulation time.
 This function encapsulates the tidal potential computation during the main loop.
 """
-function add_tidal_potential!(MW_tidal_interpolate, LMC_tidal_field,
+function add_tidal_potential!(Φ_all, MW_tidal_interpolate, LMC_tidal_field,
     t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, xxx, yyy, zzz, length_astro, uL,
     MW_grid, MW_Phi, spl_pot, sim_force_baryon, SofteningLength, GravitySolver,
     particles_LMC, sim_traj_LMC, rho_max_id, oneMatrix, Nx, Ny, Nz)
@@ -115,7 +115,3 @@ function cancel_field_gradient_at_center!(field, center_id, oneMatrix, Nx, Ny, N
     
     return field
 end
-
-# Export functions
-export setup_mw_tidal_field, add_tidal_potential!
-export cancel_field_gradient_at_center!

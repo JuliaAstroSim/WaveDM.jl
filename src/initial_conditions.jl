@@ -5,14 +5,9 @@ Compute total Milky Way density at position (x, y, z).
 """
 function density_all_MW(x, y, z)
     ρ_bulge, ρ_discs, ρ_gas, ρ_halo = GalacticDynamics.milkyway_zhu2023how()
-
-    function ρ_all(x, y, z)
-        R = sqrt(x^2 + y^2)
-        r = sqrt(x^2 + y^2 + z^2)
-        return ρ_bulge(R,z) + ρ_discs(R,z) + ρ_gas(R,z) + ρ_halo(r)
-    end
-
-    return ρ_all(x, y, z)
+    R = sqrt(x^2 + y^2)
+    r = sqrt(x^2 + y^2 + z^2)
+    return ρ_bulge(R,z) + ρ_discs(R,z) + ρ_gas(R,z) + ρ_halo(r)
 end
 
 """
@@ -22,13 +17,8 @@ Compute baryonic Milky Way density at position (x, y, z).
 """
 function density_baryon_MW(x, y, z)
     ρ_bulge, ρ_discs, ρ_gas, ρ_halo = GalacticDynamics.milkyway_zhu2023how()
-
-    function ρ_baryon(x, y, z)
-        R = sqrt(x^2 + y^2)
-        return ρ_bulge(R,z) + ρ_discs(R,z) + ρ_gas(R,z)
-    end
-
-    return ρ_baryon(x, y, z)
+    R = sqrt(x^2 + y^2)
+    return ρ_bulge(R,z) + ρ_discs(R,z) + ρ_gas(R,z)
 end
 
 """
@@ -269,7 +259,7 @@ end
 
 # Adjust velocity field (center velocity, bulk perturbation, etc.)
 function adjust_velocity_field(v, ρ_halo, bulk_perturb, bulk_size, bulk_shift_size, bulk_center_size)
-    Nx, Ny, Nz = size(vx)
+    Nx, Ny, Nz = size(v)
     vx = getproperty.(v, :x)
     vy = getproperty.(v, :y)
     vz = getproperty.(v, :z)

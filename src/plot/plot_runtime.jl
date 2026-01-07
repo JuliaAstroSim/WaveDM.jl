@@ -5,7 +5,7 @@ $(TYPEDSIGNATURES)
 
 Setup initial visualization figure with multiple panels.
 """
-function setup_visualization(Xmax, t, Δ, x, y, z, rho, rho_max_id, total_halo_mass, radii,
+function setup_visualization(Xmax, t, Δ, x, y, z, r, rho, rho_max_id, total_halo_mass, radii,
     uT, uL, title, suffix, distributed_memory;
     size = (2400, 1400)
 )

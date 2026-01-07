@@ -118,7 +118,3 @@ function update_best_fit!(best_fit_error, current_fit_error, t, i, time_astro,
     
     return best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star
 end
-
-# Export functions
-export compute_profile_fit_error, compute_rc_fit_error
-export update_best_fit!

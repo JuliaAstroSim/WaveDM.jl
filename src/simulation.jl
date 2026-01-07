@@ -178,14 +178,13 @@ function SPE3D_MOND(;
     uRho = ustrip(u"Msun/kpc^3", density_astro)
     uMomentum = ustrip(u"Msun*kpc/Gyr", mass_astro * velocity_astro)
 
-    @info "Sim v_max = $(uconvert(u"km/s", π * C.h/(2π) / (mₐ_astro * mass_astro) / (Δ[1]*length_astro)))"
-    @info "Setting softening length to $(SofteningLength)"
-
     x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
     section = ceil(Int, Nx/2*sqrt(3))
     oneMatrix = ones(Nx, Ny, Nz)
     xxx, yyy, zzz, r = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
 
+    @info "Sim v_max = $(uconvert(u"km/s", π * C.h/(2π) / (mₐ_astro * mass_astro) / (Δ[1]*length_astro)))"
+    @info "Setting softening length to $(SofteningLength)"
     @info "Setting ICs"
     ψ, sqrt_rho, rho = setup_initial_conditions(IC, xxx, yyy, zzz; DA = collect)
 
@@ -214,6 +213,8 @@ function SPE3D_MOND(;
     end
 
     @info "Solving IC potential"
+    sim_mesh_force = nothing
+    mesh_particles = nothing
     if boundary isa Vacuum
         # Use octree to compute gravitational force
         mesh_particles = StructArray(Star(uAstro; id = i+(j-1)*Nx+(k-1)*Nx*Ny) for i in 1:Nx, j in 1:Ny, k in 1:Nz)
@@ -287,7 +288,7 @@ function SPE3D_MOND(;
 
     @info("Start visualization...")
     fig, ArrayT, ArrayT_Snap, AxisR, AxisVirial, AxisDensityProfile, SliceXY, SliceYZ, SliceXZ, ArrayTotalMass, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ColorRange = setup_visualization(
-        Xmax, t, Δ, rho, rho_max_id, total_halo_mass, radii, uT, uL, title, suffix, distributed_memory; size
+        Xmax, t, Δ, x, y, z, r, rho, rho_max_id, total_halo_mass, radii, uT, uL, title, suffix, distributed_memory; size
     )
 
     if baryon_mode == :ignored
@@ -303,6 +304,8 @@ function SPE3D_MOND(;
         ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ = setup_virial_visualization(
             ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_volumn, mass_astro, velocity_astro, ArrayT, AxisVirial
         )
+    else
+        ArrayVirialPotential = ArrayTotalKineticE = ArrayTotalQuantumE = ArrayVirial = ArrayMomentumX = ArrayMomentumY = ArrayMomentumZ = nothing
     end
 
     profile_r_mean, profile_ρ_mean, r_target, ρ_halo_target = setup_density_profile_visualization!(
@@ -343,10 +346,12 @@ function SPE3D_MOND(;
 
     device_ψ = DeviceArray(ψ)
 
+    average_N = 0
     if average
         @info "Averaging ψ from $(average_start_t)"
-        average_N = 0
         buffer_ψ2 = zeros(ComplexF64, Nx, Ny, Nz) # save the last few steps for averaging
+    else
+        buffer_ψ2 = nothing
     end
 
     best_fit_error = Inf
@@ -383,6 +388,8 @@ function SPE3D_MOND(;
         best_fit_t = nothing
     end
 
+    MW_grid = MW_Phi = nothing
+    sim_traj_LMC = nothing
     if MW_tidal_field
         if LMC_tidal_field
             @info "Considering time-dependent tidal forces from LMC"
@@ -390,11 +397,13 @@ function SPE3D_MOND(;
         end
 
         if MW_tidal_interpolate
-            MW_grid, MW_Phi, MW_x, MW_y, MW_z = setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_pot_N, length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength, CPU())
+            MW_grid, MW_Phi, MW_x, MW_y, MW_z = setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_pot_N, length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength)
         else # Directly compute the potentials
         end
     end
     
+    rho_max, rho_max_id = findmax(rho)
+
     @info "Starting main loop"
     progress = Progress(Nt-1)
     breakflag = false
@@ -403,9 +412,9 @@ function SPE3D_MOND(;
         for i in 2:Nt
             ### Kick
             dt_kick = KDK_flag ? 0.5 * dt : dt
-            apply_kick_step!(device_ψ, ψ, V, xxx, yyy, zzz, boundary, Δ, Nx, Ny, Nz, MW_grid, MW_Phi, spl_pot, sim_force_baryon,
-                unit_cell_volumn, gpu, Φ_b, DeviceArray, sim_mesh_force, MW_tidal_interpolate, LMC_tidal_field, t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL,
-                mesh_particles, SofteningLength, potential_astro, baryon_mode, GravitySolver, particles_LMC, sim_traj_LMC, rho_max_id, oneMatrix, mass_astro, dt_kick)
+            Φ_all, spec = apply_kick_step!(device_ψ, ψ, V, xxx, yyy, zzz, boundary, Δ, Nx, Ny, Nz, MW_grid, MW_Phi, spl_pot, sim_force_baryon,
+                unit_cell_volumn, gpu, Φ_b, DeviceArray, sim_mesh_force, MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL,
+                mesh_particles, SofteningLength, potential_astro, baryon_mode, GravitySolver, particles_LMC, sim_traj_LMC, rho_max, rho_max_id, oneMatrix, mass_astro, dt_kick)
             
             ### Drift
             device_ψ = apply_drift_step!(spec, linear_phase, boarder, gpu, DeviceArray)
@@ -561,7 +570,7 @@ function SPE3D_MOND(;
     if baryon_mode == :ignored
         figMOND, MOND_errorrel = nothing, nothing
     else
-        figMOND, MOND_errorrel = plotMOND(Φ_all, ax_all, ay_all, az_all; filename = "$(title)_Prop")
+        figMOND, MOND_errorrel = plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section; filename = "$(title)_Prop")
     end
     @info "Files saved to folder: $(outputdir)"
 

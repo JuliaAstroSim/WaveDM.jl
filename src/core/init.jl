@@ -30,7 +30,7 @@ function solve_vector_equation(vx, vy, vz, Δx, Δy, Δz)
 end
 
 """
-    setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
+$(TYPEDSIGNATURES)
 
 Setup computational grid and coordinates.
 """
@@ -44,7 +44,7 @@ function setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
 end
 
 """
-    setup_coordinates(x, y, z, Nx, Ny, Nz; DA = collect)
+$(TYPEDSIGNATURES)
 
 Setup coordinate arrays.
 """
@@ -57,7 +57,7 @@ function setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix = ones(Nx, Ny, Nz); DA
 end
 
 """
-    setup_initial_conditions(IC, xxx, yyy, zzz; DA = collect)
+$(TYPEDSIGNATURES)
 
 Setup initial wave function.
 """
@@ -73,7 +73,7 @@ function setup_initial_conditions(IC, xxx, yyy, zzz; DA = collect)
 end
 
 """
-    compute_timestep(Δx, Φ_all, κ, ψ, Tmax, Nt, autoset_timestep, autoset_timestep_ratio)
+$(TYPEDSIGNATURES)
 
 Compute appropriate timestep.
 """
@@ -95,7 +95,7 @@ function compute_timestep(Δx, Φ_all, κ, ψ, Tmax, Nt, autoset_timestep, autos
 end
 
 """
-    setup_fft_operators(Xmax, Ymax, Zmax, Nx, Ny, Nz, dt)
+$(TYPEDSIGNATURES)
 
 Setup FFT operators for spectral method.
 """
@@ -109,7 +109,7 @@ function setup_fft_operators(Xmax, Ymax, Zmax, Nx, Ny, Nz, dt)
 end
 
 """
-    setup_absorption_boundary(Xmax, Ymax, Zmax, x, y, z, absorb_coeff, dt)
+$(TYPEDSIGNATURES)
 
 Setup absorption boundary conditions.
 """

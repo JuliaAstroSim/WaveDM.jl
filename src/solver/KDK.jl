@@ -1,6 +1,3 @@
-# SPE time evolution module
-
-
 """
 $(TYPEDSIGNATURES)
 
@@ -8,8 +5,8 @@ Apply a full kick step including gravitational potential computation.
 This function encapsulates the entire kick step from density computation to potential application.
 """
 function apply_kick_step!(device_ψ, ψ, V, xxx, yyy, zzz, boundary, Δ, Nx, Ny, Nz, MW_grid, MW_Phi, spl_pot, sim_force_baryon,
-                              unit_cell_volumn, gpu, Φ_b, DeviceArray, sim_mesh_force, MW_tidal_interpolate, LMC_tidal_field, t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL,
-                              mesh_particles, SofteningLength, potential_astro, baryon_mode, GravitySolver, particles_LMC, sim_traj_LMC, rho_max_id, oneMatrix,
+                              unit_cell_volumn, gpu, Φ_b, DeviceArray, sim_mesh_force, MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL,
+                              mesh_particles, SofteningLength, potential_astro, baryon_mode, GravitySolver, particles_LMC, sim_traj_LMC, rho_max, rho_max_id, oneMatrix,
                               mass_astro, dt)
         potential_grav = compute_gravitational_potential(device_ψ, boundary, Δ, Nx, Ny, Nz, unit_cell_volumn, gpu, Φ_b, DeviceArray, sim_mesh_force, mesh_particles, SofteningLength, potential_astro, baryon_mode, mass_astro, rho_max, rho_max_id)
         
@@ -17,7 +14,7 @@ function apply_kick_step!(device_ψ, ψ, V, xxx, yyy, zzz, boundary, Δ, Nx, Ny,
         gpu ? CUDA.unsafe_free!(potential_grav) : (potential_grav=nothing)
 
         MW_tidal_field && add_tidal_potential!(Φ_all, MW_tidal_interpolate, LMC_tidal_field, t, i, uT, tidal_lookback_time, df_traj, df_traj_LMC, xxx, yyy, zzz, length_astro, uL, MW_grid, MW_Phi, spl_pot, sim_force_baryon, SofteningLength, GravitySolver, particles_LMC, sim_traj_LMC, rho_max_id, oneMatrix, Nx, Ny, Nz)            
-        flag_cancel_shift && cancel_field_gradient_at_center!(Φ_all, rho_max_id, oneMatrix, Nx, Ny, Nz)
+        MW_tidal_field && cancel_field_gradient_at_center!(Φ_all, rho_max_id, oneMatrix, Nx, Ny, Nz)
         
         potential_grav_static = DeviceArray(Φ_all)
         device_V = DeviceArray(V.(xxx, yyy, zzz, ψ))
@@ -32,7 +29,7 @@ function apply_kick_step!(device_ψ, ψ, V, xxx, yyy, zzz, boundary, Δ, Nx, Ny,
         spec = fft(nonlinear_term)
         gpu ? CUDA.unsafe_free!(nonlinear_term) : (nonlinear_term=nothing)
     
-    return device_ψ, Φ_all, spec, rho_max, rho_max_id
+    return Φ_all, spec
 end
 
 """
@@ -55,6 +52,3 @@ function apply_drift_step!(spec, linear_phase, boarder, gpu, DeviceArray)
     
     return device_ψ
 end
-
-# Export functions
-export apply_kick_step!, apply_drift_step!
