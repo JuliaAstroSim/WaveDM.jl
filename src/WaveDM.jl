@@ -29,7 +29,7 @@ using Dierckx
 
 using Sundials
 
-using GLMakie
+using GLMakie, CairoMakie
 using ProgressMeter
 
 # Additional imports from temporary files

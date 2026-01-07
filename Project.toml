@@ -21,7 +21,6 @@ Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-GalacticDynamics = "e1cedaea-7e6b-49d3-904f-57c7be8cf25a"
 GridInterpolations = "bb4c363b-b914-514b-8517-4eb369bc008a"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
@@ -51,6 +50,9 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 UnitfulAstro = "6112ee07-acf9-5e0f-b108-d242c714bf9f"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[sources]
+GalacticDynamics = {url = "https://github.com/JuliaAstroSim/GalacticDynamics.jl"}
 
 [compat]
 AstroIC = "0.1"
