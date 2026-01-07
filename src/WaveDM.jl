@@ -18,8 +18,8 @@ using Unitful, UnitfulAstro
 
 using CUDA
 using FFTW
-FFTW.set_provider!("mkl")
-FFTW.set_num_threads(Threads.nthreads())
+# FFTW.set_provider!("mkl")
+# FFTW.set_num_threads(Threads.nthreads())
 
 using RollingFunctions, SpecialFunctions, Roots
 
