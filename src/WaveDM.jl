@@ -64,6 +64,10 @@ const ħ = C.h/2/π
 const Ωₘ₀ = 0.31
 
 export test_MW_MOND, SPE3D_MOND
+export SimulationGrid, DeviceConfig, TimeStepConfig, AstroUnitsConfig,
+       GravityConfig, TidalFieldConfig, InitialConditionsConfig,
+       DensityProfileConfig, MassRadiusConfig, VisualizationConfig,
+       VisualizationData, ProfileFitConfig, RCFitConfig, BestFitConfig
 
 include("core/coordinates.jl")
 

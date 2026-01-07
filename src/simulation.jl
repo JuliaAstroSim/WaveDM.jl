@@ -1,4 +1,42 @@
 
+"""
+Main simulation function for 3D Schrödinger-Poisson equation with MOND.
+
+This function handles the complete simulation workflow from initial condition setup to result visualization.
+
+# Arguments
+- `Xmax`, `Ymax`, `Zmax`: Simulation box dimensions (in dimensionless units)
+- `Tmax`: Total simulation time (in dimensionless units)
+- `Nx`, `Ny`, `Nz`: Number of grid points in each dimension
+- `Nt`: Number of time steps
+- `autoset_timestep`: Automatically set timestep based on stability criteria
+- `IC`: Initial wavefunction or distribution function
+- `V`: External potential function
+- `κ`: Self-interaction parameter
+- `baryon`: Baryonic density contribution
+- `baryon_mode`: How baryons are treated (:mesh, :particles_static, :ignored)
+- `baryon_potential`: Pre-computed potentials of static baryons
+- `ax_b`, `ay_b`, `az_b`: Baryonic acceleration components
+- `absorb_coeff`: Absorption coefficient at boundaries
+- `outputdir`: Directory for saving output files
+- `title`: Simulation title for output files
+- `boundary`: Boundary conditions (Periodic() or Vacuum())
+- `SofteningLength`: Gravitational softening length
+- `gpu`: Enable GPU acceleration
+- `Realtime`: Enable real-time visualization
+- `StepsBetweenSnapshots`: Frequency of visualization updates
+- `FDM_mass_ratio`: Ratio of FDM mass to total mass
+- `FDM_radius_ratio`: Ratio of FDM radius to total radius
+
+# Returns
+- `ψ`: Final wavefunction
+- `fig`: Overview plot figure
+- `figMOND`: MOND-related plot figure
+- `chi2RC`: Chi-squared value for rotation curve fit
+- `dfProp`: DataFrame with simulation properties
+- `dfAcc`: DataFrame with acceleration data
+- `averaged_ψ2`: Time-averaged wavefunction squared
+"""
 function SPE3D_MOND(;
     Xmax = 5,
     Ymax = Xmax,
@@ -615,6 +653,41 @@ function SPE3D_MOND(;
 end
 
 
+"""
+Test function for Milky Way-like simulations with MOND.
+
+This function sets up and runs a simulation of the Milky Way or dwarf galaxies with MOND effects.
+
+# Arguments
+- `model`: Simulation model type (:MW for Milky Way, :dwarf for dwarf galaxies)
+- `V`: External potential function
+- `FDM_mass_ratio`: Ratio of FDM mass to total mass
+- `FDM_radius_ratio`: Ratio of FDM radius to total radius
+- `title`: Simulation title for output files
+- `Xmax`, `Ymax`, `Zmax`: Simulation box dimensions (in dimensionless units)
+- `Tmax`: Total simulation time (in dimensionless units)
+- `Nt`: Number of time steps
+- `Nx`, `Ny`, `Nz`: Number of grid points in each dimension
+- `Np`: Number of particles for each baryon component
+- `absorb_coeff`: Absorption coefficient at boundaries
+- `StepsBetweenSnapshots`: Frequency of visualization updates
+- `IC_vel`: Initial velocity field (or path to load from file)
+- `IC_only`: If true, return initial conditions without running simulation
+- `static`: If true, no velocity, phases are all zero
+- `outputdir`: Directory for saving output files
+- `massRadius`: Mass radius for the galaxy
+- `baryon_β`, `baryon_ρ0`, `baryon_r0`: Baryonic density profile parameters
+- `halo_β`, `halo_ρ0`, `halo_r0`, `halo_α`, `halo_γ`, `halo_Q`: Dark halo density profile parameters
+- `GravitySolver`: Gravitational solver type (Tree() or DirectSummation())
+- `boundary`: Boundary conditions (Periodic() or Vacuum())
+- `SofteningLength`: Gravitational softening length
+- `baryon_mode`: How baryons are treated (:mesh, :particles_static, :ignored)
+- `gpu`: Enable GPU acceleration
+
+# Returns
+- If `IC_only=true`: Initial velocity field `IC_vel`
+- Otherwise: Results from `SPE3D_MOND` function
+"""
 function test_MW_MOND(;
     model = :MW,
     V = (x,y,z,ψ)->0,
