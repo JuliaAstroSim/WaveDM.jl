@@ -96,7 +96,15 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
     end
     
     ArrayTotalMass = Observable([isinf(total_halo_mass) ? 0 : total_halo_mass])
-    ArrayR = Observable([std(collect(r[:,:,div(end,2)]), aweights(collect(rho[:,:,div(end,2)]))) * uL]) #TODO this is strongly affected by rho
+    # Fix method ambiguity by explicitly calculating weighted std
+    r_slice = collect(r[:,:,div(end,2)])[:]
+    rho_slice = collect(rho[:,:,div(end,2)])[:]
+    w = aweights(rho_slice)
+    # Calculate mean manually to avoid sum ambiguity
+    mean_val = sum(r_slice .* w) / sum(w)
+    var_val = sum(w .* (r_slice .- mean_val).^2) / sum(w)
+    std_val = sqrt(var_val)
+    ArrayR = Observable([std_val * uL]) #TODO this is strongly affected by rho
     ArrayR1 = Observable([radii[1] * uL])
     ArrayR2 = Observable([radii[2] * uL])
     ArrayR3 = Observable([radii[3] * uL])
