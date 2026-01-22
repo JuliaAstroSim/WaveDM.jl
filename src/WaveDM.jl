@@ -3,6 +3,7 @@ module WaveDM
 using PrecompileTools
 using DocStringExtensions
 
+using Base.Iterators
 using Random, Printf, Statistics
 using Combinatorics
 using Observables

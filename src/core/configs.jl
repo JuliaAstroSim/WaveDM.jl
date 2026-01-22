@@ -222,36 +222,36 @@ end
 """
 Profile fitting configuration.
 """
-struct ProfileFitConfig{T}
-    target_profile_ρ0::T
-    target_profile_ρ0_u::T
-    target_profile_ρ0_d::T
-    target_profile_rs::T
-    target_profile_rs_u::T
-    target_profile_rs_d::T
-    target_profile_α::T
-    target_profile_α_u::T
-    target_profile_α_d::T
-    target_profile_β::T
-    target_profile_β_u::T
-    target_profile_β_d::T
-    target_profile_γ::T
-    target_profile_γ_u::T
-    target_profile_γ_d::T
-    target_fitting_rs_ratio::T
+struct ProfileFitConfig{DEN,LEN}
+    target_profile_ρ0::DEN
+    target_profile_ρ0_u::DEN
+    target_profile_ρ0_d::DEN
+    target_profile_rs::LEN
+    target_profile_rs_u::LEN
+    target_profile_rs_d::LEN
+    target_profile_α::Real
+    target_profile_α_u::Real
+    target_profile_α_d::Real
+    target_profile_β::Real
+    target_profile_β_u::Real
+    target_profile_β_d::Real
+    target_profile_γ::Real
+    target_profile_γ_u::Real
+    target_profile_γ_d::Real
+    target_fitting_rs_ratio::Real
     uniform_interval::Bool
 end
 
 """
 Rotation curve fitting configuration.
 """
-struct RCFitConfig{T}
-    target_beta_star::T
-    target_beta_star_u::T
-    target_beta_star_d::T
-    target_beta_star_r_min::T
-    target_beta_star_r_max::T
-    beta_star_error_threshold::T
+struct RCFitConfig{LEN}
+    target_beta_star::Real
+    target_beta_star_u::Real
+    target_beta_star_d::Real
+    target_beta_star_r_min::LEN
+    target_beta_star_r_max::LEN
+    beta_star_error_threshold::Real
     Galaxy_i::Int
 end
 
