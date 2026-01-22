@@ -434,8 +434,6 @@ function SPE3D_MOND(;
                                                 target_profile_α, target_profile_α_u, target_profile_α_d, target_profile_β, target_profile_β_u, target_profile_β_d, 
                                                 target_profile_γ, target_profile_γ_u, target_profile_γ_d, target_fitting_rs_ratio, uniform_interval)
         rc_config = RCFitConfig(target_beta_star, target_beta_star_u, target_beta_star_d, target_beta_star_r_min, target_beta_star_r_max, beta_star_error_threshold, Galaxy_i)
-    else
-        best_fit_t = nothing
     end
 
     MW_grid = MW_Phi = nothing
@@ -566,7 +564,8 @@ function SPE3D_MOND(;
                 elseif extract_mode == :RC
                     current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, astro_config, df_CO_RC, uniform_interval)
                 end
-                best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star = update_best_fit!(best_fit_error, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
+                best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star = update_best_fit!(
+                    best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
             end
 
             update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, _profile_r_mean, _profile_ρ_mean, best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
