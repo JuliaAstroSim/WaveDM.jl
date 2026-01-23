@@ -1,6 +1,6 @@
 # WaveDM.jl
 
-[![codecov](https://codecov.io/gh/JuliaAstroSim/WaveDM.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaAstroSim/WaveDM.jl)
+[![codecov](https://codecov.io/github/JuliaAstroSim/WaveDM.jl/graph/badge.svg?token=IXTRLUeMq2)](https://codecov.io/github/JuliaAstroSim/WaveDM.jl)
 [![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliaastrosim.github.io/WaveDM.jl/)
 
 WaveDM.jl is an open-source Julia package for simulating ultralight wave dark matter (WaveDM) dynamics at galaxy scales. The code solves the time-dependent Schrödinger-Poisson equation (SPE) using a split-step Fourier method, supporting various initial conditions, boundary conditions, and external gravitational perturbations.

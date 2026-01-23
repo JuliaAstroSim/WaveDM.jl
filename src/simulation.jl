@@ -119,6 +119,7 @@ function SPE3D_MOND(;
     plot_virial = false,
 
     uniform_interval = true,
+    section = ceil(Int, Nx/2*sqrt(3)),
 
     ## ultra faint dwarfs: 
     extract_dwarf_granule = false,
@@ -217,7 +218,6 @@ function SPE3D_MOND(;
     uMomentum = ustrip(u"Msun*kpc/Gyr", mass_astro * velocity_astro)
 
     x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
-    section = ceil(Int, Nx/2*sqrt(3))
     oneMatrix = ones(Nx, Ny, Nz)
     xxx, yyy, zzz, r = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
 
@@ -705,15 +705,9 @@ function test_MW_MOND(;
     absorb_coeff = 10.0,
     StepsBetweenSnapshots = 5,
     IC_vel = nothing, # If nothing, generate a new IC; otherwise, use the provided IC
-    ρ_baryon = nothing,
     reset_velocity = false, # If true, reset velocity distribution
-    Φ_b = nothing,
-    ax_b = nothing,
-    ay_b = nothing,
-    az_b = nothing,
     IC_only = false, # If true, return IC without evolution
     static = false, # If true, no velocity, phases are all zero
-    save_IC = true,
     rotational_ratio = 0.0,
     velocity_ratio = 1.0,
     velocity_falling = false, # if false, use use random direction; if true, all velocities point to zero point
@@ -857,7 +851,6 @@ function test_MW_MOND(;
                 "ψ", "Φ_b", "ax_b", "ay_b", "az_b",
             );
         end
-        save_IC = false
         ρ_baryon = nothing
         total_mass_baryon = 0.0u"Msun"
         baryon_ratio_IC = 0
@@ -896,11 +889,8 @@ function test_MW_MOND(;
     @info "Start SPE simulation"
     return SPE3D_MOND(;
         Xmax, Ymax, Zmax, Tmax, Nx, Ny, Nz, Nt,
-        limsX = (-0.3, 0.3),
-        limsY = (-0.3, 0.3),
-        limsZ = (-0.3, 0.3),
-        StepsBetweenSnapshots, absorb_coeff, IC = IC_vel, save_IC, baryon = ρ_baryon, baryon_mode, baryon_potential = Φ_b,
-        ax_b, ay_b, az_b, boundary, V, title, outputdir, plotWaveDM = true,
+        StepsBetweenSnapshots, absorb_coeff, IC = IC_vel, baryon = ρ_baryon, baryon_mode, baryon_potential = Φ_b,
+        ax_b, ay_b, az_b, boundary, V, title, outputdir, SofteningLength,
         FDM_mass_ratio, FDM_radius_ratio, rotational_ratio, massRadius, length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro,
         h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0_astro, gpu, GravitySolver, distributed_memory, pids, kw...
     )
