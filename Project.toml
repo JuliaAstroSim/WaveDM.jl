@@ -55,8 +55,8 @@ UnitfulAstro = "6112ee07-acf9-5e0f-b108-d242c714bf9f"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
-[sources]
-GalacticDynamics = {url = "https://github.com/JuliaAstroSim/GalacticDynamics.jl"}
+[sources.GalacticDynamics]
+url = "https://github.com/JuliaAstroSim/GalacticDynamics.jl"
 
 [compat]
 AstroIC = "0.1"
@@ -84,7 +84,7 @@ LsqFit = "0.15"
 Measurements = "2"
 Observables = "0.5"
 OffsetArrays = "1"
-Optim = "1"
+Optim = "1, 2"
 PaddedViews = "0.5"
 PhysicalFDM = "0.1"
 PhysicalFFT = "0.1"
