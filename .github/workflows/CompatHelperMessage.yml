@@ -1,11 +1,12 @@
-name: CompatHelperManual
+name: CompatHelperMessage
 
 on: 
-  [workflow_dispatch]
+  [push, pull_request, workflow_dispatch]
 
 jobs:
   CompatHelper:
     runs-on: ${{ matrix.os }}
+    if: "contains(github.event.head_commit.message, '[compat]')"
     strategy:
       matrix:
         julia-version: [1.12.4]
