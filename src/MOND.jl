@@ -238,3 +238,81 @@ function compute_RAR(dfAcc;
 
     f
 end
+
+
+function plot_acc_RAR(dfAcc;
+    size = (800, 600),
+    rMin = 0.0, # kpc
+    rMax = 20.0, # kpc
+    xLim = (1e-13, 1e-9),
+    yLim = (1e-13, 1e-9),
+    title = "",
+    markersize = 5.0,
+    average = false,
+    mass_fix_ratio = 1.0,
+    kw...
+)
+    indices = rMin .<= dfAcc.r .<= rMax
+
+    fig = Figure(; size);
+    ax = Axis(fig[1,1];
+        xlabel = "log(g_bar [m/s²])",
+        ylabel = "log(g_obs [m/s²])",
+        xscale = log10,
+        yscale = log10,
+        title,
+    )
+    if average
+        s1 = Makie.scatter!(ax, dfAcc.a_b[indices], dfAcc.a_all_averaged[indices] * mass_fix_ratio; color = :red, markersize, kw...)
+    else
+        s1 = Makie.scatter!(ax, dfAcc.a_b[indices], dfAcc.a_all[indices] * mass_fix_ratio; color = :red, markersize, kw...)
+    end
+    l1 = Makie.lines!(ax, collect(xLim), collect(xLim); color = :black) # line of unity
+    Makie.xlims!(ax, xLim)
+    Makie.ylims!(ax, yLim)
+
+    # a0 = 1.2e-10
+    x = collect(LinRange(xLim..., 100))
+    y = RAR.(x, 1.2e-10)
+    l2 = Makie.lines!(ax, x, y; color = :blue)
+
+    # Lsq fitting of a0
+    if average
+        @time "Lsq fitting" fitRAR = curve_fit(modelRAR, dfAcc.a_b[indices] * 1e10, dfAcc.a_all_averaged[indices] * mass_fix_ratio * 1e10, [1.2];
+            lower = [1e-2],
+            upper = [1e2],
+            # show_trace=true,
+        )
+    else
+        @time "Lsq fitting" fitRAR = curve_fit(modelRAR, dfAcc.a_b[indices] * 1e10, dfAcc.a_all[indices] * mass_fix_ratio * 1e10, [1.2];
+            lower = [1e-2],
+            upper = [1e2],
+            # show_trace=true,
+        )
+    end
+    y = RAR.(x, fitRAR.param[1] * 1e-10)
+    l3 = Makie.lines!(ax, x, y; color = :red)
+
+    Legend(fig[1,1],
+        [
+            s1,
+            l1,
+            l2,
+            l3,
+        ],
+        [
+            "simulation",
+            "unity",
+            "RAR a₀ = 1.20e-10 [m/s²]",
+            "RAR a₀ = $(@sprintf("%.2f", fitRAR.param[1]))e-10 [m/s²] (fitted)",
+        ];
+        tellheight = false,
+        tellwidth = false,
+        halign = :right,
+        valign = :bottom,
+        margin = (10, 10, 10, 10),
+    )
+
+    fig
+end
+

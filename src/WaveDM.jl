@@ -31,6 +31,7 @@ using Dierckx
 using Sundials
 
 using GLMakie, CairoMakie
+using UnicodePlots
 using ProgressMeter
 
 # Additional imports from temporary files

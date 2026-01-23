@@ -5,7 +5,7 @@ $(TYPEDSIGNATURES)
 
 Setup initial visualization figure with multiple panels.
 """
-function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::VisualizationConfig, data_config::VisualizationData, astro_config::AstroUnitsConfig, distributed_memory::Bool)::Tuple{Figure, Observable{Vector{Any}}, Observable{Vector{Any}}, Axis, Axis, Axis, Observable{Matrix{Float64}}, Observable{Matrix{Float64}}, Observable{Matrix{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Vector{Float64}}, Observable{Tuple{Float64, Float64}}}
+function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::VisualizationConfig, data_config::VisualizationData, astro_config::AstroUnitsConfig, distributed_memory::Bool)
     Xmax = grid.Xmax
     Δ = grid.Δ
     x = grid.x
@@ -24,7 +24,6 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
     fig = Figure(; size)
     
     ArrayT = Observable([t[1] * uT])
-    ArrayT_Snap = Observable([t[1] * uT])
 
     AxisXY = Makie.Axis(fig[1,1];
         title = "", xlabel = "x [kpc]", ylabel = "y [kpc]", aspect = 1,
@@ -128,7 +127,6 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
     return (
         fig,
         ArrayT,
-        ArrayT_Snap,
         AxisR,
         AxisVirial,
         AxisDensityProfile,
@@ -246,27 +244,7 @@ Update visualization for virial theorem quantities during evolution.
 """
 function update_virial_visualization!(ArrayVirialPotential, ArrayVirialPotential_temp, ArrayTotalKineticE, ArrayTotalKineticE_temp, ArrayTotalQuantumE, ArrayTotalQuantumE_temp, ArrayVirial, ArrayVirial_temp,
     ArrayMomentumX, ArrayMomentumX_temp, ArrayMomentumY, ArrayMomentumY_temp, ArrayMomentumZ, ArrayMomentumZ_temp, AxisVirial, ArrayT)
-    append!(ArrayVirialPotential[], ArrayVirialPotential_temp)
-    empty!(ArrayVirialPotential_temp)
-    append!(ArrayTotalKineticE[], ArrayTotalKineticE_temp)
-    empty!(ArrayTotalKineticE_temp)
-    append!(ArrayTotalQuantumE[], ArrayTotalQuantumE_temp)
-    empty!(ArrayTotalQuantumE_temp)
-    append!(ArrayVirial[], ArrayVirial_temp)
-    empty!(ArrayVirial_temp)
-
-    append!(ArrayMomentumX[], ArrayMomentumX_temp)
-    empty!(ArrayMomentumX_temp)
-    append!(ArrayMomentumY[], ArrayMomentumY_temp)
-    empty!(ArrayMomentumY_temp)
-    append!(ArrayMomentumZ[], ArrayMomentumZ_temp)
-    empty!(ArrayMomentumZ_temp)
-
-    Makie.xlims!(AxisVirial, 0, ArrayT[][end])
-    Makie.ylims!(AxisVirial,
-        min(minimum(ArrayVirial[]), minimum(ArrayTotalQuantumE[]), minimum(ArrayTotalKineticE[]), minimum(ArrayVirialPotential[])),
-        max(maximum(ArrayVirial[]), maximum(ArrayTotalQuantumE[]), maximum(ArrayTotalKineticE[]), maximum(ArrayVirialPotential[])),
-    )
+    
 end
 
 """
@@ -302,7 +280,7 @@ function setup_density_profile_visualization!(fig, AxisDensityProfile,
     if target_profile_model == :dwarf_gNFW
         model_halo_target = gNFW(target_profile_β, target_profile_ρ0, target_profile_rs)
         ρ_halo_target = ustrip.(u"Msun/kpc^3", GalacticDynamics.density.(model_halo_target, r_target*u"kpc"))
-    elseif target_profile_model == :dwarf_NFW
+    elseif target_profile_model == :dwarf_NFW || target_profile_model == :NFW
         model_halo_target = NFW(target_profile_ρ0, target_profile_rs)
         ρ_halo_target = ustrip.(u"Msun/kpc^3", GalacticDynamics.density.(model_halo_target, r_target*u"kpc"))
     elseif target_profile_model == :dwarf_Zhao

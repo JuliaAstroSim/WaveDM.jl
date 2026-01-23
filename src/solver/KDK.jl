@@ -64,17 +64,17 @@ $(TYPEDSIGNATURES)
 Apply a full drift step including boundary condition.
 This function encapsulates the entire drift step from Fourier space transformation to boundary application.
 """
-function apply_drift_step!(spec, linear_phase, boarder, gpu, DeviceArray)
+function apply_drift_step!(spec, linear_phase, border, gpu, DeviceArray)
     device_linear_phase = DeviceArray(linear_phase)
     spec .*= device_linear_phase
     newψ = ifft(spec)
     gpu ? CUDA.unsafe_free!(spec) : (spec = nothing)
     gpu ? CUDA.unsafe_free!(device_linear_phase) : (device_linear_phase = nothing)
     
-    device_boarder = DeviceArray(boarder)
-    device_ψ = device_boarder .* newψ
+    device_border = DeviceArray(border)
+    device_ψ = device_border .* newψ
     gpu ? CUDA.unsafe_free!(newψ) : (newψ = nothing)
-    gpu ? CUDA.unsafe_free!(device_boarder) : (device_boarder = nothing)
+    gpu ? CUDA.unsafe_free!(device_border) : (device_border = nothing)
     
     return device_ψ
 end

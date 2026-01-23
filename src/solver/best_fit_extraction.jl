@@ -20,7 +20,7 @@ function compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density
     if target_profile_model == :dwarf_gNFW
         model_halo = gNFW(target_profile_β, target_profile_ρ0, target_profile_rs)
         ρ_halo = upreferred.(GalacticDynamics.density.(model_halo, r_mean * length_astro) / density_astro)
-    elseif target_profile_model == :dwarf_NFW
+    elseif target_profile_model == :dwarf_NFW || target_profile_model == :NFW
         model_halo = NFW(target_profile_ρ0, target_profile_rs)
         ρ_halo = upreferred.(GalacticDynamics.density.(model_halo, r_mean * length_astro) / density_astro)
     elseif target_profile_model == :dwarf_Zhao
@@ -30,6 +30,8 @@ function compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density
         model_halo = Zhao(target_profile_ρ0, target_profile_rs, target_profile_α, target_profile_β, target_profile_γ)
         # model_halo = ZhaoQ(target_profile_ρ0, target_profile_rs, target_profile_α, target_profile_β, target_profile_γ, target_profile_Q)
         ρ_halo = upreferred.(GalacticDynamics.density.(model_halo, r_mean * length_astro) / density_astro)
+    else
+        error("Unsupported target_profile_model :$(target_profile_model)")
     end
 
     r_filter = 0 .< r_mean .<= target_profile_rs / length_astro  # 1D filter

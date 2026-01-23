@@ -366,9 +366,9 @@ function optimize_LTG_RC_fitting(r, accBaryon, r_RC, v_RC, lower, upper, ic;
             # outer_x_tol = 1e-10,
         )
     )
-    trace = [state.value for state in result.trace]
-    println(UnicodePlots.lineplot(trace))
-    # @show trace
+    # trace = [state.value for state in result.trace]
+    # println(UnicodePlots.lineplot(trace))
+    @show trace
 
     minimum_value = Optim.minimum(result)
     optimal_params = Optim.minimizer(result)
@@ -416,9 +416,9 @@ function optimize_smoothed_inversion(r, massBaryon, lower, upper, ic;
             # outer_x_tol = 1e-10,
         )
     )
-    trace = [state.value for state in result.trace]
-    @show trace
-    println(UnicodePlots.lineplot(trace))
+    # trace = [state.value for state in result.trace]
+    # @show trace
+    # println(UnicodePlots.lineplot(trace))
 
     minimum_value = Optim.minimum(result)
     optimal_params = Optim.minimizer(result)
@@ -471,9 +471,9 @@ function optimize_smoothed_inversion_forward_fitting(r, massBaryon, r_RC, v_RC, 
             # outer_x_tol = 1e-10,
         )
     )
-    trace = [state.value for state in result.trace]
-    println(UnicodePlots.lineplot(trace))
-    @show trace
+    # trace = [state.value for state in result.trace]
+    # println(UnicodePlots.lineplot(trace))
+    # @show trace
 
     minimum_value = Optim.minimum(result)
     optimal_params = Optim.minimizer(result)

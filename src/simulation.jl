@@ -60,8 +60,7 @@ function SPE3D_MOND(;
     absorb_coeff = 0,
     size = (2400, 1400),
     outputdir = joinpath(@__DIR__, "output"),
-    title = "MOND3D",
-    filename = title,
+    title = "WaveDM",
     boundary = Periodic(),
     # SofteningLength_ratio = 0.5, # relative to Δx
     SofteningLength = 1.0u"kpc",
@@ -76,14 +75,8 @@ function SPE3D_MOND(;
     minR = 8.0u"kpc",
     maxR = 15.0u"kpc",
     massRadius = 70u"kpc",
-    massMW = 4.2e11u"Msun",
-    mesh_step::Int = 2,
     zoom_a_max = 2e-10,
-    cylindrical = true,
-    acc_RAR_min = 1e-11,
-    acc_RAR_max = 1e-8,
     nuIndex = 2.0,
-    flagRC = true,
     save_phi = true,
     save_IC = true,
     
@@ -128,20 +121,20 @@ function SPE3D_MOND(;
     target_velocity_dispersion_r = [],
     target_profile_model = :dwarf_Zhao,  # default: Segue I
     target_profile_ρ0 = 10^(-0.9) * u"Msun/pc^3",
-    target_profile_ρ0_u = 10^(-0.9+2.4) * u"Msun/pc^3",
-    target_profile_ρ0_d = 10^(-0.9-2.5) * u"Msun/pc^3",
+    target_profile_ρ0_u = target_profile_ρ0 * Inf,
+    target_profile_ρ0_d = target_profile_ρ0 * 0.0,
     target_profile_rs = 10^(2.5) * u"pc",
-    target_profile_rs_u = 10^(2.5+1.1) * u"pc",
-    target_profile_rs_d = 10^(2.5-1.4) * u"pc",
+    target_profile_rs_u = target_profile_rs * Inf,
+    target_profile_rs_d = target_profile_rs * 0.0,
     target_profile_α = 1.6,
-    target_profile_α_u = 1.6+0.8,
-    target_profile_α_d = 1.6-0.9,
+    target_profile_α_u = target_profile_α * Inf,
+    target_profile_α_d = target_profile_α * 0.0,
     target_profile_β = 6.2,
-    target_profile_β_u = 6.2+2.1,
-    target_profile_β_d = 6.2-2.3,
+    target_profile_β_u = target_profile_β * Inf,
+    target_profile_β_d = target_profile_β * 0.0,
     target_profile_γ = 1.6,
-    target_profile_γ_u = 1.6+0.6,
-    target_profile_γ_d = 1.6-0.3,
+    target_profile_γ_u = target_profile_γ * Inf,
+    target_profile_γ_d = target_profile_γ * 0.0,
     target_profile_Q = 1.0,
     target_profile_error = false,
     target_fitting_rs_ratio = 2,
@@ -332,7 +325,7 @@ function SPE3D_MOND(;
     vis_config = VisualizationConfig(title, suffix, size, StepsBetweenSnapshots, Realtime, dynamic_colorrange, plot_virial, plotOptical, plotWaveDM)
     data_config = VisualizationData(rho, rho_max_id, total_halo_mass, radii, r_mass_center, target_profile_model, target_profile_error)
     
-    fig, ArrayT, ArrayT_Snap, AxisR, AxisVirial, AxisDensityProfile, SliceXY, SliceYZ, SliceXZ, ArrayTotalMass, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ColorRange = setup_visualization(
+    fig, ArrayT, AxisR, AxisVirial, AxisDensityProfile, SliceXY, SliceYZ, SliceXZ, ArrayTotalMass, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ColorRange = setup_visualization(
         grid, t, vis_config, data_config, astro_config, distributed_memory
     )
 
@@ -387,7 +380,7 @@ function SPE3D_MOND(;
     ArrayMomentumZ_temp = Float64[]
 
     linear_phase = setup_fft_operators(Xmax, Ymax, Zmax, Nx, Ny, Nz, dt)  # Laplacian in Fourier space
-    boarder = setup_absorption_boundary(Xmax, Ymax, Zmax, x, y, z, absorb_coeff, dt)
+    border = setup_absorption_boundary(Xmax, Ymax, Zmax, x, y, z, absorb_coeff, dt)
 
     device_ψ = DeviceArray(ψ)
 
@@ -471,7 +464,7 @@ function SPE3D_MOND(;
             Φ_all, spec = apply_kick_step!(device_ψ, ψ, V, rho_max, rho_max_id, grid, gravity_config, tidal_config, device_config, dt_kick, i, t)
             
             ### Drift
-            device_ψ = apply_drift_step!(spec, linear_phase, boarder, gpu, DeviceArray)
+            device_ψ = apply_drift_step!(spec, linear_phase, border, gpu, DeviceArray)
 
             ### Update data handlers
             ψ_last_t .= ψ
@@ -531,23 +524,46 @@ function SPE3D_MOND(;
                 )
                 profile_r_mean[] = _profile_r_mean
                 profile_ρ_mean[] = _profile_ρ_mean
-
-                append!(ArrayTotalMass[], ArrayTotalMass_temp); empty!(ArrayTotalMass_temp)
-                append!(ArrayR[], ArrayR_temp);   empty!(ArrayR_temp)
-                append!(ArrayR1[], ArrayR1_temp); empty!(ArrayR1_temp)
-                append!(ArrayR2[], ArrayR2_temp); empty!(ArrayR2_temp)
-                append!(ArrayR3[], ArrayR3_temp); empty!(ArrayR3_temp)
-                append!(ArrayR4[], ArrayR4_temp); empty!(ArrayR4_temp)
-                append!(ArrayR5[], ArrayR5_temp); empty!(ArrayR5_temp)
-                append!(ArrayR6[], ArrayR6_temp); empty!(ArrayR6_temp)
-                append!(ArrayR7[], ArrayR7_temp); empty!(ArrayR7_temp)
-                append!(ArrayR8[], ArrayR8_temp); empty!(ArrayR8_temp)
-                append!(ArrayR9[], ArrayR9_temp); empty!(ArrayR9_temp)
-
+                
+                # Update Observable arrays with corresponding time points to maintain consistent lengths
+                # ArrayT[] = vcat(ArrayT[], [t[i] * uT])
                 ArrayT[] = t[1:i] * uT
-                push!(ArrayT_Snap[], t[i] * uT)
+                ArrayTotalMass[] = vcat(ArrayTotalMass[], ArrayTotalMass_temp); empty!(ArrayTotalMass_temp)
+                ArrayR[] = vcat(ArrayR[], ArrayR_temp); empty!(ArrayR_temp)
+                ArrayR1[] = vcat(ArrayR1[], ArrayR1_temp); empty!(ArrayR1_temp)
+                ArrayR2[] = vcat(ArrayR2[], ArrayR2_temp); empty!(ArrayR2_temp)
+                ArrayR3[] = vcat(ArrayR3[], ArrayR3_temp); empty!(ArrayR3_temp)
+                ArrayR4[] = vcat(ArrayR4[], ArrayR4_temp); empty!(ArrayR4_temp)
+                ArrayR5[] = vcat(ArrayR5[], ArrayR5_temp); empty!(ArrayR5_temp)
+                ArrayR6[] = vcat(ArrayR6[], ArrayR6_temp); empty!(ArrayR6_temp)
+                ArrayR7[] = vcat(ArrayR7[], ArrayR7_temp); empty!(ArrayR7_temp)
+                ArrayR8[] = vcat(ArrayR8[], ArrayR8_temp); empty!(ArrayR8_temp)
+                ArrayR9[] = vcat(ArrayR9[], ArrayR9_temp); empty!(ArrayR9_temp)
 
-                plot_virial && update_virial_visualization!(ArrayVirialPotential, ArrayVirialPotential_temp, ArrayTotalKineticE, ArrayTotalKineticE_temp, ArrayTotalQuantumE, ArrayTotalQuantumE_temp, ArrayVirial, ArrayVirial_temp, ArrayMomentumX, ArrayMomentumX_temp, ArrayMomentumY, ArrayMomentumY_temp, ArrayMomentumZ, ArrayMomentumZ_temp, AxisVirial, ArrayT)
+                if plot_virial
+                    # Update Observable arrays by direct assignment to trigger automatic updates
+                    ArrayVirialPotential[] = vcat(ArrayVirialPotential[], ArrayVirialPotential_temp)
+                    empty!(ArrayVirialPotential_temp)
+                    ArrayTotalKineticE[] = vcat(ArrayTotalKineticE[], ArrayTotalKineticE_temp)
+                    empty!(ArrayTotalKineticE_temp)
+                    ArrayTotalQuantumE[] = vcat(ArrayTotalQuantumE[], ArrayTotalQuantumE_temp)
+                    empty!(ArrayTotalQuantumE_temp)
+                    ArrayVirial[] = vcat(ArrayVirial[], ArrayVirial_temp)
+                    empty!(ArrayVirial_temp)
+
+                    ArrayMomentumX[] = vcat(ArrayMomentumX[], ArrayMomentumX_temp)
+                    empty!(ArrayMomentumX_temp)
+                    ArrayMomentumY[] = vcat(ArrayMomentumY[], ArrayMomentumY_temp)
+                    empty!(ArrayMomentumY_temp)
+                    ArrayMomentumZ[] = vcat(ArrayMomentumZ[], ArrayMomentumZ_temp)
+                    empty!(ArrayMomentumZ_temp)
+
+                    Makie.xlims!(AxisVirial, 0, ArrayT[][end])
+                    Makie.ylims!(AxisVirial,
+                        min(minimum(ArrayVirial[]), minimum(ArrayTotalQuantumE[]), minimum(ArrayTotalKineticE[]), minimum(ArrayVirialPotential[])),
+                        max(maximum(ArrayVirial[]), maximum(ArrayTotalQuantumE[]), maximum(ArrayTotalKineticE[]), maximum(ArrayVirialPotential[])),
+                    ) 
+                end
                 
                 Makie.xlims!(AxisR, 0, ArrayT[][end])
                 Makie.ylims!(AxisR, minimum(ArrayR1[]), maximum(ArrayR9[]))
@@ -568,7 +584,7 @@ function SPE3D_MOND(;
                     best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
             end
 
-            update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, _profile_r_mean, _profile_ρ_mean, best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
+            update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, profile_r_mean[], profile_ρ_mean[], best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
 
             if need_to_interrupt(outputdir, remove = true)
                 breakflag = true
