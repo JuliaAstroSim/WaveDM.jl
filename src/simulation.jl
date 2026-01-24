@@ -119,20 +119,20 @@ function SPE3D_MOND(;
     extract_min_t = 0.2u"Gyr",
     target_velocity_dispersion = [],
     target_velocity_dispersion_r = [],
-    target_profile_model = :dwarf_Zhao,  # default: Segue I
-    target_profile_ρ0 = 10^(-0.9) * u"Msun/pc^3",
+    target_profile_model = :Zhao,  # default: MW
+    target_profile_ρ0 = 1.55e7u"Msun/kpc^3",
     target_profile_ρ0_u = target_profile_ρ0 * Inf,
     target_profile_ρ0_d = target_profile_ρ0 * 0.0,
-    target_profile_rs = 10^(2.5) * u"pc",
+    target_profile_rs = 11.75u"kpc",
     target_profile_rs_u = target_profile_rs * Inf,
     target_profile_rs_d = target_profile_rs * 0.0,
-    target_profile_α = 1.6,
+    target_profile_α = 1.19,
     target_profile_α_u = target_profile_α * Inf,
     target_profile_α_d = target_profile_α * 0.0,
-    target_profile_β = 6.2,
+    target_profile_β = 2.95,
     target_profile_β_u = target_profile_β * Inf,
     target_profile_β_d = target_profile_β * 0.0,
-    target_profile_γ = 1.6,
+    target_profile_γ = 0.95,
     target_profile_γ_u = target_profile_γ * Inf,
     target_profile_γ_d = target_profile_γ * 0.0,
     target_profile_Q = 1.0,
@@ -784,7 +784,7 @@ function test_MW_MOND(;
     kw...
 )
 
-    @time if isnothing(IC_vel)
+    if isnothing(IC_vel)
         @info "Initializing grid"
         x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
         dt = Tmax / Nt

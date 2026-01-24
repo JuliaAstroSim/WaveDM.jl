@@ -31,7 +31,7 @@ function generate_milkyway_initial_conditions(xxx, yyy, zzz, r, Δ, unit_cell_vo
                                               pids)
     if model == :MW
         model_halo = Zhao(1.55e7u"Msun/kpc^3" * FDM_mass_ratio, 11.75u"kpc" * FDM_radius_ratio, 1.19, 2.95, 0.95)
-        ρ_halo = sampling_density.(r * length_astro; model = model_halo) |> collect
+        ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
         if baryon_mode == :mesh
             ρ_baryon = density_baryon_MW.(xxx*length_astro, yyy*length_astro, zzz*length_astro)/density_astro
             Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
@@ -42,12 +42,12 @@ function generate_milkyway_initial_conditions(xxx, yyy, zzz, r, Δ, unit_cell_vo
             particles = generate_milkyway_baryon_particles(Np)
             
             sim_force_baryon = Simulation(particles;
-                GravitySolver = init_config.GravitySolver,
+                GravitySolver = GravitySolver,
                 pids,
             )
-            @info "Computing baryonic potentials and forces with $(traitstring(init_config.GravitySolver)) solver"
-            @time Φ_b = compute_potential(sim_force_baryon, pos, init_config.SofteningLength, init_config.GravitySolver, CPU()) ./ potential_astro
-            @time acc_b = StructArray(compute_force(sim_force_baryon, pos, init_config.SofteningLength, init_config.GravitySolver, CPU()))
+            @info "Computing baryonic potentials and forces with $(traitstring(GravitySolver)) solver"
+            @time Φ_b = compute_potential(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()) ./ potential_astro
+            @time acc_b = StructArray(compute_force(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()))
             ax_b = upreferred.(acc_b.x ./ acc_astro)
             ay_b = upreferred.(acc_b.y ./ acc_astro)
             az_b = upreferred.(acc_b.z ./ acc_astro)
@@ -368,7 +368,7 @@ function optimize_LTG_RC_fitting(r, accBaryon, r_RC, v_RC, lower, upper, ic;
     )
     # trace = [state.value for state in result.trace]
     # println(UnicodePlots.lineplot(trace))
-    @show trace
+    # @show trace
 
     minimum_value = Optim.minimum(result)
     optimal_params = Optim.minimizer(result)

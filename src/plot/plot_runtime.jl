@@ -283,13 +283,15 @@ function setup_density_profile_visualization!(fig, AxisDensityProfile,
     elseif target_profile_model == :dwarf_NFW || target_profile_model == :NFW
         model_halo_target = NFW(target_profile_ρ0, target_profile_rs)
         ρ_halo_target = ustrip.(u"Msun/kpc^3", GalacticDynamics.density.(model_halo_target, r_target*u"kpc"))
-    elseif target_profile_model == :dwarf_Zhao
+    elseif target_profile_model == :dwarf_Zhao || target_profile_model == :Zhao || target_profile_model == :MW
         model_halo_target = Zhao(target_profile_ρ0, target_profile_rs, target_profile_α, target_profile_β, target_profile_γ)
         ρ_halo_target = ustrip.(u"Msun/kpc^3", GalacticDynamics.density.(model_halo_target, r_target*u"kpc"))
     elseif target_profile_model == :dwarf_ZhaoQ #TODO consider Q
         model_halo_target = Zhao(target_profile_ρ0, target_profile_rs, target_profile_α, target_profile_β, target_profile_γ)
         # model_halo_target = ZhaoQ(target_profile_ρ0, target_profile_rs, target_profile_α, target_profile_β, target_profile_γ, target_profile_Q)
         ρ_halo_target = ustrip.(u"Msun/kpc^3", GalacticDynamics.density.(model_halo_target, r_target*u"kpc"))
+    else
+        error("Unsupported target_profile_model :$(target_profile_model)")
     end
     lt = Makie.lines!(AxisDensityProfile, r_target, ρ_halo_target, color = :black)
     push!(plots, lt)

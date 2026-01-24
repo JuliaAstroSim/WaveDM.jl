@@ -23,7 +23,7 @@ function compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density
     elseif target_profile_model == :dwarf_NFW || target_profile_model == :NFW
         model_halo = NFW(target_profile_ρ0, target_profile_rs)
         ρ_halo = upreferred.(GalacticDynamics.density.(model_halo, r_mean * length_astro) / density_astro)
-    elseif target_profile_model == :dwarf_Zhao
+    elseif target_profile_model == :dwarf_Zhao || target_profile_model == :Zhao || target_profile_model == :MW
         model_halo = Zhao(target_profile_ρ0, target_profile_rs, target_profile_α, target_profile_β, target_profile_γ)
         ρ_halo = upreferred.(GalacticDynamics.density.(model_halo, r_mean * length_astro) / density_astro)
     elseif target_profile_model == :dwarf_ZhaoQ #TODO consider Q
