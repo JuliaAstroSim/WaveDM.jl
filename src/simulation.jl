@@ -38,6 +38,7 @@ This function handles the complete simulation workflow from initial condition se
 - `averaged_ψ2`: Time-averaged wavefunction squared
 """
 function SPE3D_MOND(;
+    model = :MW,
     Xmax = 5,
     Ymax = Xmax,
     Zmax = Xmax,
@@ -617,17 +618,17 @@ function SPE3D_MOND(;
         )
 
         mass_fix_ratio = 1
-        figRC, chi2RC, mass_fix_ratio = plot_MW_RC_SPE(dfAcc; best_fit_halo_mass)
+        figRC, chi2RC, mass_fix_ratio = plot_RC_RAR(dfAcc; model, section, best_fit_halo_mass)
         Makie.save(joinpath(outputdir, "$(title), $(suffix) - RC.png"), figRC)
-
-        @info "taking average"
-        figRC, _chi2RC, _mass_fix_ratio = plot_MW_RC_SPE(dfAcc; average = true, best_fit_halo_mass)
-        Makie.save(joinpath(outputdir, "$(title), $(suffix) - RC averaged.png"), figRC)
 
         figRAR = compute_RAR(dfAcc; minR, maxR, plotMaxR = massRadius, zoom_a_max, mass_fix_ratio)
         Makie.save(joinpath(outputdir, "$(title), $(suffix) - RAR.png"), figRAR)
-
+        
         if average
+            @info "taking average"
+            figRC, _chi2RC, _mass_fix_ratio = plot_RC_RAR(dfAcc; model, section, average, best_fit_halo_mass)
+            Makie.save(joinpath(outputdir, "$(title), $(suffix) - RC averaged.png"), figRC)
+
             figRAR = compute_RAR(dfAcc; minR, maxR, plotMaxR = massRadius, zoom_a_max, mass_fix_ratio, average = true)
             Makie.save(joinpath(outputdir, "$(title), $(suffix) - RAR averaged.png"), figRAR)
         end
@@ -904,6 +905,7 @@ function test_MW_MOND(;
 
     @info "Start SPE simulation"
     return SPE3D_MOND(;
+        model,
         Xmax, Ymax, Zmax, Tmax, Nx, Ny, Nz, Nt,
         StepsBetweenSnapshots, absorb_coeff, IC = IC_vel, baryon = ρ_baryon, baryon_mode, baryon_potential = Φ_b,
         ax_b, ay_b, az_b, boundary, V, title, outputdir, SofteningLength,

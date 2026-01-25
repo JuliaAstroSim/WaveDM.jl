@@ -24,6 +24,14 @@ function interp1(x, v, xp; k = 1, kw...)
     return spl(ustrip.(unit(eltype(xp)), xp))
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Mean Squared Error (MSE)
+"""
+function mse(y_pred, y_true)
+    return mean((y_pred .- y_true) .^ 2)
+end
 
 chi2(obs, sigma, pred) = sum(((obs.-pred)./sigma).^2)
 

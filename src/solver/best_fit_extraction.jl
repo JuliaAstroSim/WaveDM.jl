@@ -35,7 +35,7 @@ function compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density
     end
 
     r_filter = 0 .< r_mean .<= target_profile_rs / length_astro  # 1D filter
-    current_fit_error = sum((log.(rho_mean[r_filter]) .- log.(ρ_halo[r_filter])).^2) / sum(r_filter) # mse
+    current_fit_error = mse(log.(rho_mean[r_filter]), log.(ρ_halo[r_filter]))
     
     return current_fit_error
 end
