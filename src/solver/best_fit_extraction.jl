@@ -89,7 +89,7 @@ $(TYPEDSIGNATURES)
 Update best fit snapshot based on fitting errors.
 This function encapsulates the optimization update logic from SPE3D_MOND.
 """
-function update_best_fit!(best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, 
+function update_best_fit!(best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all,
                           rc_config::RCFitConfig, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
     target_beta_star = rc_config.target_beta_star
     beta_star_error_threshold = rc_config.beta_star_error_threshold
@@ -103,6 +103,7 @@ function update_best_fit!(best_fit_error, best_fit_t, best_fit_beta_star_error, 
             best_fit_ψ .= ψ
             best_fit_ψ_last_t .= ψ_last_t
             best_fit_Φ_all .= Φ_all
+            best_fit_a_all .= a_all
 
             Makie.save(joinpath(outputdir, "$(title), $(suffix) - Overview Prop best fit.png"), fig)
         end
@@ -116,6 +117,7 @@ function update_best_fit!(best_fit_error, best_fit_t, best_fit_beta_star_error, 
             best_fit_ψ .= ψ
             best_fit_ψ_last_t .= ψ_last_t
             best_fit_Φ_all .= Φ_all
+            best_fit_a_all .= a_all
 
             best_fit_beta_star_error = current_beta_star_fit_error
             best_fit_beta_star = current_beta_star

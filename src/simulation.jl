@@ -405,6 +405,7 @@ function SPE3D_MOND(;
         best_fit_ψ = similar(ψ)
         best_fit_ψ_last_t = similar(ψ)
         best_fit_Φ_all = similar(Φ_all)
+        best_fit_a_all = similar(a_all)
 
         best_fit_time_file = open(joinpath(outputdir, "$(title), $(suffix) - best_fit_time.csv"), "a")
 
@@ -492,6 +493,8 @@ function SPE3D_MOND(;
             total_halo_mass = sum(rho) * unit_cell_volumn
             ax_all, ay_all, az_all = grad_central(-Δ..., Φ_all)
             plot_virial && update_virial_terms!(ArrayVirialPotential_temp, ArrayTotalKineticE_temp, ArrayTotalQuantumE_temp, ArrayVirial_temp, ArrayMomentumX_temp, ArrayMomentumY_temp, ArrayMomentumZ_temp, ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_volumn, uMomentum)
+
+            a_all = sqrt.(ax_all[:, :, rho_max_id[3]].^2 .+ ay_all[:, :, rho_max_id[3]].^2 .+ az_all[:, :, rho_max_id[3]].^2)
 
             if average
                 if t[i] * time_astro >= average_start_t
@@ -582,7 +585,7 @@ function SPE3D_MOND(;
                     current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, astro_config, df_CO_RC, uniform_interval)
                 end
                 best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star = update_best_fit!(
-                    best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
+                    best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
             end
 
             update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, profile_r_mean[], profile_ρ_mean[], best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
@@ -644,23 +647,48 @@ function SPE3D_MOND(;
     else
         figMOND, MOND_errorrel = plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section; filename = "$(title)_Prop")
     end
-    @info "Files saved to folder: $(outputdir)"
-
+    
     if extract_dwarf_granule
         println()
         @info "best_fit_error = $(best_fit_error)"
         @info "best_fit_t = $(best_fit_t)"
-
+        
         ## Finally save data
         if isinf(best_fit_error)
             @warn "Dwarf galaxy: Optimization failed!"
         else
             save(joinpath(outputdir, "$(title), $(suffix) - Prop best fit.jld2"), "ψ", best_fit_ψ, "Φ_all", best_fit_Φ_all, "ψ_last_t", best_fit_ψ_last_t)
-
+            
             write(best_fit_time_file, @sprintf("%.4f\n", ustrip(u"Gyr", best_fit_t)))
             close(best_fit_time_file)
         end
+
+        if baryon_mode == :ignored
+            # z=0, y=0 plane
+            best_fit_dfAcc = DataFrame(
+                :r => vec(r[:, :, div(end,2)]) .* uL,
+                :a_all => vec(best_fit_a_all) .* uAcc,
+            )
+            best_fit_chi2RC = nothing
+        else
+            # z=0, y=0 plane
+            best_fit_dfAcc = DataFrame(
+                :r => rMOND[:],
+                :a_b => a_b[:] .* uAcc,
+                :a_all => best_fit_a_all[:] .* uAcc,
+                :a_mond => a_mond[:] .* uAcc,
+            )
+
+            best_fit_mass_fix_ratio = 1
+            best_fit_figRC, best_fit_chi2RC, best_fit_mass_fix_ratio = plot_RC_RAR(best_fit_dfAcc; model, section, best_fit_halo_mass)
+            Makie.save(joinpath(outputdir, "$(title), $(suffix) - RC best fit.png"), best_fit_figRC)
+
+            figRAR = compute_RAR(best_fit_dfAcc; minR, maxR, plotMaxR = massRadius, zoom_a_max, best_fit_mass_fix_ratio)
+            Makie.save(joinpath(outputdir, "$(title), $(suffix) - RAR best fit.png"), figRAR)
+        end
+        CSV.write(joinpath(outputdir, "$(title), $(suffix) - acc best fit.csv"), best_fit_dfAcc)
     end
+    @info "Files saved to folder: $(outputdir)"
 
     if Realtime
         display(fig)
