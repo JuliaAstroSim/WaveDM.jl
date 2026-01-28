@@ -1,4 +1,4 @@
-function plot_RC_RAR(dfAcc;
+function plot_RC_RAR(dfAcc, r_s;
     model = :MW,
     size = (1200, 600),
     Galaxy_id = 0,
@@ -19,8 +19,6 @@ function plot_RC_RAR(dfAcc;
     vc_MOND = ustrip.(u"km/s", sqrt.(dfAcc.a_mond * u"m/s^2" .* dfAcc.r * u"kpc"))
     r_mean, vc_MOND_mean, r_std, vc_MOND_std = distribution(dfAcc.r, vc_MOND; section, uniform_interval=true)
 
-    mass_ratio = mass_fix_ratio * FDM_mass_ratio
-
     if model == :MW
         dfEilers2019 = load_MW_RC_Eilers2019()
         # dfMroz2019 = load_MW_RC_Mroz2019()
@@ -32,14 +30,14 @@ function plot_RC_RAR(dfAcc;
         if best_fit_halo_mass
             # Find the minimum chi2RC by tunning the DM halo mass
     
-            function merit_function(params)
+            function merit_function_RC_MW(params)
                 mass_fix_ratio = params[1]
                 merit_chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean * mass_fix_ratio, r_mean; DOF = 2)
                 return merit_chi2RC
             end
     
             result = Optim.optimize(
-                merit_function,
+                merit_function_RC_MW,
                 [0.1], # lower
                 [10.0], # upper
                 [1.0], # ic
@@ -63,6 +61,7 @@ function plot_RC_RAR(dfAcc;
         @info "chi2RC = $(chi2RC)"
         @info "chi2RC_min = $(chi2RC_min)"
 
+        mass_ratio = mass_fix_ratio * FDM_mass_ratio
         label_scatter = best_fit_halo_mass ? "WaveDM minimum χ²: $(@sprintf("%.2f", chi2RC_min)), mass_ratio: $(@sprintf("%.2f", mass_ratio))" : "WaveDM χ²: $(@sprintf("%.2f", chi2RC))"
         fit_error_min = chi2RC_min
     elseif model == :SPARC_LTGs
@@ -75,14 +74,14 @@ function plot_RC_RAR(dfAcc;
         if best_fit_halo_mass
             # Find the minimum chi2RC by tunning the DM halo mass
     
-            function merit_function(params)
+            function merit_function_RC_LTGs(params)
                 mass_fix_ratio = params[1]
                 merit_chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean * mass_fix_ratio, r_mean; DOF = 2)
                 return merit_chi2RC
             end
     
             result = Optim.optimize(
-                merit_function,
+                merit_function_RC_LTGs,
                 [0.1], # lower
                 [10.0], # upper
                 [1.0], # ic
@@ -106,20 +105,21 @@ function plot_RC_RAR(dfAcc;
         @info "chi2RC = $(chi2RC)"
         @info "chi2RC_min = $(chi2RC_min)"
 
+        mass_ratio = mass_fix_ratio * FDM_mass_ratio
         label_scatter = best_fit_halo_mass ? "WaveDM minimum χ²: $(@sprintf("%.2f", chi2RC_min)), mass_ratio: $(@sprintf("%.2f", mass_ratio))" : "WaveDM χ²: $(@sprintf("%.2f", chi2RC))"
         fit_error_min = chi2RC_min
     else # No observational RC provided, use RAR RC
-        MSE_RC = mse(vc_MOND, vc_mean)
+        MSE_RC = mse(vc_MOND_mean, vc_mean)
         if best_fit_halo_mass
             # Find the minimum MSE by tunning the DM halo mass
-            function merit_function(params)
+            function merit_function_RC_mse(params)
                 mass_fix_ratio = params[1]
-                merit_chi2RC = mse(vc_MOND, vc_mean * mass_fix_ratio)
+                merit_chi2RC = mse(vc_MOND_mean, vc_mean * mass_fix_ratio)
                 return merit_chi2RC
             end
     
             result = Optim.optimize(
-                merit_function,
+                merit_function_RC_mse,
                 [0.1], # lower
                 [10.0], # upper
                 [1.0], # ic
@@ -143,6 +143,7 @@ function plot_RC_RAR(dfAcc;
         @info "MSE_RC = $(MSE_RC)"
         @info "MSE_RC_min = $(MSE_RC_min)"
 
+        mass_ratio = mass_fix_ratio * FDM_mass_ratio
         label_scatter = best_fit_halo_mass ? "WaveDM minimum MSE to RAR RC: $(@sprintf("%.2f", MSE_RC_min)), mass_ratio: $(@sprintf("%.2f", mass_ratio))" : "WaveDM MSE to RAR RC: $(@sprintf("%.2f", MSE_RC))"
         RC_fit_error_min = MSE_RC_min
     end
@@ -159,8 +160,8 @@ function plot_RC_RAR(dfAcc;
 		# yminorgridvisible = true,
 		yminorticks = IntervalsBetween(10),
     )
-    Makie.xlims!(ax, 0, maximum(dfEilers2019.r) * 1.1)
-    Makie.ylims!(ax, 0, 300)
+    Makie.xlims!(ax, 0, ustrip(u"kpc", r_s))
+    Makie.ylims!(ax, 0, maximum(vc_MOND_mean) * 1.2)
 
     plots = []
     labels = []
@@ -188,7 +189,7 @@ function plot_RC_RAR(dfAcc;
     s2 = Makie.scatter!(ax, r_mean, vc_MOND_mean, color = :blue, markersize = 5.0)
     e2 = Makie.errorbars!(ax, r_mean, vc_MOND_mean, vc_MOND_std, color = :blue)
 
-    push!(plots, [s1, e1]); push!(labels, )
+    push!(plots, [s1, e1]); push!(labels, "wave CDM")
     push!(plots, [s2, e2]); push!(labels, "RAR")
 
 
