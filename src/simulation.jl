@@ -39,6 +39,7 @@ This function handles the complete simulation workflow from initial condition se
 """
 function SPE3D_MOND(;
     model = :MW,
+    Galaxy_id = 0,
     Xmax = 5,
     Ymax = Xmax,
     Zmax = Xmax,
@@ -621,7 +622,7 @@ function SPE3D_MOND(;
         )
 
         mass_fix_ratio = 1
-        figRC, chi2RC, mass_fix_ratio = plot_RC_RAR(dfAcc, target_profile_rs; model, section, best_fit_halo_mass)
+        figRC, chi2RC, mass_fix_ratio = plot_RC_RAR(dfAcc, target_profile_rs; model, section, Galaxy_id, best_fit_halo_mass)
         Makie.save(joinpath(outputdir, "$(title), $(suffix) - RC.png"), figRC)
 
         figRAR = compute_RAR(dfAcc; minR, maxR, plotMaxR = massRadius, zoom_a_max, mass_fix_ratio)
@@ -629,7 +630,7 @@ function SPE3D_MOND(;
         
         if average
             @info "taking average"
-            figRC, _chi2RC, _mass_fix_ratio = plot_RC_RAR(dfAcc, target_profile_rs; model, section, average, best_fit_halo_mass)
+            figRC, _chi2RC, _mass_fix_ratio = plot_RC_RAR(dfAcc, target_profile_rs; model, section, Galaxy_id, average, best_fit_halo_mass)
             Makie.save(joinpath(outputdir, "$(title), $(suffix) - RC averaged.png"), figRC)
 
             figRAR = compute_RAR(dfAcc; minR, maxR, plotMaxR = massRadius, zoom_a_max, mass_fix_ratio, average = true)
@@ -680,7 +681,7 @@ function SPE3D_MOND(;
             )
 
             best_fit_mass_fix_ratio = 1
-            best_fit_figRC, best_fit_chi2RC, best_fit_mass_fix_ratio = plot_RC_RAR(best_fit_dfAcc, target_profile_rs; model, section, best_fit_halo_mass)
+            best_fit_figRC, best_fit_chi2RC, best_fit_mass_fix_ratio = plot_RC_RAR(best_fit_dfAcc, target_profile_rs; model, section, Galaxy_id, best_fit_halo_mass)
             Makie.save(joinpath(outputdir, "$(title), $(suffix) - RC best fit.png"), best_fit_figRC)
 
             figRAR = compute_RAR(best_fit_dfAcc; minR, maxR, plotMaxR = massRadius, zoom_a_max, mass_fix_ratio = best_fit_mass_fix_ratio)
