@@ -37,7 +37,7 @@ This function handles the complete simulation workflow from initial condition se
 - `dfAcc`: DataFrame with acceleration data
 - `averaged_ψ2`: Time-averaged wavefunction squared
 """
-function SPE3D_MOND(;
+function SPE3D_waveDM(;
     model = :MW,
     Galaxy_id = 0,
     Xmax = 5,
@@ -731,9 +731,9 @@ This function sets up and runs a simulation of the Milky Way or dwarf galaxies w
 
 # Returns
 - If `IC_only=true`: Initial velocity field `IC_vel`
-- Otherwise: Results from `SPE3D_MOND` function
+- Otherwise: Results from `SPE3D_waveDM` function
 """
-function test_MW_MOND(;
+function simulate_waveDM(;
     model = :MW,
     V = (x,y,z,ψ)->0,
     FDM_mass_ratio = 1.0,
@@ -933,7 +933,7 @@ function test_MW_MOND(;
 
 
     @info "Start SPE simulation"
-    return SPE3D_MOND(;
+    return SPE3D_waveDM(;
         model,
         Xmax, Ymax, Zmax, Tmax, Nx, Ny, Nz, Nt,
         StepsBetweenSnapshots, absorb_coeff, IC = IC_vel, baryon = ρ_baryon, baryon_mode, baryon_potential = Φ_b,

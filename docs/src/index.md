@@ -18,7 +18,7 @@ WaveDM.jl is an open-source Julia package for simulating ultralight wave dark ma
 using WaveDM
 
 # Run minimal example
-test_MW_MOND(;
+simulate_waveDM(;
     model = :dwarf,
     title = "QuickTest",
     Xmax = 2.0,

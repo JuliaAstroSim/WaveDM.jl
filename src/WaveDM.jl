@@ -65,7 +65,7 @@ const η₀ = sqrt(C.μ_0 / C.ε_0)
 const ħ = C.h/2/π
 const Ωₘ₀ = 0.31
 
-export test_MW_MOND, SPE3D_MOND
+export simulate_waveDM, SPE3D_waveDM
 export SimulationGrid, DeviceConfig, TimeStepConfig, AstroUnitsConfig,
        GravityConfig, TidalFieldConfig, InitialConditionsConfig,
        DensityProfileConfig, MassRadiusConfig, VisualizationConfig,

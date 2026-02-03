@@ -2,7 +2,7 @@
 $(TYPEDSIGNATURES)
 
 Compute density profile fitting error.
-This function encapsulates the profile fitting error computation from SPE3D_MOND.
+This function encapsulates the profile fitting error computation from SPE3D_waveDM.
 """
 function compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density_astro, profile_config::ProfileFitConfig, target_profile_model, uniform_interval)
     target_profile_ρ0 = profile_config.target_profile_ρ0
@@ -44,7 +44,7 @@ end
 $(TYPEDSIGNATURES)
 
 Compute rotation curve fitting error.
-This function encapsulates the RC fitting error computation from SPE3D_MOND.
+This function encapsulates the RC fitting error computation from SPE3D_waveDM.
 """
 function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, astro_config::AstroUnitsConfig, df_CO_RC, uniform_interval)
     target_profile_rs = 0.1  # TODO: Get this from profile config
@@ -70,7 +70,7 @@ end
 $(TYPEDSIGNATURES)
 
 Compute beta_star (inner slope) from density profile.
-This function encapsulates the beta_star computation from SPE3D_MOND.
+This function encapsulates the beta_star computation from SPE3D_waveDM.
 """
 function compute_beta_star(r_mass_center, rho, target_beta_star_r_min, target_beta_star_r_max, length_astro)
     r_filter = target_beta_star_r_min/length_astro .<= r_mass_center .<= target_beta_star_r_max/length_astro  # 3D filter
@@ -87,7 +87,7 @@ end
 $(TYPEDSIGNATURES)
 
 Update best fit snapshot based on fitting errors.
-This function encapsulates the optimization update logic from SPE3D_MOND.
+This function encapsulates the optimization update logic from SPE3D_waveDM.
 """
 function update_best_fit!(best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all,
                           rc_config::RCFitConfig, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)

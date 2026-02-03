@@ -4,7 +4,7 @@
 $(TYPEDSIGNATURES)
 
 Setup Milky Way tidal field interpolation.
-This function encapsulates the MW tidal field setup code from SPE3D_MOND.
+This function encapsulates the MW tidal field setup code from SPE3D_waveDM.
 """
 function setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_pot_N,
     length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength)

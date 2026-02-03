@@ -424,7 +424,7 @@ end
 $(TYPEDSIGNATURES)
 
 Plot MOND acceleration comparison.
-This function encapsulates the `plotMOND` inner function from SPE3D_MOND.
+This function encapsulates the `plotMOND` inner function from SPE3D_waveDM.
 """
 function plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section;
     filename = title)

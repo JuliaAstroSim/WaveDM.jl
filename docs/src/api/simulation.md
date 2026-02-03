@@ -6,21 +6,21 @@ CurrentModule = WaveDM
 
 ## Main Simulation Functions
 
-### SPE3D_MOND
+### SPE3D_waveDM
 
 ```@docs
-WaveDM.SPE3D_MOND
+WaveDM.SPE3D_waveDM
 ```
 
-### test_MW_MOND
+### simulate_waveDM
 
 ```@docs
-WaveDM.test_MW_MOND
+WaveDM.simulate_waveDM
 ```
 
 ## Simulation Overview
 
-WaveDM.jl provides a high-level interface for simulating Wave Dark Matter dynamics using the Schrödinger-Poisson equation. The main entry points are the `SPE3D_MOND` and `test_MW_MOND` functions, which handle the complete simulation workflow from initial condition setup to result visualization.
+WaveDM.jl provides a high-level interface for simulating Wave Dark Matter dynamics using the Schrödinger-Poisson equation. The main entry points are the `SPE3D_waveDM` and `simulate_waveDM` functions, which handle the complete simulation workflow from initial condition setup to result visualization.
 
 ### Simulation Workflow
 
@@ -75,7 +75,7 @@ WaveDM.jl provides a high-level interface for simulating Wave Dark Matter dynami
 using WaveDM
 
 # Run a simple simulation of an isolated halo
-test_MW_MOND(
+simulate_waveDM(
     model = :dwarf,
     title = "QuickTest",
     Xmax = 2.0,
@@ -93,7 +93,7 @@ test_MW_MOND(
 using WaveDM
 
 # Run a more detailed simulation with custom parameters
-SPE3D_MOND(
+SPE3D_waveDM(
     Xmax = 5.0,
     Ymax = 5.0,
     Zmax = 5.0,
