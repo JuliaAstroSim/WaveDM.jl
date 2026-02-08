@@ -25,7 +25,7 @@ end
 $(TYPEDSIGNATURES)
 Generate Milky Way initial conditions.
 """
-function generate_milkyway_initial_conditions(grid, config_IC, config_units)
+function generate_milkyway_initial_conditions(grid::SimulationGrid, config_IC::InitialConditionsConfig, config_units::AstroUnitsConfig)
     length_astro = config_units.length_astro
     density_astro = config_units.density_astro
 
@@ -378,7 +378,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
 end
 
 # Compute acceleration field from potential
-function compute_acceleration_field(ρ_halo, grid, boundary, gpu, mass_astro, SofteningLength, potential_astro, pids, length_astro)
+function compute_acceleration_field(ρ_halo, grid::SimulationGrid, boundary, gpu, mass_astro, SofteningLength, potential_astro, pids, length_astro)
     Nx, Ny, Nz = size(ρ_halo)
     if boundary isa Vacuum
         # Use octree to compute gravitational force
@@ -402,7 +402,7 @@ function compute_acceleration_field(ρ_halo, grid, boundary, gpu, mass_astro, So
 end
 
 # Generate velocity field based on acceleration
-function generate_velocity_field(Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM, Φ_b, ax_b, ay_b, az_b, baryon_mode, grid, config_IC)
+function generate_velocity_field(Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM, Φ_b, ax_b, ay_b, az_b, baryon_mode, grid::SimulationGrid, config_IC::InitialConditionsConfig)
     Nx, Ny, Nz = size(grid.xxx)
     if baryon_mode == :ignored
         Φ_all = Φ_WaveDM

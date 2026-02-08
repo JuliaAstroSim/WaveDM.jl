@@ -34,10 +34,15 @@ function compute_gravitational_potential(
     return device_Φ_all, device_Φ_WaveDM
 end
 
-function baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, meshpos, meshacc_WaveDM)
+function baryon_add_WaveDM_acc(sim_force_baryon::Simulation, config_mesh::MeshConfig, config_units::AstroUnitsConfig, grid::SimulationGrid, meshpos, meshacc_WaveDM)
     baryon_particles_temp = get_local_data(sim_force_baryon) # access the Array pointer
     for k in eachindex(baryon_particles_temp)
         pos = baryon_particles_temp[k].Pos
+        ## One rebundent cell
+        if !is_inbound(pos + PVector((grid.Δ * config_units.length_astro)...), config_mesh) || !is_inbound(pos - PVector((grid.Δ * config_units.length_astro)...), config_mesh)
+            # StructArrays.foreachfield(v->deleteat!(v,k), sim.simdata) # TODO: this may alter tree update
+            continue
+        end
         acc = uconvert(u"kpc/Gyr^2", baryon_particles_temp[k].Acc + mesh2particle(meshpos, config_mesh, meshacc_WaveDM, pos, config_mesh.mode, config_mesh.assignment))
         setproperty!!(baryon_particles_temp[k], :Acc, acc)
     end

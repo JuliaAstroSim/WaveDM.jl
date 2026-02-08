@@ -145,7 +145,7 @@ function plot_RC_RAR(dfAcc, r_s;
 
         mass_ratio = mass_fix_ratio * FDM_mass_ratio
         label_scatter = best_fit_halo_mass ? "WaveDM minimum MSE to RAR RC: $(@sprintf("%.2f", MSE_RC_min)), mass_ratio: $(@sprintf("%.2f", mass_ratio))" : "WaveDM MSE to RAR RC: $(@sprintf("%.2f", MSE_RC))"
-        RC_fit_error_min = MSE_RC_min
+        fit_error_min = MSE_RC_min
     end
     
 
@@ -201,5 +201,5 @@ function plot_RC_RAR(dfAcc, r_s;
         margin = (10, 10, 10, 10),
     )
 
-    fig, RC_fit_error_min, mass_fix_ratio
+    fig, fit_error_min, mass_fix_ratio
 end

@@ -493,7 +493,8 @@ function SPE3D_waveDM(;
             Realtime = false,
             # loggingmode = SilentMode(),
             device = CPU(),
-            MinStep = 1e-8u"Gyr",
+            # MinStep = 1e-8u"Gyr",
+            TimeStep = 1e-5u"Gyr",
         )
         
         AstroNbodySim.preprocessdata(sim_force_baryon, sim_force_baryon.config.solver.grav, sim_force_baryon.config.device.type)
@@ -510,7 +511,7 @@ function SPE3D_waveDM(;
 
         ax_WaveDM, ay_WaveDM, az_WaveDM = grad_central(-Δ..., Φ_WaveDM)
         meshacc_WaveDM = PVector.(ax_WaveDM * acc_astro, ay_WaveDM * acc_astro, az_WaveDM * acc_astro)
-        baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, meshpos, meshacc_WaveDM)
+        baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, config_units, grid, meshpos, meshacc_WaveDM)
 
         AstroNbodySim.init_timesteps(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
         
@@ -524,7 +525,11 @@ function SPE3D_waveDM(;
     end
 
     @info "Starting main loop"
-    progress = Progress(Nt-1)
+    if baryon_mode == :particles_dynamic
+        progress = Progress(Nt-1; offset = 4)
+    else
+        progress = Progress(Nt-1)
+    end
     breakflag = false
     ψ_last_t = similar(ψ)
     
@@ -586,7 +591,7 @@ function SPE3D_waveDM(;
                     find_next_sync_point_and_drift(sim_force_baryon, sim_force_baryon.config.time.step, GravitySolver, sim_force_baryon.config.device.type)
 
                     compute_force(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
-                    baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, meshpos, meshacc_WaveDM)
+                    baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, config_units, grid, meshpos, meshacc_WaveDM)
 
                     # Kick
                     advance_and_find_timestep(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
@@ -612,7 +617,6 @@ function SPE3D_waveDM(;
                     end
 
                     if sim_force_baryon.timeinfo.system_time_float >= NextSaveRestart
-                        @info "Save snapshot at step $(i_Nbody)"
                         if sim_force_baryon.config.output.SaveRestart
                             saverestart(sim_force_baryon)
                         end
@@ -636,7 +640,7 @@ function SPE3D_waveDM(;
                 end
                 
                 # Update baryonic potential and acceleration on WaveDM
-                Φ_b = compute_potential(sim_force_baryon, pos, config_IC.SofteningLength, config_IC.GravitySolver, CPU()) ./ config_units.potential_astro
+                Φ_b = compute_potential(sim_force_baryon, meshpos, SofteningLength, GravitySolver, CPU()) ./ config_units.potential_astro
                 # config_gravity.Φ_b is also updated
             end
 
@@ -808,7 +812,7 @@ function SPE3D_waveDM(;
     else
         if baryon_mode == :particles_dynamic
             @info "Updating final baryonic potentials and forces with $(traitstring(GravitySolver)) solver"
-            acc_b = StructArray(compute_force(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()))
+            acc_b = StructArray(compute_force(sim_force_baryon, meshpos, SofteningLength, GravitySolver, CPU()))
             ax_b = upreferred.(acc_b.x ./ config_units.acc_astro)
             ay_b = upreferred.(acc_b.y ./ config_units.acc_astro)
             az_b = upreferred.(acc_b.z ./ config_units.acc_astro)
