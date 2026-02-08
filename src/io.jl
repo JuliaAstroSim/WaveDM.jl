@@ -6,8 +6,10 @@ $(TYPEDSIGNATURES)
 Save initial conditions to file.
 This function encapsulates the IC saving code from SPE3D_waveDM.
 """
-function save_initial_conditions(ψ, baryon_mode, baryon_potential, ax_b, ay_b, az_b, outputdir, title, suffix)
-    if baryon_mode != :ignored
+function save_initial_conditions(ψ, baryon_mode, baryon_potential, ax_b, ay_b, az_b, outputdir, title, suffix, particles = nothing)
+    if baryon_mode == :particles_dynamic
+        save(joinpath(outputdir, "$(title), $(suffix) - IC.jld2"), Dict("ψ" => ψ, "Φ_b" => baryon_potential, "ax_b"=>ax_b, "ay_b"=>ay_b, "az_b"=>az_b, "particles" => particles))
+    elseif baryon_mode != :ignored
         save(joinpath(outputdir, "$(title), $(suffix) - IC.jld2"), Dict("ψ" => ψ, "Φ_b" => baryon_potential, "ax_b"=>ax_b, "ay_b"=>ay_b, "az_b"=>az_b))
     else
         save(joinpath(outputdir, "$(title), $(suffix) - IC.jld2"), Dict("ψ" => ψ))
@@ -78,7 +80,7 @@ function compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_
     if average
         averaged_ψ2 = buffer_ψ2 / average_N
         if baryon_mode == :ignored
-            averaged_Φ_all = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(averaged_ψ2), Periodic(), gpu ? GPU() : CPU())) + collect(Φ_b)
+            averaged_Φ_all = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(averaged_ψ2), Periodic(), gpu ? GPU() : CPU()))
         else
             averaged_Φ_all = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(averaged_ψ2), Periodic(), gpu ? GPU() : CPU())) + collect(Φ_b)
         end

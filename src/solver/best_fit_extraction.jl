@@ -46,10 +46,10 @@ $(TYPEDSIGNATURES)
 Compute rotation curve fitting error.
 This function encapsulates the RC fitting error computation from SPE3D_waveDM.
 """
-function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, astro_config::AstroUnitsConfig, df_CO_RC, uniform_interval)
+function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, config_units::AstroUnitsConfig, df_CO_RC, uniform_interval)
     target_profile_rs = 0.1  # TODO: Get this from profile config
-    velocity_astro = astro_config.velocity_astro
-    uL = astro_config.uL
+    velocity_astro = config_units.velocity_astro
+    uL = config_units.uL
     
     r_filter_3D = 0 .< r_mass_center .<= target_profile_rs * 1.0 / length_astro  # 3D filter
     ar_all = vec_cartesian_to_spherical(ax_all, ay_all, az_all, xxx.-xxx[rho_max_id], yyy.-yyy[rho_max_id], zzz.-zzz[rho_max_id], r_mass_center)[1];

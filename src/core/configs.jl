@@ -148,6 +148,12 @@ struct InitialConditionsConfig{T}
     static::Bool
     FDM_mass_ratio::T
     FDM_radius_ratio::T
+    rotational_ratio::T
+    velocity_ratio::T
+    rotational_ratio_baryon::T
+    velocity_ratio_baryon::T
+    velocity_falling::Bool
+    MW_disk_RC::Bool
     GravitySolver
     SofteningLength
 end

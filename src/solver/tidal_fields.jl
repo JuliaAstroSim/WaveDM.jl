@@ -43,49 +43,49 @@ Accesses config fields directly without internal unpacking.
 """
 function add_tidal_potential!(
     Φ_all,
-    tidal_config::TidalFieldConfig,
+    config_tidal::TidalFieldConfig,
     grid::SimulationGrid,
-    gravity_config::GravityConfig,
+    config_gravity::GravityConfig,
     i::Int,
     t::Vector{<:Real}
 )
-    id_t = findfirstvalue(ustrip(u"Gyr", tidal_config.tidal_lookback_time) .- tidal_config.df_traj.time, t[i] * tidal_config.uT)
+    id_t = findfirstvalue(ustrip(u"Gyr", config_tidal.tidal_lookback_time) .- config_tidal.df_traj.time, t[i] * config_tidal.uT)
     if isnothing(id_t)
         @warn "Current time $(t[i]*time_astro): setting lookback time = 0 Gyr"
         id_t = 1
     end
     
     traj_pos = PVector{Float64}[]
-    if tidal_config.LMC_tidal_field || !tidal_config.MW_tidal_interpolate
-        traj_center = PVector(tidal_config.df_traj.x[id_t], tidal_config.df_traj.y[id_t], tidal_config.df_traj.z[id_t]) * u"kpc"
-        traj_pos = PVector.(grid.xxx * tidal_config.length_astro, grid.yyy * tidal_config.length_astro, grid.zzz * tidal_config.length_astro) .+ traj_center
+    if config_tidal.LMC_tidal_field || !config_tidal.MW_tidal_interpolate
+        traj_center = PVector(config_tidal.df_traj.x[id_t], config_tidal.df_traj.y[id_t], config_tidal.df_traj.z[id_t]) * u"kpc"
+        traj_pos = PVector.(grid.xxx * config_tidal.length_astro, grid.yyy * config_tidal.length_astro, grid.zzz * config_tidal.length_astro) .+ traj_center
     end
 
-    if tidal_config.MW_tidal_interpolate
-        pot_tidal = GridInterpolations.interpolate.(Ref(tidal_config.MW_grid), Ref(tidal_config.MW_Phi), collect.(zip(grid.xxx .+ tidal_config.df_traj.x[id_t]/tidal_config.uL, grid.yyy .+ tidal_config.df_traj.y[id_t]/tidal_config.uL, grid.zzz .+ tidal_config.df_traj.z[id_t]/tidal_config.uL)))
+    if config_tidal.MW_tidal_interpolate
+        pot_tidal = GridInterpolations.interpolate.(Ref(config_tidal.MW_grid), Ref(config_tidal.MW_Phi), collect.(zip(grid.xxx .+ config_tidal.df_traj.x[id_t]/config_tidal.uL, grid.yyy .+ config_tidal.df_traj.y[id_t]/config_tidal.uL, grid.zzz .+ config_tidal.df_traj.z[id_t]/config_tidal.uL)))
     else
         traj_r = norm.(traj_pos)
-        pot_DM = tidal_config.spl_pot.(ustrip.(u"kpc", traj_r)) * u"kpc^2/Gyr^2"
-        if isnothing(tidal_config.sim_force_baryon)
-            pot_tidal = pot_DM / gravity_config.mass_astro
+        pot_DM = config_tidal.spl_pot.(ustrip.(u"kpc", traj_r)) * u"kpc^2/Gyr^2"
+        if isnothing(config_tidal.sim_force_baryon)
+            pot_tidal = pot_DM / config_gravity.mass_astro
         else
-            pot_b = compute_potential(tidal_config.sim_force_baryon, traj_pos, gravity_config.SofteningLength, tidal_config.sim_force_baryon.config.solver.grav, CPU())
-            pot_tidal = (pot_b + pot_DM) / gravity_config.mass_astro
+            pot_b = compute_potential(config_tidal.sim_force_baryon, traj_pos, config_gravity.SofteningLength, config_tidal.sim_force_baryon.config.solver.grav, CPU())
+            pot_tidal = (pot_b + pot_DM) / config_gravity.mass_astro
         end
     end
 
-    if tidal_config.LMC_tidal_field
-        id_t_LMC = findfirstvalue(ustrip(u"Gyr", tidal_config.tidal_lookback_time) .- tidal_config.df_traj_LMC.time, t[i] * tidal_config.uT)
-        if ustrip(u"Gyr", tidal_config.tidal_lookback_time) <= t[i] * tidal_config.uT
+    if config_tidal.LMC_tidal_field
+        id_t_LMC = findfirstvalue(ustrip(u"Gyr", config_tidal.tidal_lookback_time) .- config_tidal.df_traj_LMC.time, t[i] * config_tidal.uT)
+        if ustrip(u"Gyr", config_tidal.tidal_lookback_time) <= t[i] * config_tidal.uT
             id_t_LMC = 1
         end
-        if gravity_config.GravitySolver isa DirectSum
-            tidal_config.sim_traj_LMC.simdata.Pos .= tidal_config.particles_LMC.Pos .+ PVector(tidal_config.df_traj_LMC.x[id_t_LMC], tidal_config.df_traj_LMC.y[id_t_LMC], tidal_config.df_traj_LMC.z[id_t_LMC]) * u"kpc"
-        elseif gravity_config.GravitySolver isa Tree
-            tidal_config.sim_traj_LMC.simdata.tree.data.Pos .= tidal_config.particles_LMC.Pos .+ PVector(tidal_config.df_traj_LMC.x[id_t_LMC], tidal_config.df_traj_LMC.y[id_t_LMC], tidal_config.df_traj_LMC.z[id_t_LMC]) * u"kpc"
-            AstroNbodySim.rebuild_tree(tidal_config.sim_traj_LMC)
+        if config_gravity.GravitySolver isa DirectSum
+            config_tidal.sim_traj_LMC.simdata.Pos .= config_tidal.particles_LMC.Pos .+ PVector(config_tidal.df_traj_LMC.x[id_t_LMC], config_tidal.df_traj_LMC.y[id_t_LMC], config_tidal.df_traj_LMC.z[id_t_LMC]) * u"kpc"
+        elseif config_gravity.GravitySolver isa Tree
+            config_tidal.sim_traj_LMC.simdata.tree.data.Pos .= config_tidal.particles_LMC.Pos .+ PVector(config_tidal.df_traj_LMC.x[id_t_LMC], config_tidal.df_traj_LMC.y[id_t_LMC], config_tidal.df_traj_LMC.z[id_t_LMC]) * u"kpc"
+            AstroNbodySim.rebuild_tree(config_tidal.sim_traj_LMC)
         end
-        pot_LMC = AstroNbodySim.compute_potential(tidal_config.sim_traj_LMC, traj_pos, gravity_config.SofteningLength, gravity_config.GravitySolver, CPU()) / gravity_config.mass_astro
+        pot_LMC = AstroNbodySim.compute_potential(config_tidal.sim_traj_LMC, traj_pos, config_gravity.SofteningLength, config_gravity.GravitySolver, CPU()) / config_gravity.mass_astro
         pot_tidal = pot_tidal + pot_LMC
     end
     

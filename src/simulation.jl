@@ -1,3 +1,4 @@
+using AstroNbodySim: begin_timer, add_timer, step, write_analysis, update_makie_plot, saverestart, write_timing, update_progress
 
 """
 Main simulation function for 3D Schrödinger-Poisson equation with MOND.
@@ -14,7 +15,7 @@ This function handles the complete simulation workflow from initial condition se
 - `V`: External potential function
 - `κ`: Self-interaction parameter
 - `baryon`: Baryonic density contribution
-- `baryon_mode`: How baryons are treated (:mesh, :particles_static, :ignored)
+- `baryon_mode`: How baryons are treated (:ignored, :mesh, :particles_static, :particles_dynamic)
 - `baryon_potential`: Pre-computed potentials of static baryons
 - `ax_b`, `ay_b`, `az_b`: Baryonic acceleration components
 - `absorb_coeff`: Absorption coefficient at boundaries
@@ -54,7 +55,7 @@ function SPE3D_waveDM(;
     V = (x,y,z,ψ)->0.0f0, # Potentials. Provide a function f(x,y,z,ψ). Default: free propagation
     κ = 0,
     baryon = (x,y,z,ψ)->0, # baryon term 4πGρ
-    baryon_mode = :mesh, # Options: `:mesh`, sample baryons on the mesh; `:particles_static`, sample baryons as N-body particles; `ignored`, ignore baryonic effects
+    baryon_mode = :mesh, # Options: `:mesh`, sample baryons on the mesh; `:particles_static`, sample baryons as N-body particles; `:ignored`, ignore baryonic effects; `:particles_dynamic`, simulate the baryons in the WaveDM background potential
     baryon_potential = nothing, # pre-computed potentials of static baryons
     ax_b = nothing,
     ay_b = nothing,
@@ -187,6 +188,7 @@ function SPE3D_waveDM(;
     # distributed_memory = true,
     distributed_memory = false,
     pids = workers(),
+    baryon_particles = nothing,
     kw...
 )
     println("\n\n")
@@ -215,6 +217,22 @@ function SPE3D_waveDM(;
     x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
     oneMatrix = ones(Nx, Ny, Nz)
     xxx, yyy, zzz, r = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
+    meshpos = PVector.(xxx * length_astro, yyy * length_astro, zzz * length_astro)
+    config_mesh = MeshConfig(uAstro;
+        mode = VertexMode(),
+        assignment = CIC(),
+        # assignment = TSC(),
+        # boundary = Periodic(),
+        Nx, Ny, Nz, NG = 0,
+        xMin = -0.5*Xmax * length_astro,
+        xMax = +0.5*Xmax * length_astro,
+        yMin = -0.5*Ymax * length_astro,
+        yMax = +0.5*Ymax * length_astro,
+        zMin = -0.5*Zmax * length_astro,
+        zMax = +0.5*Zmax * length_astro,
+        dim = 3,
+        device = CPU(),
+    )
 
     @info "Sim v_max = $(uconvert(u"km/s", π * C.h/(2π) / (mₐ_astro * mass_astro) / (Δ[1]*length_astro)))"
     @info "Setting softening length to $(SofteningLength)"
@@ -234,14 +252,40 @@ function SPE3D_waveDM(;
         end
     elseif baryon_mode == :particles_static # sample baryons as N-body particles
         if isnothing(baryon_potential)
-            # try solve the potential from particles
-            # pos = PVector.(xxx * length_astro, yyy * length_astro, zzz * length_astro)
-            # Φ_b = [AstroNbodySim.compute_unit_potential_at_point(p, particles, C.G, 0.01u"kpc") for p in pos]) / potential_astr
-            @error "baryon_potential should be provided"
+            sim_force_baryon = Simulation(baryon_particles;
+                GravitySolver = GravitySolver,
+                pids,
+            )
+            @info "Computing baryonic potentials and forces with $(traitstring(GravitySolver)) solver"
+            @time Φ_b = compute_potential(sim_force_baryon, meshpos, SofteningLength, GravitySolver, CPU()) ./ potential_astro
+            @time acc_b = StructArray(compute_force(sim_force_baryon, meshpos, SofteningLength, GravitySolver, CPU()))
+            ax_b = upreferred.(acc_b.x ./ acc_astro)
+            ay_b = upreferred.(acc_b.y ./ acc_astro)
+            az_b = upreferred.(acc_b.z ./ acc_astro)
         else
             Φ_b = baryon_potential
         end
-    elseif baryon_mode == :particles_dynamic #TODO
+    elseif baryon_mode == :particles_dynamic # simulate the baryons in the WaveDM background potential
+        sim_force_baryon = Simulation(baryon_particles;
+            GravitySolver, pids,
+            # TimeEnd = Tmax * time_astro,
+            # TimeBetweenSnapshots = dt * time_astro, # trigger time synchronization of particles at each SPE step
+            # OutputDir = joinpath(outputdir, "baryon_Nbody"),
+            # Realtime = false,
+            # loggingmode = SilentMode(),
+        )
+        if isnothing(baryon_particles)
+            @info "Computing baryonic potentials and forces with $(traitstring(GravitySolver)) solver"
+            @time Φ_b = compute_potential(sim_force_baryon, meshpos, SofteningLength, GravitySolver, CPU()) ./ potential_astro
+            @time acc_b = StructArray(compute_force(sim_force_baryon, meshpos, SofteningLength, GravitySolver, CPU()))
+            ax_b = upreferred.(acc_b.x ./ acc_astro)
+            ay_b = upreferred.(acc_b.y ./ acc_astro)
+            az_b = upreferred.(acc_b.z ./ acc_astro)
+        else
+            Φ_b = baryon_potential
+            # ax_b, ay_b, az_b should also be provided
+        end
+        meshpos = PVector.(xxx * length_astro, yyy * length_astro, zzz * length_astro)
     elseif baryon_mode == :ignored
         Φ_b = nothing
     end
@@ -283,25 +327,15 @@ function SPE3D_waveDM(;
         ax_WaveDM = ay_WaveDM = az_WaveDM = nothing
         a_all = sqrt.(ax_all[:, :, div(end,2)].^2 .+ ay_all[:, :, div(end,2)].^2 .+ az_all[:, :, div(end,2)].^2)
     end
-
-    # z=0 plane
-    if baryon_mode != :ignored
-        a_b = sqrt.(ax_b[:, :, div(end,2)].^2 .+ ay_b[:, :, div(end,2)].^2 .+ az_b[:, :, div(end,2)].^2)
-    end
-
+    
     t, dt, Nt = compute_timestep(Δ[1], Φ_all, κ, ψ, Tmax, Nt, autoset_timestep, autoset_timestep_ratio)
     @info "Default Δt: $(Tmax / Nt)"
     @info "Current Δt: $(Tmax / Nt)"
-
+    
     suffix = "Nx($(@sprintf("%d", Nx))), Xmax($(@sprintf("%.2f", Xmax))), Nt($(@sprintf("%d", Nt))), Tmax($(@sprintf("%.2f", Tmax))), DM_m($(@sprintf("%.2f", FDM_mass_ratio)))"
     @info "Initializing simulation: $(title), $(suffix)"
     @info "Data saved to folder: $(outputdir)"
-
-    @info "Plotting IC"
-    if baryon_mode != :ignored
-        plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section; filename = "$(title)_IC")
-    end
-
+    
     # rho_max, rho_max_id = findmax(rho) # Too slow for Dagger
     # rho_max, rho_max_id = findmax(collect(rho))
     sum_rho = sum(rho)
@@ -321,14 +355,14 @@ function SPE3D_waveDM(;
     radii = quantile(r_mass_center[:], weights(rho[:]), 0.1:0.1:0.9)
 
     @info("Start visualization...")
-    astro_config = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
+    config_units = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
                                     uT, uL, uVel, uAcc, uRho, uMomentum, h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0)
     grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, r, oneMatrix, unit_cell_volumn)
     vis_config = VisualizationConfig(title, suffix, size, StepsBetweenSnapshots, Realtime, dynamic_colorrange, plot_virial, plotOptical, plotWaveDM)
     data_config = VisualizationData(rho, rho_max_id, total_halo_mass, radii, r_mass_center, target_profile_model, target_profile_error)
     
     fig, ArrayT, AxisR, AxisVirial, AxisDensityProfile, SliceXY, SliceYZ, SliceXZ, ArrayTotalMass, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ColorRange = setup_visualization(
-        grid, t, vis_config, data_config, astro_config, distributed_memory
+        grid, t, vis_config, data_config, config_units, distributed_memory
     )
 
     if baryon_mode == :ignored
@@ -337,12 +371,13 @@ function SPE3D_waveDM(;
         a_all = sqrt.(ax_all[:, :, div(end,2)].^2 .+ ay_all[:, :, div(end,2)].^2 .+ az_all[:, :, div(end,2)].^2)
         a_mond = a_b ./ (1 .- exp.(-sqrt.(a_b./a0))) #RAR
         rMOND = r[:, :, div(end,2)][:] * ustrip(length_astro)
+        plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section; filename = "$(title)_IC")
     end
 
     if plot_virial
         @info "Computing momentums and virial energies"
         ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ = setup_virial_visualization(
-            ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_volumn, mass_astro, velocity_astro, ArrayT, AxisVirial
+            ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_volumn, mass_astro, velocity_astro, ArrayT, AxisVirial, uMomentum
         )
     else
         ArrayVirialPotential = ArrayTotalKineticE = ArrayTotalQuantumE = ArrayVirial = ArrayMomentumX = ArrayMomentumY = ArrayMomentumZ = nothing
@@ -354,7 +389,7 @@ function SPE3D_waveDM(;
 
     Makie.save(joinpath(outputdir, "$(title), $(suffix) - Overview IC.png"), fig)
 
-    save_IC && save_initial_conditions(ψ, baryon_mode, baryon_potential, ax_b, ay_b, az_b, outputdir, title, suffix)
+    save_IC && save_initial_conditions(ψ, baryon_mode, baryon_potential, ax_b, ay_b, az_b, outputdir, title, suffix, baryon_particles)
         
     if Realtime
         display(fig)
@@ -448,23 +483,66 @@ function SPE3D_waveDM(;
     
     rho_max, rho_max_id = findmax(rho)
 
+    if baryon_mode == :particles_dynamic
+        @info "Init N-body simulation of baryon"
+        sim_force_baryon = Simulation(baryon_particles;
+            GravitySolver, pids,
+            TimeEnd = Tmax * time_astro,
+            TimeBetweenSnapshots = dt * time_astro, # trigger time synchronization of particles at each SPE step
+            OutputDir = joinpath(outputdir, "baryon_Nbody"),
+            Realtime = false,
+            # loggingmode = SilentMode(),
+            device = CPU(),
+            MinStep = 1e-8u"Gyr",
+        )
+        
+        AstroNbodySim.preprocessdata(sim_force_baryon, sim_force_baryon.config.solver.grav, sim_force_baryon.config.device.type)
+
+        mkpathIfNotExist(sim_force_baryon.config.output.dir)
+        @info "Snapshot are saved to " * sim_force_baryon.config.output.dir
+
+        stopfile = joinpath(sim_force_baryon.config.output.dir, "stop") 
+        if isfile(stopfile)
+            rm(stopfile)
+        end
+        AstroNbodySim.setuploggers(sim_force_baryon)
+        AstroNbodySim.compute_force(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
+
+        ax_WaveDM, ay_WaveDM, az_WaveDM = grad_central(-Δ..., Φ_WaveDM)
+        meshacc_WaveDM = PVector.(ax_WaveDM * acc_astro, ay_WaveDM * acc_astro, az_WaveDM * acc_astro)
+        baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, meshpos, meshacc_WaveDM)
+
+        AstroNbodySim.init_timesteps(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
+        
+        if sim_force_baryon.config.time.algorithm isa Leapfrog
+            AstroNbodySim.leapfrog_half_kick(sim_force_baryon, +1, GravitySolver, sim_force_baryon.config.device.type)
+        end
+        sim_force_baryon.config.output.func(sim_force_baryon, sim_force_baryon.config.output.type)
+
+        TimeBetweenRestarts = dt * time_astro
+        NextSaveRestart = TimeBetweenRestarts
+    end
+
     @info "Starting main loop"
     progress = Progress(Nt-1)
     breakflag = false
     ψ_last_t = similar(ψ)
     
     grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, r, oneMatrix, unit_cell_volumn)
-    gravity_config = GravityConfig(boundary, Φ_b, sim_mesh_force, mesh_particles, SofteningLength, baryon_mode, GravitySolver, mass_astro)
-    device_config = DeviceConfig(gpu, DeviceArray, DA)
-    tidal_config = TidalFieldConfig(MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL, MW_grid, MW_Phi, spl_pot, sim_force_baryon, particles_LMC, sim_traj_LMC)
+    config_device = DeviceConfig(gpu, DeviceArray, DA)
+    config_tidal = TidalFieldConfig(MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL, MW_grid, MW_Phi, spl_pot, sim_force_baryon, particles_LMC, sim_traj_LMC)
     
+    i_Nbody = 2
     Makie.record(fig, joinpath(outputdir, "$(title), $(suffix) - Overview.mp4")) do io
         for i in 2:Nt
             ### Kick
             dt_kick = KDK_flag ? 0.5 * dt : dt
             
+            # Create config_gravity with latest Φ_b value to ensure bidirectional potential update
+            config_gravity = GravityConfig(boundary, Φ_b, sim_mesh_force, mesh_particles, SofteningLength, baryon_mode, GravitySolver, mass_astro)
+            
             # Pass individual parameters to apply_kick_step! instead of KickStepConfig
-            Φ_all, spec = apply_kick_step!(device_ψ, ψ, V, rho_max, rho_max_id, grid, gravity_config, tidal_config, device_config, dt_kick, i, t)
+            Φ_all, Φ_WaveDM, spec = apply_kick_step!(device_ψ, ψ, V, rho_max, rho_max_id, grid, config_gravity, config_tidal, config_device, dt_kick, i, t)
             
             ### Drift
             device_ψ = apply_drift_step!(spec, linear_phase, border, gpu, DeviceArray)
@@ -479,6 +557,88 @@ function SPE3D_waveDM(;
 
             push!(ArrayTotalMass_temp, isinf(total_halo_mass) ? 0 : total_halo_mass)
             push!(ArrayR_temp, std(collect(r[:,:,div(end,2)]), aweights(collect(abs.(ψ[:,:,div(end,2)]).^2))) * uL)
+
+            if baryon_mode == :particles_dynamic
+                ax_WaveDM, ay_WaveDM, az_WaveDM = grad_central(-Δ..., Φ_WaveDM)
+                meshacc_WaveDM = PVector.(ax_WaveDM * acc_astro, ay_WaveDM * acc_astro, az_WaveDM * acc_astro)
+
+                #TODO parallel
+                if i == 2 && length(pids) > 1
+                    @warn ":baaryon_dynamic mode currently do not support distributed computing"
+                end
+
+                # Initialize timesteps if not already initialized
+                if !isdefined(sim_force_baryon, :timeinfo) || sim_force_baryon.timeinfo.system_time_float == 0
+                    init_timesteps(sim_force_baryon, GravitySolver, CPU())
+                end
+
+                while i_Nbody == i
+                    t_TOTAL = begin_timer(sim_force_baryon, "TOTAL")
+                    begin_timer(sim_force_baryon, "FORCE")
+                    begin_timer(sim_force_baryon, "DRIFT")
+                    begin_timer(sim_force_baryon, "KICK")
+                    begin_timer(sim_force_baryon, "ANALYSIS")
+                    begin_timer(sim_force_baryon, "POSTSTEP")
+                    begin_timer(sim_force_baryon, "OUTPUT")
+                    begin_timer(sim_force_baryon, "PLOT")
+                    
+                    # Drift
+                    find_next_sync_point_and_drift(sim_force_baryon, sim_force_baryon.config.time.step, GravitySolver, sim_force_baryon.config.device.type)
+
+                    compute_force(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
+                    baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, meshpos, meshacc_WaveDM)
+
+                    # Kick
+                    advance_and_find_timestep(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
+                    
+                    t_ANALYSIS = time_ns()
+                    if !isempty(sim_force_baryon.loginfo.analysers)
+                        push!(analysis, write_analysis(sim_force_baryon))
+                    end
+                    add_timer(sim_force_baryon, "ANALYSIS", t_ANALYSIS, time_ns())
+
+                    t_POSTSTEP = time_ns()
+                    if !isempty(sim_force_baryon.poststep)
+                        for ps in sim_force_baryon.poststep
+                            ps(sim_force_baryon)
+                        end
+                    end
+                    add_timer(sim_force_baryon, "POSTSTEP", t_POSTSTEP, time_ns())
+
+                    if sim_force_baryon.visinfo.Realtime && time() - sim_force_baryon.visinfo.last_plot_time > sim_force_baryon.visinfo.RenderTime
+                        t_PLOT = time_ns()
+                        update_makie_plot(sim_force_baryon, GravitySolver, sim_force_baryon.config.device.type)
+                        add_timer(sim_force_baryon, "PLOT", t_PLOT, time_ns())
+                    end
+
+                    if sim_force_baryon.timeinfo.system_time_float >= NextSaveRestart
+                        @info "Save snapshot at step $(i_Nbody)"
+                        if sim_force_baryon.config.output.SaveRestart
+                            saverestart(sim_force_baryon)
+                        end
+                        i_Nbody += 1
+                        NextSaveRestart += TimeBetweenRestarts
+                    end
+
+                    if sim_force_baryon.config.loggingmode == ProgressMode()
+                        update_progress(sim_force_baryon, sim_force_baryon.config.time.step; showvalues = [
+                            ("Step", sim_force_baryon.timeinfo.stepcount),
+                            ("System time", sim_force_baryon.timeinfo.system_time_float),
+                            ("Timestep", sim_force_baryon.timeinfo.system_time_float - sim_force_baryon.timeinfo.last_system_time_float)
+                        ])
+                    end
+
+                    sim_force_baryon.timeinfo.stepcount += 1
+                    sim_force_baryon.timeinfo.last_system_time_float = sim_force_baryon.timeinfo.system_time_float
+
+                    add_timer(sim_force_baryon, "TOTAL", t_TOTAL, time_ns())
+                    write_timing(sim_force_baryon)
+                end
+                
+                # Update baryonic potential and acceleration on WaveDM
+                Φ_b = compute_potential(sim_force_baryon, pos, config_IC.SofteningLength, config_IC.GravitySolver, CPU()) ./ config_units.potential_astro
+                # config_gravity.Φ_b is also updated
+            end
 
             radii = quantile(r_mass_center[:], weights(rho[:]), 0.1:0.1:0.9)
             push!(ArrayR1_temp, radii[1] * uL)
@@ -583,7 +743,7 @@ function SPE3D_waveDM(;
                 if extract_mode == :profile
                     current_fit_error = compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density_astro, profile_config, target_profile_model, uniform_interval)
                 elseif extract_mode == :RC
-                    current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, astro_config, df_CO_RC, uniform_interval)
+                    current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, config_units, df_CO_RC, uniform_interval)
                 end
                 best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star = update_best_fit!(
                     best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
@@ -646,6 +806,13 @@ function SPE3D_waveDM(;
     if baryon_mode == :ignored
         figMOND, MOND_errorrel = nothing, nothing
     else
+        if baryon_mode == :particles_dynamic
+            @info "Updating final baryonic potentials and forces with $(traitstring(GravitySolver)) solver"
+            acc_b = StructArray(compute_force(sim_force_baryon, pos, SofteningLength, GravitySolver, CPU()))
+            ax_b = upreferred.(acc_b.x ./ config_units.acc_astro)
+            ay_b = upreferred.(acc_b.y ./ config_units.acc_astro)
+            az_b = upreferred.(acc_b.z ./ config_units.acc_astro)
+        end
         figMOND, MOND_errorrel = plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section; filename = "$(title)_Prop")
     end
     
@@ -726,7 +893,7 @@ This function sets up and runs a simulation of the Milky Way or dwarf galaxies w
 - `GravitySolver`: Gravitational solver type (Tree() or DirectSummation())
 - `boundary`: Boundary conditions (Periodic() or Vacuum())
 - `SofteningLength`: Gravitational softening length
-- `baryon_mode`: How baryons are treated (:mesh, :particles_static, :ignored)
+- `baryon_mode`: How baryons are treated (:mesh, :particles_static, :particles_dynamic, :ignored)
 - `gpu`: Enable GPU acceleration
 
 # Returns
@@ -756,6 +923,9 @@ function simulate_waveDM(;
     static = false, # If true, no velocity, phases are all zero
     rotational_ratio = 0.0,
     velocity_ratio = 1.0,
+    rotational_ratio_baryon = 1.0,
+    velocity_ratio_baryon = 1.0,
+    MW_disk_RC = false,
     velocity_falling = false, # if false, use use random direction; if true, all velocities point to zero point
     outputdir = joinpath(@__DIR__, "output/MOND"),
     massRadius = 50u"kpc",
@@ -824,7 +994,6 @@ function simulate_waveDM(;
         xxx, yyy, zzz, rrr = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
         # RRR = sqrt.(xxx.^2 + yyy.^2)
         
-        r_in_range = collect(rrr .< upreferred(massRadius / length_astro))
 
         @info "Sampling IC density"
         
@@ -836,53 +1005,23 @@ function simulate_waveDM(;
         uRho = ustrip(u"Msun/kpc^3", density_astro)
         uMomentum = ustrip(u"Msun*kpc/Gyr", mass_astro * velocity_astro)
         
-        # Create astrophysical units configuration
-        astro_config = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
+        config_units = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
                                         uT, uL, uVel, uAcc, uRho, uMomentum, h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0_astro)
+        DeviceArray = gpu ? cu : collect # convertor
+        config_device = DeviceConfig(gpu, DeviceArray, DA)
         
-        # Create simulation grid
         grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, rrr, oneMatrix, unit_cell_volumn)
         
-        # Create initial conditions configuration
-        init_config = InitialConditionsConfig(model, baryon_mode, Np, pids, bulk_perturb, bulk_size, bulk_shift_size, bulk_center_size, 
-                                            reset_velocity, static, FDM_mass_ratio, FDM_radius_ratio, GravitySolver, SofteningLength)
+        config_IC = InitialConditionsConfig(model, baryon_mode, Np, pids, bulk_perturb, bulk_size, bulk_shift_size, bulk_center_size, 
+                                            reset_velocity, static, FDM_mass_ratio, FDM_radius_ratio, rotational_ratio, velocity_ratio, rotational_ratio_baryon, velocity_ratio_baryon, velocity_falling, MW_disk_RC, GravitySolver, SofteningLength)
         
-        # Create density profile configuration - use original physical quantities with units
-        density_config = DensityProfileConfig(
+        config_profile = DensityProfileConfig(
             baryon_β, baryon_ρ0, baryon_r0, halo_β, halo_ρ0, halo_r0, halo_α, halo_γ, halo_Q, stellar_TotalMass, stellar_ScaleRadius, thickness_ratio_stellar, gases_TotalMass, gases_ScaleRadius, thickness_ratio_gases
         )
         
         # Call generate_initial_conditions with new struct parameters
-        ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon = generate_initial_conditions(init_config, grid, density_config, astro_config)
-        
-        total_mass_halo_IC = sum(ρ_halo[r_in_range]) * prod(Δ) * mass_astro
-        
-        @info "Total mass of halo: $(total_mass_halo_IC)"
-        if baryon_mode != :ignored
-            baryon_ratio_IC = total_mass_baryon / (total_mass_baryon + total_mass_halo_IC)
-            @info "Total mass of baryon: $(total_mass_baryon)"
-            @info "Baryon ratio: $(@sprintf("%.2f", baryon_ratio_IC * 100)) %"
+        IC_vel, ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon, baryon_particles = generate_initial_conditions(config_IC, grid, config_profile, config_units, config_device, boundary)
 
-            if baryon_ratio_IC > baryon_fraction_limit
-                return nothing
-            end
-        else
-            baryon_ratio_IC = 0
-        end
-
-        @info "Computing acc"
-        @time Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM = compute_acceleration_field(ρ_halo, Δ, boundary, gpu, xxx, yyy, zzz, unit_cell_volumn, mass_astro, SofteningLength, potential_astro, pids, length_astro)
-        
-        @info "Setting velocities"
-        v, Φ_all, ax_all, ay_all, az_all = generate_velocity_field(Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM, Φ_b, ax_b, ay_b, az_b, baryon_mode, xxx, yyy, zzz, Δ, velocity_falling, rotational_ratio, velocity_ratio)
-        vx, vy, vz = adjust_velocity_field(v, ρ_halo, bulk_perturb, bulk_size, bulk_shift_size, bulk_center_size)
-        
-        @info "Solving vector equation of velocity field"
-        θ = solve_vector_equation(collect(vx), collect(vy), collect(vz), Δ...)
-        phase = exp.(im*θ)
-        IC_vel = sqrt.(ρ_halo) .* phase
-
-        r_in_range = Φ_WaveDM = ax_WaveDM = ay_WaveDM = az_WaveDM = v = Φ_all = ax_all = ay_all = az_all = vx = vy = vz = θ = phase = nothing # release memory
         oneMatrix = xxx = yyy = zzz = rrr = nothing
         if IC_only
             return IC_vel
@@ -900,32 +1039,6 @@ function simulate_waveDM(;
         ρ_baryon = nothing
         total_mass_baryon = 0.0u"Msun"
         baryon_ratio_IC = 0
-
-        if reset_velocity
-            x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
-            t = collect(LinRange(0, Tmax, Nt))
-            dt = Tmax / Nt
-            DA = distributed_memory ? DArray : collect
-            oneMatrix = ones(Nx, Ny, Nz)
-            xxx, yyy, zzz, rrr = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
-            
-            ρ_halo = abs.(IC_vel).^2
-            Φ_WaveDM = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ρ_halo, Periodic(), gpu ? GPU() : CPU()))
-
-            ax_WaveDM, ay_WaveDM, az_WaveDM = grad_central(-Δ..., Φ_WaveDM)
-
-            @info "Setting velocities"
-            v, Φ_all, ax_all, ay_all, az_all = generate_velocity_field(Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM, Φ_b, ax_b, ay_b, az_b, baryon_mode, xxx, yyy, zzz, Δ, velocity_falling, rotational_ratio, velocity_ratio)
-            vx, vy, vz = adjust_velocity_field(v, ρ_halo, bulk_perturb, bulk_size, bulk_shift_size, bulk_center_size)
-                
-            @info "Solving vector equation of velocity field"
-            θ = solve_vector_equation(vx, vy, vz, Δ...)
-            phase = exp.(im*θ)
-            IC_vel = sqrt.(ρ_halo) .* phase
-
-            Φ_WaveDM = ax_WaveDM = ay_WaveDM = az_WaveDM = v = Φ_all = ax_all = ay_all = az_all = vx = vy = vz = θ = phase = nothing # release memory
-            oneMatrix = xxx = yyy = zzz = rrr = nothing
-        end
     else  # Directly use the IC_vel variable
         ρ_baryon = nothing
         total_mass_baryon = 0.0u"Msun"
@@ -939,6 +1052,6 @@ function simulate_waveDM(;
         StepsBetweenSnapshots, absorb_coeff, IC = IC_vel, baryon = ρ_baryon, baryon_mode, baryon_potential = Φ_b,
         ax_b, ay_b, az_b, boundary, V, title, outputdir, SofteningLength,
         FDM_mass_ratio, FDM_radius_ratio, rotational_ratio, massRadius, length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro,
-        h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0_astro, gpu, GravitySolver, distributed_memory, pids, kw...
+        h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0_astro, gpu, GravitySolver, distributed_memory, pids, baryon_particles, kw...
     )
 end

@@ -50,6 +50,7 @@ using Dates
 using AstroSimBase
 using PhysicalParticles
 using PhysicalParticles.NumericalIntegration
+using PhysicalParticles.BangBang
 using PhysicalFDM
 using PhysicalFFT
 using PhysicalMeshes

@@ -6,30 +6,39 @@ Accesses config fields directly without internal unpacking.
 """
 function compute_gravitational_potential(
     device_ψ,
-    gravity_config::GravityConfig,
+    config_gravity::GravityConfig,
     grid::SimulationGrid,
-    device_config::DeviceConfig,
+    config_device::DeviceConfig,
 )
     ψ² = abs.(device_ψ).^2
     ψ² .-= mean(ψ²)
 
-    if gravity_config.boundary isa Vacuum
-        gravity_config.sim_mesh_force.simdata.tree.data.Mass .= ψ²[:] * grid.unit_cell_volumn * gravity_config.mass_astro
-        AstroNbodySim.rebuild_tree(gravity_config.sim_mesh_force)
-        Φ_WaveDM = compute_potential(gravity_config.sim_mesh_force, gravity_config.mesh_particles.Pos, gravity_config.SofteningLength, Tree(), CPU()) ./ gravity_config.mass_astro
-        potential_grav = device_config.DeviceArray(Φ_WaveDM) + device_config.DeviceArray(gravity_config.Φ_b)
+    if config_gravity.boundary isa Vacuum
+        config_gravity.sim_mesh_force.simdata.tree.data.Mass .= ψ²[:] * grid.unit_cell_volumn * config_gravity.mass_astro
+        AstroNbodySim.rebuild_tree(config_gravity.sim_mesh_force)
+        device_Φ_WaveDM = compute_potential(config_gravity.sim_mesh_force, config_gravity.mesh_particles.Pos, config_gravity.SofteningLength, Tree(), CPU()) ./ config_gravity.mass_astro
+        device_Φ_all = config_device.DeviceArray(device_Φ_WaveDM) + config_device.DeviceArray(config_gravity.Φ_b)
     else
-        if gravity_config.baryon_mode == :ignored
-            potential_grav = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), device_config.gpu ? GPU() : CPU())
+        if config_gravity.baryon_mode == :ignored
+            device_Φ_all = device_Φ_WaveDM = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), config_device.gpu ? GPU() : CPU())
         else
-            device_Φ_b = device_config.DeviceArray(gravity_config.Φ_b)
-            Φ_WaveDM = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), device_config.gpu ? GPU() : CPU())
-            potential_grav = Φ_WaveDM + device_Φ_b
+            device_Φ_b = config_device.DeviceArray(config_gravity.Φ_b)
+            device_Φ_WaveDM = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), config_device.gpu ? GPU() : CPU())
+            device_Φ_all = device_Φ_WaveDM + device_Φ_b
             
-            device_config.gpu && CUDA.unsafe_free!(device_Φ_b)
-            device_config.gpu && CUDA.unsafe_free!(Φ_WaveDM)
+            config_device.gpu && CUDA.unsafe_free!(device_Φ_b)
+            config_device.gpu && CUDA.unsafe_free!(device_Φ_WaveDM)
         end
     end
     
-    return potential_grav
+    return device_Φ_all, device_Φ_WaveDM
+end
+
+function baryon_add_WaveDM_acc(sim_force_baryon, config_mesh, meshpos, meshacc_WaveDM)
+    baryon_particles_temp = get_local_data(sim_force_baryon) # access the Array pointer
+    for k in eachindex(baryon_particles_temp)
+        pos = baryon_particles_temp[k].Pos
+        acc = uconvert(u"kpc/Gyr^2", baryon_particles_temp[k].Acc + mesh2particle(meshpos, config_mesh, meshacc_WaveDM, pos, config_mesh.mode, config_mesh.assignment))
+        setproperty!!(baryon_particles_temp[k], :Acc, acc)
+    end
 end

@@ -5,7 +5,7 @@ $(TYPEDSIGNATURES)
 
 Setup initial visualization figure with multiple panels.
 """
-function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::VisualizationConfig, data_config::VisualizationData, astro_config::AstroUnitsConfig, distributed_memory::Bool)
+function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::VisualizationConfig, data_config::VisualizationData, config_units::AstroUnitsConfig, distributed_memory::Bool)
     Xmax = grid.Xmax
     Δ = grid.Δ
     x = grid.x
@@ -16,8 +16,8 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
     rho_max_id = data_config.rho_max_id
     total_halo_mass = data_config.total_halo_mass
     radii = data_config.radii
-    uT = astro_config.uT
-    uL = astro_config.uL
+    uT = config_units.uT
+    uL = config_units.uL
     title = vis_config.title
     suffix = vis_config.suffix
     size = vis_config.size
@@ -154,7 +154,7 @@ $(TYPEDSIGNATURES)
 
 Setup visualization for virial theorem quantities.
 """
-function setup_virial_visualization(ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_volumn, mass_astro, velocity_astro, ArrayT, AxisVirial)
+function setup_virial_visualization(ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_volumn, mass_astro, velocity_astro, ArrayT, AxisVirial, uMomentum)
     # Compute initial virial quantities
     ψx, ψy, ψz = grad_central(Δ..., collect(ψ))
     ψc = conj.(ψ)
@@ -165,9 +165,9 @@ function setup_virial_visualization(ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_vol
     # ψx = ψy = ψz = ψc = ψcx = ψcy = ψcz = nothing # release memory
 
     # Compute momenta
-    MomentumX = sum(ρvx) * unit_cell_volumn * mass_astro * velocity_astro
-    MomentumY = sum(ρvy) * unit_cell_volumn * mass_astro * velocity_astro
-    MomentumZ = sum(ρvz) * unit_cell_volumn * mass_astro * velocity_astro
+    MomentumX = ustrip(u"Msun*kpc/Gyr", sum(ρvx) * unit_cell_volumn * mass_astro * velocity_astro)
+    MomentumY = ustrip(u"Msun*kpc/Gyr", sum(ρvy) * unit_cell_volumn * mass_astro * velocity_astro)
+    MomentumZ = ustrip(u"Msun*kpc/Gyr", sum(ρvz) * unit_cell_volumn * mass_astro * velocity_astro)
     ArrayMomentumX = Observable([MomentumX])
     ArrayMomentumY = Observable([MomentumY])
     ArrayMomentumZ = Observable([MomentumZ])
