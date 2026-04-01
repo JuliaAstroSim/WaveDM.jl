@@ -1,149 +1,12 @@
-"""
-$(TYPEDSIGNATURES)
+# Main IC generation module
 
-Compute total Milky Way density at position (x, y, z).
-"""
-function density_all_MW(x, y, z)
-    ρ_bulge, ρ_discs, ρ_gas, ρ_halo = GalacticDynamics.milkyway_zhu2023how()
-    R = sqrt(x^2 + y^2)
-    r = sqrt(x^2 + y^2 + z^2)
-    return ρ_bulge(R,z) + ρ_discs(R,z) + ρ_gas(R,z) + ρ_halo(r)
-end
+# Note: profiles.jl and milkyway.jl are already included at module level in WaveDM.jl
 
 """
 $(TYPEDSIGNATURES)
 
-Compute baryonic Milky Way density at position (x, y, z).
+Generate initial conditions for different models.
 """
-function density_baryon_MW(x, y, z)
-    ρ_bulge, ρ_discs, ρ_gas, ρ_halo = GalacticDynamics.milkyway_zhu2023how()
-    R = sqrt(x^2 + y^2)
-    return ρ_bulge(R,z) + ρ_discs(R,z) + ρ_gas(R,z)
-end
-
-"""
-$(TYPEDSIGNATURES)
-Generate Milky Way initial conditions.
-"""
-function generate_milkyway_initial_conditions(grid::SimulationGrid, config_IC::InitialConditionsConfig, config_units::AstroUnitsConfig)
-    length_astro = config_units.length_astro
-    density_astro = config_units.density_astro
-
-    model_halo = Zhao(1.55e7u"Msun/kpc^3" * config_IC.FDM_mass_ratio, 11.75u"kpc" * config_IC.FDM_radius_ratio, 1.19, 2.95, 0.95)
-    ρ_halo = sampling_density.(grid.r, model_halo, length_astro, density_astro) |> collect
-    baryon_particles = nothing
-    if config_IC.baryon_mode == :mesh
-        ρ_baryon = density_baryon_MW.(grid.xxx*length_astro, grid.yyy*length_astro, grid.zzz*length_astro)/density_astro
-        Φ_b = collect(4π * fft_poisson(grid.Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
-        ax_b, ay_b, az_b = grad_central(-grid.Δ..., Φ_b)
-        total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
-    elseif config_IC.baryon_mode == :particles_static || config_IC.baryon_mode == :particles_dynamic
-        pos = PVector.(grid.xxx * length_astro, grid.yyy * length_astro, grid.zzz * length_astro)
-        baryon_particles = generate_milkyway_baryon_particles(config_IC.Np, config_IC)
-
-        sim_force_baryon = Simulation(baryon_particles; GravitySolver = config_IC.GravitySolver, pids = config_IC.pids)
-
-        @info "Computing baryonic potentials and forces with $(traitstring(config_IC.GravitySolver)) solver"
-        @time Φ_b = compute_potential(sim_force_baryon, pos, config_IC.SofteningLength, config_IC.GravitySolver, CPU()) ./ config_units.potential_astro
-        @time acc_b = StructArray(compute_force(sim_force_baryon, pos, config_IC.SofteningLength, config_IC.GravitySolver, CPU()))
-        ax_b = upreferred.(acc_b.x ./ config_units.acc_astro)
-        ay_b = upreferred.(acc_b.y ./ config_units.acc_astro)
-        az_b = upreferred.(acc_b.z ./ config_units.acc_astro)
-
-        total_mass_baryon = sum(baryon_particles.Mass)
-        ρ_baryon = nothing
-    elseif config_IC.baryon_mode == :ignored
-        ρ_baryon = Φ_b = ax_b = ay_b = az_b = baryon_particles = nothing
-        total_mass_baryon = 0.0u"Msun"
-    end
-    
-    return ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon, baryon_particles
-end
-
-# Internal function for sampling density
-function sampling_density(r, model, length_astro, density_astro)
-    out_density = upreferred(GalacticDynamics.density(model, r*length_astro) / density_astro)
-end
-
-# Generate Milky Way baryon particles
-function generate_milkyway_baryon_particles(Np::Int, config_IC)
-    TotalMass_bulge = 8.5708e9u"Msun"
-    TotalMass_thin = uconvert(u"Msun", 2pi * 1003.12u"Msun/pc^2" * (2.42u"kpc")^2) # 3.691165259383738e10 M⊙
-    TotalMass_thick = uconvert(u"Msun", 2pi * 167.93u"Msun/pc^2" * (3.17u"kpc")^2) # 1.0602949202938915e10 M⊙
-    TotalMass_HI = 1.0674e10u"Msun"
-    TotalMass_HII = 1.2303e9u"Msun"
-    TotalMass_baryons = TotalMass_bulge + TotalMass_thin + TotalMass_thick + TotalMass_HI + TotalMass_HII
-
-    NumSamples_bulge = ceil(Int, TotalMass_bulge/TotalMass_baryons * Np)
-    NumSamples_thin  = ceil(Int, TotalMass_thin/TotalMass_baryons * Np)
-    NumSamples_thick = ceil(Int, TotalMass_thick/TotalMass_baryons * Np)
-    NumSamples_HI    = ceil(Int, TotalMass_HI/TotalMass_baryons * Np)
-    NumSamples_HII = Np - NumSamples_bulge - NumSamples_thin - NumSamples_thick - NumSamples_HI
-
-    @info "NumSamples of bulge: $(NumSamples_bulge)"
-    @info "NumSamples of thin:  $(NumSamples_thin)"
-    @info "NumSamples of thick: $(NumSamples_thick)"
-    @info "NumSamples of HI:    $(NumSamples_HI)"
-    @info "NumSamples of HII:   $(NumSamples_HII)"
-
-    if config_IC.MW_disk_RC
-        @info "Setting rotation velocities of stellar and gaseous disks (Eilers et al. 2019)"
-        RC_MW = load_MW_RC_Eilers2019()
-        RotationCurve = ([0.0; RC_MW.r] * u"kpc", [0.0; RC_MW.vel] * u"km/s"); # add a zero point
-    else
-        RotationCurve = nothing
-    end
-
-    particles_bulge = generate(AstroIC.Bulge(;
-        collection = BULGE,
-        NumSamples = NumSamples_bulge,
-        TotalMass = TotalMass_bulge,
-        ScaleRadius = 0.075u"kpc",
-        CutRadius = 2.1u"kpc",
-        q = 0.5,
-        α = 1.8,
-    ))
-
-    particles_stellar_thin = generate(AstroIC.ExponentialDisc(;
-        collection = STAR,
-        NumSamples = NumSamples_thin,
-        TotalMass = TotalMass_thin,
-        ScaleRadius = 2.42u"kpc",
-        ScaleHeight = 0.3u"kpc",
-    ); RotationCurve, rotational_ratio = config_IC.MW_disk_RC)
-
-    particles_stellar_thick = generate(AstroIC.ExponentialDisc(;
-        collection = STAR,
-        NumSamples = NumSamples_thick,
-        TotalMass = TotalMass_thick,
-        ScaleRadius = 3.17u"kpc",
-        ScaleHeight = 0.9u"kpc",
-    ); RotationCurve, rotational_ratio = config_IC.MW_disk_RC)
-
-    particles_gas_HI = generate(AstroIC.ExponentialDisc(;
-        collection = GAS,
-        NumSamples = NumSamples_HI,
-        TotalMass = TotalMass_HI,
-        ScaleRadius = 7.0u"kpc",
-        ScaleHeight = 0.085u"kpc",
-        HoleRadius = 4.0u"kpc",
-    ); RotationCurve, rotational_ratio = config_IC.MW_disk_RC)
-
-    particles_gas_HII = generate(AstroIC.ExponentialDisc(;
-        collection = GAS,
-        NumSamples = NumSamples_HII,
-        TotalMass = TotalMass_HII,
-        ScaleRadius = 1.5u"kpc",
-        ScaleHeight = 0.045u"kpc",
-        HoleRadius = 12.0u"kpc",
-    ); RotationCurve, rotational_ratio = config_IC.MW_disk_RC)
-
-    particles = [particles_bulge; particles_stellar_thin; particles_stellar_thick; particles_gas_HI; particles_gas_HII]
-    
-    return particles
-end
-
-# Generate initial conditions for different models
 function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::SimulationGrid, config_profile::DensityProfileConfig, config_units::AstroUnitsConfig, config_device::DeviceConfig, boundary)
     model = config_IC.model
     r = grid.r
@@ -183,7 +46,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
         elseif baryon_mode == :particles_static
         end
     elseif model == :cluster_NFW
-        model_halo = gNFW(halo_β, halo_ρ0 * configI_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
+        model_halo = gNFW(halo_β, halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
         if baryon_mode == :mesh
             baryon_particles = nothing
@@ -197,13 +60,13 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             baryon_particles = nothing
         end
     elseif model == :cluster_Burkert
-        model_halo = Burkert(halo_ρ0 * configI_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
+        model_halo = Burkert(halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
         if baryon_mode == :mesh
             baryon_particles = nothing
             model_baryon = BetaModel(baryon_β, baryon_ρ0, baryon_r0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
-        
+
             Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
@@ -211,13 +74,13 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             baryon_particles = nothing
         end
     elseif model == :Elliptical
-        model_halo = gNFW(halo_β, halo_ρ0 * configI_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
+        model_halo = gNFW(halo_β, halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
         if baryon_mode == :mesh
             baryon_particles = nothing
             model_baryon = Jaffe(baryon_r0, baryon_ρ0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
-        
+
             Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
@@ -225,7 +88,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             baryon_particles = nothing
         end
     elseif model == :dwarf
-        model_halo = gNFW(halo_β, halo_ρ0 * configI_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
+        model_halo = gNFW(halo_β, halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
 
         if baryon_mode == :ignored
@@ -239,7 +102,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
         elseif baryon_mode == :particles_static || baryon_mode == :particles_dynamic
             @info "Sampling stars"
             pos = PVector.(grid.xxx * length_astro, grid.yyy * length_astro, grid.zzz * length_astro)
-            
+
             stellar_ScaleHeight = stellar_ScaleRadius * thickness_ratio_stellar
             config_Stellar = AstroIC.ExponentialDisc(;
                 collection = STAR,
@@ -284,7 +147,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             particles_Stellar = nothing
         end
     elseif model == :dwarf_NFW
-        model_halo = NFW(halo_ρ0 * configI_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
+        model_halo = NFW(halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
 
         if baryon_mode == :ignored
@@ -296,7 +159,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
 
         end
     elseif model == :dwarf_Zhao
-        model_halo = Zhao(halo_ρ0 * configI_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio, halo_α, halo_β, halo_γ)
+        model_halo = Zhao(halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio, halo_α, halo_β, halo_γ)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
 
         if baryon_mode == :ignored
@@ -312,7 +175,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
 
     @info "Computing WaveDM acc"
     @time Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM = compute_acceleration_field(ρ_halo, grid, boundary, config_device.gpu, config_units.mass_astro, config_IC.SofteningLength, potential_astro, pids, length_astro)
-    
+
     @info "Setting WaveDM vel"
     v, Φ_all, ax_all, ay_all, az_all = generate_velocity_field(Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM, Φ_b, ax_b, ay_b, az_b, baryon_mode, grid, config_IC)
     vx, vy, vz = adjust_velocity_field(v, ρ_halo, config_IC.bulk_perturb, config_IC.bulk_size, config_IC.bulk_shift_size, config_IC.bulk_center_size)
@@ -417,7 +280,7 @@ function generate_velocity_field(Φ_WaveDM, ax_WaveDM, ay_WaveDM, az_WaveDM, Φ_
     end
 
     a_CDM = zeros(Nx, Ny, Nz)
-    a_CDM[2:end-1,2:end-1,2:end-1] = sqrt.(ax_all[2:end-1,2:end-1,2:end-1].^2 .+ ay_all[2:end-1,2:end-1,2:end-1].^2 .+ az_all[2:end-1,2:end-1,2:end-1].^2)            
+    a_CDM[2:end-1,2:end-1,2:end-1] = sqrt.(ax_all[2:end-1,2:end-1,2:end-1].^2 .+ ay_all[2:end-1,2:end-1,2:end-1].^2 .+ az_all[2:end-1,2:end-1,2:end-1].^2)
     a_CDM[div(end,2),div(end,2),div(end,2)] *= 0
 
     if config_IC.velocity_falling
@@ -464,153 +327,4 @@ function adjust_velocity_field(v, ρ_halo, bulk_perturb, bulk_size, bulk_shift_s
     vz = vz .- vz0
 
     return vx, vy, vz
-end
-
-function optimize_LTG_RC_fitting(r, accBaryon, r_RC, v_RC, lower, upper, ic;
-    mode = :NFW, # support :NFW, TODO :nonparameteric
-)
-    function target_LTG_RC(params)
-        if mode == :NFW
-            rho0 = params[1] * u"Msun/kpc^3" * 1e8
-            r_s = params[2] * u"kpc"
-            modelDM = NFW(rho0, r_s)
-            rhoDM = GalacticDynamics.density.(modelDM, r)
-        else
-            error("Unsupported DM mode! Try keyword `mode=:NFW`")
-        end
-        massDM = 4π * cumul_integrate(r, r.^2 .* rhoDM)
-        velDM = ustrip.(u"km/s", sqrt.(C.G .* abs.(massDM) ./ r))
-        velBaryon = ustrip.(u"km/s", sqrt.(abs.(accBaryon) .* r))
-        velTotal = velDM + velBaryon
-        spl_velTotal = Spline1D(ustrip.(u"kpc", r), velTotal)
-        constraint_RC = sum((spl_velTotal(ustrip.(u"kpc", r_RC)) .- ustrip.(u"km/s", v_RC)) .^ 2) / length(r_RC)
-        return constraint_RC
-    end
-
-    result = Optim.optimize(
-        target_LTG_RC,
-        lower, upper, ic,
-        Optim.Fminbox(),
-        Optim.Options(
-            store_trace = true,
-            iterations = 500,
-            outer_iterations = 500,
-            # x_tol = 1e-10,
-            # outer_x_tol = 1e-10,
-        )
-    )
-    # trace = [state.value for state in result.trace]
-    # println(UnicodePlots.lineplot(trace))
-    # @show trace
-
-    minimum_value = Optim.minimum(result)
-    optimal_params = Optim.minimizer(result)
-    @show minimum_value, optimal_params
-
-    return optimal_params
-end
-
-
-function optimize_smoothed_inversion(r, massBaryon, lower, upper, ic;
-    mode = :NFW, # support :NFW, TODO :nonparameteric
-)
-    function target_smoothed_inversion(params)
-        if mode == :NFW
-            rho0 = params[1] * u"Msun/kpc^3" * 1e8
-            r_s = params[2] * u"kpc"
-            modelDM = NFW(rho0, r_s)
-            rhoDM = GalacticDynamics.density.(modelDM, r)
-        else
-            error("Unsupported DM mode! Try keyword `mode=:NFW`")
-        end
-        massDM = 4π * cumul_integrate(r, r.^2 .* rhoDM)
-        massTotal = massBaryon + massDM
-        constraint_nonmonotonic = sum(ustrip.(diff(massTotal)) .< 0) # This is loose constraint and not sufficient to optimize the DM halo
-
-        accTotal = ustrip.(u"m/s^2", C.G .* massTotal ./ r.^2)
-        accBaryon = ustrip.(u"m/s^2", C.G .* massBaryon ./ r.^2)
-        accRAR = RAR.(accBaryon, 1.2e-10)
-        constraint_acc = sum(((accTotal[div(end,2):end] .- accRAR[div(end,2):end])*1e11).^2) / length(accRAR) # mean squared error, MSE. Enlarge the unit for more strict constraint
-        # Should not use the whole array
-
-        #TODO: add weights
-        return constraint_nonmonotonic + constraint_acc
-    end
-
-    result = Optim.optimize(
-        target_smoothed_inversion,
-        lower, upper, ic,
-        Optim.Fminbox(),
-        Optim.Options(
-            store_trace = true,
-            # iterations = 100,
-            # outer_iterations = 100,
-            # x_tol = 1e-10,
-            # outer_x_tol = 1e-10,
-        )
-    )
-    # trace = [state.value for state in result.trace]
-    # @show trace
-    # println(UnicodePlots.lineplot(trace))
-
-    minimum_value = Optim.minimum(result)
-    optimal_params = Optim.minimizer(result)
-    @show minimum_value, optimal_params
-
-    return optimal_params
-end
-
-function optimize_smoothed_inversion_forward_fitting(r, massBaryon, r_RC, v_RC, lower, upper, ic;
-    mode = :NFW, # support :NFW, TODO :nonparameteric
-)
-    function target_smoothed_inversion_forward_fitting(params)
-        if mode == :NFW
-            rho0 = params[1] * u"Msun/kpc^3"
-            r_s = params[2] * u"kpc"
-            modelDM = NFW(rho0, r_s)
-            rhoDM = GalacticDynamics.density.(modelDM, r)
-        else
-            error("Unsupported DM mode! Try keyword `mode=:NFW`")
-        end
-        massDM = 4π * cumul_integrate(r, r.^2 .* rhoDM)
-        massTotal = massBaryon + massDM
-
-        constraint_nonmonotonic = sum(diff(massTotal) .< zero(eltype(massTotal)))
-
-        velTotal = ustrip.(u"km/s", sqrt.(C.G .* massTotal ./ r))
-        spl_velTotal = Spline1D(ustrip.(u"kpc", r), velTotal)
-        constraint_RC = sum((spl_velTotal(ustrip.(u"kpc", r_RC)) .- ustrip.(u"km/s", v_RC)) .^ 2) / length(r_RC)
-
-        accTotal = ustrip.(u"m/s^2", C.G .* massTotal ./ r.^2)
-        accBaryon = ustrip.(u"m/s^2", C.G .* massBaryon ./ r.^2)
-        accRAR = RAR.(accBaryon, 1.2e-10)
-        constraint_acc = sum(((accTotal[div(end,2):end] .- accRAR[div(end,2):end])*1e11).^2) / length(accRAR) # mean squared error, MSE. Enlarge the unit for more strict constraint
-
-        #TODO: add weights
-        # return constraint_nonmonotonic + 1 * constraint_RC + constraint_acc
-        return constraint_nonmonotonic + constraint_acc
-        # return constraint_acc
-    end
-    
-    result = Optim.optimize(
-        target_smoothed_inversion_forward_fitting,
-        lower, upper, ic,
-        Optim.Fminbox(),
-        Optim.Options(
-            store_trace = true,
-            iterations = 500,
-            outer_iterations = 500,
-            # x_tol = 1e-10,
-            # outer_x_tol = 1e-10,
-        )
-    )
-    # trace = [state.value for state in result.trace]
-    # println(UnicodePlots.lineplot(trace))
-    # @show trace
-
-    minimum_value = Optim.minimum(result)
-    optimal_params = Optim.minimizer(result)
-    @show minimum_value, optimal_params
-
-    return optimal_params
 end

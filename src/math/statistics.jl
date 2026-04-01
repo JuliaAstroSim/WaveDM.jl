@@ -47,7 +47,7 @@ $(TYPEDSIGNATURES)
 The observation and prediction are not one-to-one.
 Interpolate the discrete observational data using 1D spline and compute χ² within observational region
 """
-function chi2(obs, sigma, obs_r, pred, r; 
+function chi2(obs, sigma, obs_r, pred, r;
     k = 1, # 1, linear; 2, quadratic; 3, cubic
     kw...
 )
@@ -63,12 +63,13 @@ end
 
 """
 $(TYPEDSIGNATURES)
+
 reduced χ²
 
 The observation and prediction are not one-to-one.
 Interpolate the discrete observational data using 1D spline and compute χ² within observational region
 """
-function chi2reduced(obs, sigma, obs_r, pred, r; 
+function chi2reduced(obs, sigma, obs_r, pred, r;
     k = 1, # 1, linear; 2, quadratic; 3, cubic
     DOF = 0,
     kw...
@@ -86,12 +87,13 @@ end
 
 """
 $(TYPEDSIGNATURES)
+
 reduced χ² with erros from prediction
 
 The observation and prediction are not one-to-one.
 Interpolate the discrete observational data using 1D spline and compute χ² within observational region
 """
-function chi2reduced(obs, sigma, obs_r, pred, err, r; 
+function chi2reduced(obs, sigma, obs_r, pred, err, r;
     k = 1, # 1, linear; 2, quadratic; 3, cubic
     DOF = 0,
     kw...
@@ -121,7 +123,7 @@ function find_first_intersection(x, y, p)
     for i in 1:length(x)-1
         x1, x2 = x[i], x[i+1]
         y1, y2 = y[i], y[i+1]
-        
+
         # compute intersection point
         if (y1 - p) * (y2 - p) <= 0
             t = (p - y1) / (y2 - y1)  # ratio
@@ -129,17 +131,17 @@ function find_first_intersection(x, y, p)
             return intersection
         end
     end
-    
+
     return nothing # no intersection
 end
 
 function find_intersections(x, y, p)
     intersections = Float64[]
-    
+
     for i in 1:length(x)-1
         x1, x2 = x[i], x[i+1]
         y1, y2 = y[i], y[i+1]
-        
+
         # compute intersection point
         if (y1 - p) * (y2 - p) <= 0
             t = (p - y1) / (y2 - y1)  # ratio
@@ -147,6 +149,6 @@ function find_intersections(x, y, p)
             push!(intersections, intersection)
         end
     end
-    
+
     return intersections
 end

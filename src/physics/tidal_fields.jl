@@ -54,7 +54,7 @@ function add_tidal_potential!(
         @warn "Current time $(t[i]*time_astro): setting lookback time = 0 Gyr"
         id_t = 1
     end
-    
+
     traj_pos = PVector{Float64}[]
     if config_tidal.LMC_tidal_field || !config_tidal.MW_tidal_interpolate
         traj_center = PVector(config_tidal.df_traj.x[id_t], config_tidal.df_traj.y[id_t], config_tidal.df_traj.z[id_t]) * u"kpc"
@@ -88,7 +88,7 @@ function add_tidal_potential!(
         pot_LMC = AstroNbodySim.compute_potential(config_tidal.sim_traj_LMC, traj_pos, config_gravity.SofteningLength, config_gravity.GravitySolver, CPU()) / config_gravity.mass_astro
         pot_tidal = pot_tidal + pot_LMC
     end
-    
+
     pot_tidal .-= pot_tidal[grid.rho_max_id]
     cancel_field_gradient_at_center!(pot_tidal, grid.rho_max_id, grid.oneMatrix, grid.Nx, grid.Ny, grid.Nz)
 
@@ -105,10 +105,10 @@ function cancel_field_gradient_at_center!(field, center_id, oneMatrix, Nx, Ny, N
     dp_dx = (field[center_id[1]+1, center_id[2],   center_id[3]]   - field[center_id[1]-1, center_id[2],   center_id[3]])/2
     dp_dy = (field[center_id[1],   center_id[2]+1, center_id[3]]   - field[center_id[1],   center_id[2]-1, center_id[3]])/2
     dp_dz = (field[center_id[1],   center_id[2],   center_id[3]+1] - field[center_id[1],   center_id[2],   center_id[3]-1])/2
-    
+
     field -= oneMatrix .* (collect(1:Nx) .- div(Nx,2)) * dp_dx
     field -= oneMatrix .* (collect(1:Ny) .- div(Ny,2))' * dp_dy
     field -= oneMatrix .* reshape(collect(1:Nz) .- div(Nz,2), 1, 1, Nz) * dp_dz
-    
+
     return field
 end

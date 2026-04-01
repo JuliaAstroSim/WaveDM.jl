@@ -8,7 +8,7 @@ function plot_RC_RAR(dfAcc, r_s;
     best_fit_halo_mass = false,
     fontsize = 18,
 )
-    
+
     if average
         vc = ustrip.(u"km/s", sqrt.(dfAcc.a_all_averaged * u"m/s^2" .* dfAcc.r * u"kpc"))
     else
@@ -26,16 +26,16 @@ function plot_RC_RAR(dfAcc, r_s;
         dfRCstddev = load_MW_RC_stddev_W21()
 
         chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean, r_mean; DOF = 2)
-    
+
         if best_fit_halo_mass
             # Find the minimum chi2RC by tunning the DM halo mass
-    
+
             function merit_function_RC_MW(params)
                 mass_fix_ratio = params[1]
                 merit_chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean * mass_fix_ratio, r_mean; DOF = 2)
                 return merit_chi2RC
             end
-    
+
             result = Optim.optimize(
                 merit_function_RC_MW,
                 [0.1], # lower
@@ -50,14 +50,14 @@ function plot_RC_RAR(dfAcc, r_s;
                     # outer_x_tol = 1e-10,
                 )
             )
-    
+
             chi2RC_min = Optim.minimum(result)[1]
             mass_fix_ratio = Optim.minimizer(result)[1]
         else
             chi2RC_min = chi2RC
             mass_fix_ratio = 1
         end
-    
+
         @info "chi2RC = $(chi2RC)"
         @info "chi2RC_min = $(chi2RC_min)"
 
@@ -73,13 +73,13 @@ function plot_RC_RAR(dfAcc, r_s;
 
         if best_fit_halo_mass
             # Find the minimum chi2RC by tunning the DM halo mass
-    
+
             function merit_function_RC_LTGs(params)
                 mass_fix_ratio = params[1]
                 merit_chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean * mass_fix_ratio, r_mean; DOF = 2)
                 return merit_chi2RC
             end
-    
+
             result = Optim.optimize(
                 merit_function_RC_LTGs,
                 [0.1], # lower
@@ -94,14 +94,14 @@ function plot_RC_RAR(dfAcc, r_s;
                     # outer_x_tol = 1e-10,
                 )
             )
-    
+
             chi2RC_min = Optim.minimum(result)[1]
             mass_fix_ratio = Optim.minimizer(result)[1]
         else
             chi2RC_min = chi2RC
             mass_fix_ratio = 1
         end
-    
+
         @info "chi2RC = $(chi2RC)"
         @info "chi2RC_min = $(chi2RC_min)"
 
@@ -117,7 +117,7 @@ function plot_RC_RAR(dfAcc, r_s;
                 merit_chi2RC = mse(vc_MOND_mean, vc_mean * mass_fix_ratio)
                 return merit_chi2RC
             end
-    
+
             result = Optim.optimize(
                 merit_function_RC_mse,
                 [0.1], # lower
@@ -132,7 +132,7 @@ function plot_RC_RAR(dfAcc, r_s;
                     # outer_x_tol = 1e-10,
                 )
             )
-    
+
             MSE_RC_min = Optim.minimum(result)[1]
             mass_fix_ratio = Optim.minimizer(result)[1]
         else
@@ -147,7 +147,7 @@ function plot_RC_RAR(dfAcc, r_s;
         label_scatter = best_fit_halo_mass ? "WaveDM minimum MSE to RAR RC: $(@sprintf("%.2f", MSE_RC_min)), mass_ratio: $(@sprintf("%.2f", mass_ratio))" : "WaveDM MSE to RAR RC: $(@sprintf("%.2f", MSE_RC))"
         fit_error_min = MSE_RC_min
     end
-    
+
 
     fig = Figure(; size, fontsize)
     ax = Axis(fig[1,1];
@@ -169,7 +169,7 @@ function plot_RC_RAR(dfAcc, r_s;
     if model == :MW
         l1 = Makie.lines!(ax, dfEilers2019.r, dfEilers2019.v, color = :orange)
         b1 = Makie.band!(ax, dfEilers2019.r, dfEilers2019.v - dfEilers2019.σ_low, dfEilers2019.v + dfEilers2019.σ_high, color = (:orange, 0.2))
-        
+
         s3 = Makie.scatter!(ax, dfRCstddev.r, dfRCstddev.v, marker = :x, color = :gray)
         e3 = Makie.errorbars!(ax, dfRCstddev.r, dfRCstddev.v, dfRCstddev.σ_v, color = :gray)
 
