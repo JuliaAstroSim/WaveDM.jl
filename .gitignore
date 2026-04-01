@@ -24,3 +24,5 @@ docs/site/
 Manifest.toml
 
 temp/
+.trae/
+test/output/

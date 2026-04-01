@@ -72,7 +72,7 @@ function compute_RAR(dfAcc;
 
 
     f = Figure(; size);
-    
+
     axACC0 = Axis(f[1,1];
         xlabel = "r [kpc]",
         ylabel = "a₀ [m/s²]",
@@ -104,7 +104,7 @@ function compute_RAR(dfAcc;
         Legend(f[1,1],
             [s1, hl1, hl4],
             [
-                "RAR", 
+                "RAR",
                 # "Milgrom 1983",
                 "mean(RAR) = $(@sprintf("%.4e m/s²", a0_RAR_data_mean))",
                 # "mean(Milgrom 1983) = $(@sprintf("%.4e m/s²", a0_Milgrom_data_mean))",
@@ -160,7 +160,7 @@ function compute_RAR(dfAcc;
     hl3 = Makie.hlines!(axACC0_zoom, a0_H0, color=:brown)
     hl4 = Makie.hlines!(axACC0_zoom, ustrip(u"m/s^2", C.ACC0), color=:orange)
 
-    
+
 
     axModels = Axis(f[2,1];
         xlabel = "r [kpc]",
@@ -190,7 +190,7 @@ function compute_RAR(dfAcc;
 
     Legend(f[2,1],
         [
-            s1, 
+            s1,
             s2,
             [s3, hl1],
             # [s4, hl2],
@@ -199,7 +199,7 @@ function compute_RAR(dfAcc;
             # s7
         ],
         [
-            "baryon", 
+            "baryon",
             "all (baryon + WaveDM)",
             "MOND (a₀ = 1.2e-10 m/s²)",
             # "RAR (a₀ = $(@sprintf("%.4e m/s²", a0_RAR_data_mean)), RAR)",
@@ -289,7 +289,7 @@ function plot_acc_RAR!(ax, dfAcc;
             # show_trace=true,
         )
     end
-    
+
     y = RAR.(x, fitRAR.param[1] * 1e-10)
     l3 = Makie.lines!(ax, x, y; color, linestyle = :dash)
 
@@ -316,7 +316,7 @@ function plot_acc_RAR(dfAcc;
         yscale = log10,
         title,
     )
-    
+
     s1, l1, l2, l3, fitRAR = plot_acc_RAR!(ax, dfAcc; rMin, rMax, xLim, yLim, markersize, average, mass_fix_ratio, kw...)
 
     Legend(fig[1,1],
@@ -341,4 +341,3 @@ function plot_acc_RAR(dfAcc;
 
     fig
 end
-

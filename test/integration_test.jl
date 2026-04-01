@@ -63,7 +63,7 @@
     Ωₘ₀ = 0.31
     aₛ = +8.29e-60u"fm"
     
-    result = test_MW_MOND(;
+    result = simulate_waveDM(;
         model, V, FDM_mass_ratio, FDM_radius_ratio, title,
         Xmax, Ymax, Zmax, Tmax, Nt, Nx, Ny, Nz, Np,
         absorb_coeff, StepsBetweenSnapshots, IC_vel, reset_velocity,
