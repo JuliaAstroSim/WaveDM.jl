@@ -6,9 +6,9 @@ $(TYPEDSIGNATURES)
 Setup computational grid and coordinates.
 """
 function setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
-    x = collect(LinRange(-Xmax, Xmax, Nx))
-    y = collect(LinRange(-Ymax, Ymax, Ny))
-    z = collect(LinRange(-Zmax, Zmax, Nz))
+    x = Vector{Float64}(LinRange(-Xmax, Xmax, Nx))
+    y = Vector{Float64}(LinRange(-Ymax, Ymax, Ny))
+    z = Vector{Float64}(LinRange(-Zmax, Zmax, Nz))
     Δ = [x[2]-x[1], y[2]-y[1], z[2]-z[1]]
     unit_cell_volumn = prod(Δ)
     return x, y, z, Δ, unit_cell_volumn
@@ -43,7 +43,7 @@ function compute_timestep(Δx, Φ_all, κ, ψ, Tmax, Nt, autoset_timestep, autos
         Nt = ceil(Int, Tmax / (autoset_timestep_ratio * Δt_limit))
     end
 
-    t = collect(LinRange(0, Tmax, Nt))
+    t = Vector{Float64}(LinRange(0, Tmax, Nt))
     dt = Float32(Tmax / Nt)
 
     return t, dt, Nt

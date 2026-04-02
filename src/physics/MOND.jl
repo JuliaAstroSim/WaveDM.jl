@@ -267,7 +267,7 @@ function plot_acc_RAR!(ax, dfAcc;
     Makie.ylims!(ax, yLim)
 
     # a0 = 1.2e-10
-    x = collect(LinRange(xLim..., 100))
+    x = Vector{Float64}(LinRange(xLim[1], xLim[2], 100))
     if flag_lines
         y = RAR.(x, 1.2e-10)
         l2 = Makie.lines!(ax, x, y; color = :blue)

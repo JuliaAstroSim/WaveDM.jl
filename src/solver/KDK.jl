@@ -7,7 +7,7 @@ This function encapsulates the entire kick step from density computation to pote
 # Arguments
 - `device_ψ`: Device-resident wavefunction
 - `ψ`: Host-resident wavefunction
-- `V`: Potential function
+- `V`: Potential function with signature V(x, y, z, ψ) -> scalar
 - `rho_max`: Maximum density value
 - `rho_max_id`: Cartesian index of maximum density
 - `grid`: SimulationGrid (contains: xxx, yyy, zzz, Δ, Nx, Ny, Nz, unit_cell_volumn, oneMatrix)
@@ -21,7 +21,7 @@ This function encapsulates the entire kick step from density computation to pote
 function apply_kick_step!(
     device_ψ,
     ψ,
-    V::Function,
+    V::F,
     rho_max,
     rho_max_id::CartesianIndex{3},
     grid::SimulationGrid,
@@ -31,7 +31,7 @@ function apply_kick_step!(
     dt::Real,
     i::Int,
     t::Vector{<:Real}
-)
+) where {F<:Function}
     device_Φ_all, device_Φ_WaveDM = compute_gravitational_potential(device_ψ, config_gravity, grid, config_device)
     
     Φ_all = collect(device_Φ_all)

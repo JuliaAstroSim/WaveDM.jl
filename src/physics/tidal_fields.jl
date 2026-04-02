@@ -10,9 +10,9 @@ function setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_
     length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength)
     if isnothing(MW_pot)
         @info "MW tidal force: computing potential on interpolation grid"
-        MW_x = collect(LinRange(-MW_pot_Xmax, MW_pot_Xmax, MW_pot_N)) ./ length_astro
-        MW_y = collect(LinRange(-MW_pot_Ymax, MW_pot_Ymax, MW_pot_N)) ./ length_astro
-        MW_z = collect(LinRange(-MW_pot_Zmax, MW_pot_Zmax, MW_pot_N)) ./ length_astro
+        MW_x = Vector{Float64}(LinRange(-MW_pot_Xmax, MW_pot_Xmax, MW_pot_N)) ./ length_astro
+        MW_y = Vector{Float64}(LinRange(-MW_pot_Ymax, MW_pot_Ymax, MW_pot_N)) ./ length_astro
+        MW_z = Vector{Float64}(LinRange(-MW_pot_Zmax, MW_pot_Zmax, MW_pot_N)) ./ length_astro
 
         MW_pos = PVector.(Base.Iterators.product(MW_x*length_astro, MW_y*length_astro, MW_z*length_astro))
 

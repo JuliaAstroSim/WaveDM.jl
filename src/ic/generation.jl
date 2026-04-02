@@ -328,3 +328,107 @@ function adjust_velocity_field(v, ρ_halo, bulk_perturb, bulk_size, bulk_shift_s
 
     return vx, vy, vz
 end
+
+function optimize_smoothed_inversion(r, massBaryon, lower, upper, ic;
+    mode = :NFW, # support :NFW, TODO :nonparameteric
+)
+    function target_smoothed_inversion(params)
+        if mode == :NFW
+            rho0 = params[1] * u"Msun/kpc^3" * 1e8
+            r_s = params[2] * u"kpc"
+            modelDM = NFW(rho0, r_s)
+            rhoDM = GalacticDynamics.density.(modelDM, r)
+        else
+            error("Unsupported DM mode! Try keyword `mode=:NFW`")
+        end
+        massDM = 4π * cumul_integrate(r, r.^2 .* rhoDM)
+        massTotal = massBaryon + massDM
+        constraint_nonmonotonic = sum(ustrip.(diff(massTotal)) .< 0) # This is loose constraint and not sufficient to optimize the DM halo
+
+        accTotal = ustrip.(u"m/s^2", C.G .* massTotal ./ r.^2)
+        accBaryon = ustrip.(u"m/s^2", C.G .* massBaryon ./ r.^2)
+        accRAR = RAR.(accBaryon, 1.2e-10)
+        constraint_acc = sum(((accTotal[div(end,2):end] .- accRAR[div(end,2):end])*1e11).^2) / length(accRAR) # mean squared error, MSE. Enlarge the unit for more strict constraint
+        # Should not use the whole array
+
+        #TODO: add weights
+        return constraint_nonmonotonic + constraint_acc
+    end
+
+    result = Optim.optimize(
+        target_smoothed_inversion,
+        lower, upper, ic,
+        Optim.Fminbox(),
+        Optim.Options(
+            store_trace = true,
+            # iterations = 100,
+            # outer_iterations = 100,
+            # x_tol = 1e-10,
+            # outer_x_tol = 1e-10,
+        )
+    )
+    # trace = [state.value for state in result.trace]
+    # @show trace
+    # println(UnicodePlots.lineplot(trace))
+
+    minimum_value = Optim.minimum(result)
+    optimal_params = Optim.minimizer(result)
+    @show minimum_value, optimal_params
+
+    return optimal_params
+end
+
+function optimize_smoothed_inversion_forward_fitting(r, massBaryon, r_RC, v_RC, lower, upper, ic;
+    mode = :NFW, # support :NFW, TODO :nonparameteric
+)
+    function target_smoothed_inversion_forward_fitting(params)
+        if mode == :NFW
+            rho0 = params[1] * u"Msun/kpc^3"
+            r_s = params[2] * u"kpc"
+            modelDM = NFW(rho0, r_s)
+            rhoDM = GalacticDynamics.density.(modelDM, r)
+        else
+            error("Unsupported DM mode! Try keyword `mode=:NFW`")
+        end
+        massDM = 4π * cumul_integrate(r, r.^2 .* rhoDM)
+        massTotal = massBaryon + massDM
+
+        constraint_nonmonotonic = sum(diff(massTotal) .< zero(eltype(massTotal)))
+
+        velTotal = ustrip.(u"km/s", sqrt.(C.G .* massTotal ./ r))
+        spl_velTotal = Spline1D(ustrip.(u"kpc", r), velTotal)
+        constraint_RC = sum((spl_velTotal(ustrip.(u"kpc", r_RC)) .- ustrip.(u"km/s", v_RC)) .^ 2) / length(r_RC)
+
+        accTotal = ustrip.(u"m/s^2", C.G .* massTotal ./ r.^2)
+        accBaryon = ustrip.(u"m/s^2", C.G .* massBaryon ./ r.^2)
+        accRAR = RAR.(accBaryon, 1.2e-10)
+        constraint_acc = sum(((accTotal[div(end,2):end] .- accRAR[div(end,2):end])*1e11).^2) / length(accRAR) # mean squared error, MSE. Enlarge the unit for more strict constraint
+
+        #TODO: add weights
+        # return constraint_nonmonotonic + 1 * constraint_RC + constraint_acc
+        return constraint_nonmonotonic + constraint_acc
+        # return constraint_acc
+    end
+    
+    result = Optim.optimize(
+        target_smoothed_inversion_forward_fitting,
+        lower, upper, ic,
+        Optim.Fminbox(),
+        Optim.Options(
+            store_trace = true,
+            iterations = 500,
+            outer_iterations = 500,
+            # x_tol = 1e-10,
+            # outer_x_tol = 1e-10,
+        )
+    )
+    # trace = [state.value for state in result.trace]
+    # println(UnicodePlots.lineplot(trace))
+    # @show trace
+
+    minimum_value = Optim.minimum(result)
+    optimal_params = Optim.minimizer(result)
+    @show minimum_value, optimal_params
+
+    return optimal_params
+end
