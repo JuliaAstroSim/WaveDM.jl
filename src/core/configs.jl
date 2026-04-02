@@ -17,7 +17,7 @@ Grid and coordinate configuration for simulations.
 - `oneMatrix`: 3D matrix of ones with size (Nx, Ny, Nz)
 - `unit_cell_volumn`: Volume of a single grid cell
 """
-struct SimulationGrid{T}
+struct SimulationGrid{T} 
     Xmax::T
     Ymax::T
     Zmax::T
@@ -44,10 +44,10 @@ Device configuration for GPU/CPU execution.
 - `DeviceArray`: Function to convert arrays to device-specific arrays (e.g., cu for GPU)
 - `DA`: Function to create distributed arrays (e.g., DArray for distributed memory)
 """
-struct DeviceConfig
+struct DeviceConfig{F1<:Function, F2<:Function}
     gpu::Bool
-    DeviceArray::Function
-    DA::Function  # Distributed Array type
+    DeviceArray::F1
+    DA::F2
 end
 
 """
@@ -137,7 +137,7 @@ Initial conditions configuration.
 """
 struct InitialConditionsConfig{T}
     model::Symbol
-    baryon_mode
+    baryon_mode::Symbol
     Np::Int
     pids
     bulk_perturb::Bool

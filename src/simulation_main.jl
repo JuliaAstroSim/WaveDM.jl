@@ -992,7 +992,7 @@ function simulate_waveDM(;
         @info "Initializing grid"
         x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
         dt = Tmax / Nt
-        t = collect(LinRange(0, Tmax, Nt))
+        t = Vector{Float64}(LinRange(0, Tmax, Nt))
         DA = distributed_memory ? DArray : collect
         oneMatrix = ones(Nx, Ny, Nz)
         xxx, yyy, zzz, rrr = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
