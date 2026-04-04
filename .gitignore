@@ -26,3 +26,5 @@ Manifest.toml
 temp/
 .trae/
 test/output/
+LocalPreferences.toml
+.vscode/
