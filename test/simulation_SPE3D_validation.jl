@@ -1,15 +1,10 @@
-# ============================================================================
-# 3D Schrödinger-Poisson Equation Validation Tests
-# Using WaveDM.jl's SPE3D_waveDM function
-# Based on PyUltraLight (Edwards et al. 2018)
-# ============================================================================
-#
-# Usage: include("test/simulation_SPE3D_validation.jl")
-#
-# This will automatically run all convergence & validation tests and generate
-# publication-quality figures saved to output/SPE3D/figures/
-#
-# ============================================================================
+#=
+3D Schrödinger-Poisson Equation Validation Tests
+
+Usage:
+include("test/simulation_SPE3D_validation.jl")
+include("E:/JuliaAstroSim/WaveDM.jl/test/simulation_SPE3D_validation.jl")
+=#
 
 using WaveDM
 using LinearAlgebra
@@ -19,11 +14,36 @@ using Statistics
 using Printf
 using CairoMakie
 using FileIO
+using Unitful
 
-const OUTPUT_DIR = "./output/SPE3D"
+astro()
+const C = Constant(uAstro)
+
+const η₀ = sqrt(C.μ_0 / C.ε_0)
+const ħ = C.h/2/π
+const Ωₘ₀ = 0.31
+
+const OUTPUT_DIR = "E:/JuliaAstroSim/WaveDM.jl/test/output/SPE3D"
 const FIGURES_DIR = joinpath(OUTPUT_DIR, "figures")
 
 mkpath.([OUTPUT_DIR, FIGURES_DIR])
+
+# ============================================================================
+# FDM Physical Parameters (same as integration_test.jl)
+# ============================================================================
+const mₐ = 0.2 * 1e-22 * 1.783e-36 * u"kg"
+const aₛ = +8.29e-60 * u"fm"
+
+const length_astro = uconvert(u"kpc", (8 * π * ħ^2 / (3 * mₐ^2 * C.H^2 * Ωₘ₀))^0.25)
+const time_astro = uconvert(u"Gyr", (3 * C.H^2 * Ωₘ₀ / (8 * π))^-0.5)
+const mass_astro = uconvert(u"Msun", (3 * C.H^2 * Ωₘ₀ / (8 * π))^0.25 * ħ^1.5 / (mₐ^1.5 * C.G))
+const velocity_astro = uconvert(u"km/s", length_astro / time_astro)
+
+@info "FDM Physical Units:"
+@info "  length_astro = $length_astro"
+@info "  time_astro = $time_astro"
+@info "  mass_astro = $mass_astro"
+@info "  velocity_astro = $velocity_astro"
 
 # ============================================================================
 # Analytic Solutions
@@ -99,16 +119,16 @@ function compute_radial_profile(ψ, x, y, z)
 end
 
 # ============================================================================
-# Test Functions
+# Test Functions (Physical Units)
 # ============================================================================
 
-function run_single_soliton_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt=64, 
+function run_single_soliton_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt=64,
     A=sqrt(2.0), v=[0.1, 0.0, 0.0], x0=[0.0, 0.0, 0.0], verbose=true)
-    
+
     verbose && @info "Running single soliton test: Nx=$Nx, Nt=$Nt"
-    
+
     IC = (x, y, z) -> analytic_soliton_3d(x, y, z, 0.0; A=A, v=v, x0=x0)
-    
+
     ψ_final, fig, figMOND, chi2RC, dfProp, dfAcc, averaged_ψ2 = SPE3D_waveDM(;
         Xmax=Xmax, Ymax=Xmax, Zmax=Xmax, Tmax=Tmax,
         Nx=Nx, Ny=Nx, Nz=Nx, Nt=Nt,
@@ -119,7 +139,7 @@ function run_single_soliton_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt=64,
         outputdir=joinpath(OUTPUT_DIR, "single_soliton"),
         title="Single Soliton",
         gpu=false,
-        Realtime=false,
+        Realtime=true,
         plotOptical=false,
         plotWaveDM=false,
         FDM_mass_ratio=1.0,
@@ -127,6 +147,8 @@ function run_single_soliton_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt=64,
         best_fit_halo_mass=false,
         save_IC=false,
         save_phi=false,
+        plot_virial = true,
+        mₐ=mₐ, aₛ=aₛ, Ωₘ₀=Ωₘ₀,
     )
 
     x = collect(LinRange(-Xmax, Xmax, Nx))
@@ -135,27 +157,29 @@ function run_single_soliton_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt=64,
     xxx = [x[i] for i in 1:Nx, j in 1:Nx, k in 1:Nx]
     yyy = [y[j] for i in 1:Nx, j in 1:Nx, k in 1:Nx]
     zzz = [z[k] for i in 1:Nx, j in 1:Nx, k in 1:Nx]
-    
+
     psi_ana = analytic_soliton_3d(xxx, yyy, zzz, Tmax; A=A, v=v, x0=x0)
-    
+
     return Dict(
         :ψ => ψ_final,
         :x => x, :y => y, :z => z,
-        :Nx => Nx, :Nt => Nt, :Xmax => Xmax, :Tmax => Tmax,
+        :Nx => Nx, :Nt => Nt,
+        :Xmax => Xmax, :Tmax => Tmax,
         :A => A, :v => v, :x0 => x0,
         :psi_ana => psi_ana,
         :error_l2 => compute_error_l2(ψ_final, psi_ana),
         :error_linf => compute_error_linf(ψ_final, psi_ana),
-        :rel_error_l2 => compute_relative_error_l2(ψ_final, psi_ana)
+        :rel_error_l2 => compute_relative_error_l2(ψ_final, psi_ana),
+        :dfProp => dfProp
     )
 end
 
-function run_soliton_collision_test(; Xmax=60.0, Tmax=10.0, Nx=64, Nt=64, verbose=true)
-    
+function run_soliton_collision_test(; Xmax=60.0, Tmax=100.0, Nx=64, Nt=64, verbose=true)
+
     verbose && @info "Running soliton collision test: Nx=$Nx, Nt=$Nt"
-    
+
     IC = (x, y, z) -> analytic_soliton_collision_3d(x, y, z, 0.0)
-    
+
     ψ_final, fig, figMOND, chi2RC, dfProp, dfAcc, averaged_ψ2 = SPE3D_waveDM(;
         Xmax=Xmax, Ymax=Xmax, Zmax=Xmax, Tmax=Tmax,
         Nx=Nx, Ny=Nx, Nz=Nx, Nt=Nt,
@@ -166,7 +190,7 @@ function run_soliton_collision_test(; Xmax=60.0, Tmax=10.0, Nx=64, Nt=64, verbos
         outputdir=joinpath(OUTPUT_DIR, "soliton_collision"),
         title="Soliton Collision",
         gpu=false,
-        Realtime=false,
+        Realtime=true,
         plotOptical=false,
         plotWaveDM=false,
         FDM_mass_ratio=1.0,
@@ -174,6 +198,8 @@ function run_soliton_collision_test(; Xmax=60.0, Tmax=10.0, Nx=64, Nt=64, verbos
         best_fit_halo_mass=false,
         save_IC=false,
         save_phi=false,
+        plot_virial = true,
+        mₐ=mₐ, aₛ=aₛ, Ωₘ₀=Ωₘ₀,
     )
 
     return Dict(
@@ -181,7 +207,9 @@ function run_soliton_collision_test(; Xmax=60.0, Tmax=10.0, Nx=64, Nt=64, verbos
         :x => collect(LinRange(-Xmax, Xmax, Nx)),
         :y => collect(LinRange(-Xmax, Xmax, Nx)),
         :z => collect(LinRange(-Xmax, Xmax, Nx)),
-        :Nx => Nx, :Nt => Nt, :Xmax => Xmax, :Tmax => Tmax
+        :Nx => Nx, :Nt => Nt,
+        :Xmax => Xmax, :Tmax => Tmax,
+        :dfProp => dfProp
     )
 end
 
@@ -189,40 +217,44 @@ function analytic_soliton_tde_3d(x, y, z, t; A=sqrt(2.0), x0=[0.0, 0.0, 0.0], v=
     return analytic_soliton_3d(x, y, z, t; A=A, v=v, x0=x0)
 end
 
-function run_tde_test(; Xmax=50.0, Tmax=15.0, Nx=64, Nt=64,
-    A=sqrt(2.0), soliton_x0=[0.0, 0.0, 0.0], soliton_v=[0.0, 0.0, 0.0],
-    perturber_mass=0.5, perturber_x0=[25.0, 0.0, 0.0], perturber_v=[-0.2, 0.0, 0.0],
+function run_tde_test(; Xmax=50.0, Tmax=100.0, Nx=64, Nt=64,
+    A=sqrt(2.0),
+    soliton_x0=[5.0, 5.0, 0.0],
+    soliton_v=[0.0, 0.0, 0.0],
+    perturber_mass=2.0,
+    perturber_x0=[8.0, 8.0, 0.0],
+    perturber_v=[-0.3, -0.3, 0.0],
+    softening=1.0,
     verbose=true)
 
     verbose && @info "Running TDE test: M_perturber=$perturber_mass"
 
     function IC_with_perturber(x, y, z)
         soliton = analytic_soliton_3d(x, y, z, 0.0; A=A, v=soliton_v, x0=soliton_x0)
-        r_perturber = sqrt.((x .- perturber_x0[1]).^2 + (y .- perturber_x0[2]).^2 + (z .- perturber_x0[3]).^2)
-        gaussian_perturber = perturber_mass * exp.(-r_perturber.^2 / (2 * 3.0^2))
-        return soliton + gaussian_perturber
+        return soliton
     end
 
-    function V_with_gravity(x, y, z, ψ)
-        r_perturber = sqrt.((x .- perturber_x0[1]).^2 + (y .- perturber_x0[2]).^2 + (z .- perturber_x0[3]).^2)
-        G = 1.0
-        M = perturber_mass
-        softening = 3.0
-        potential = -G * M ./ sqrt.(r_perturber.^2 .+ softening^2)
-        return potential
+    V_tde = let perturber_x0=perturber_x0, perturber_mass=perturber_mass, softening=softening
+        (x, y, z, ψ) -> begin
+            r_perturber = sqrt.((x .- perturber_x0[1]).^2 + (y .- perturber_x0[2]).^2 + (z .- perturber_x0[3]).^2)
+            G = 1.0
+            M = perturber_mass
+            potential = -G * M ./ sqrt.(r_perturber.^2 .+ softening^2)
+            return potential
+        end
     end
 
     ψ_final, fig, figMOND, chi2RC, dfProp, dfAcc, averaged_ψ2 = SPE3D_waveDM(;
         Xmax=Xmax, Ymax=Xmax, Zmax=Xmax, Tmax=Tmax,
         Nx=Nx, Ny=Nx, Nz=Nx, Nt=Nt,
         IC=IC_with_perturber,
-        V=V_with_gravity,
+        V=V_tde,
         baryon_mode=:ignored,
         absorb_coeff=0.0,
         outputdir=joinpath(OUTPUT_DIR, "tde"),
         title="TDE",
         gpu=false,
-        Realtime=false,
+        Realtime=true,
         plotOptical=false,
         plotWaveDM=false,
         FDM_mass_ratio=1.0,
@@ -230,37 +262,31 @@ function run_tde_test(; Xmax=50.0, Tmax=15.0, Nx=64, Nt=64,
         best_fit_halo_mass=false,
         save_IC=false,
         save_phi=false,
+        plot_virial = true,
+        mₐ=mₐ, aₛ=aₛ, Ωₘ₀=Ωₘ₀,
     )
-
-    x = collect(LinRange(-Xmax, Xmax, Nx))
-    y = collect(LinRange(-Xmax, Xmax, Nx))
-    z = collect(LinRange(-Xmax, Xmax, Nx))
-    xxx = [x[i] for i in 1:Nx, j in 1:Nx, k in 1:Nx]
-    yyy = [y[j] for i in 1:Nx, j in 1:Nx, k in 1:Nx]
-    zzz = [z[k] for i in 1:Nx, j in 1:Nx, k in 1:Nx]
-    Δ = ntuple(_ -> 2*Xmax/Nx, 3)
-
-    ψ_initial = IC_with_perturber(xxx, yyy, zzz)
-    mass_initial = compute_total_mass(ψ_initial, Δ)
-    mass_final = compute_total_mass(ψ_final, Δ)
 
     return Dict(
         :ψ => ψ_final,
-        :x => x, :y => y, :z => z,
-        :Nx => Nx, :Nt => Nt, :Xmax => Xmax, :Tmax => Tmax,
-        :mass_ratio => mass_final / mass_initial,
-        :mass_initial => mass_initial,
-        :mass_final => mass_final,
-        :perturber_mass => perturber_mass
+        :x => collect(LinRange(-Xmax, Xmax, Nx)),
+        :y => collect(LinRange(-Xmax, Xmax, Nx)),
+        :z => collect(LinRange(-Xmax, Xmax, Nx)),
+        :Nx => Nx, :Nt => Nt,
+        :Xmax => Xmax, :Tmax => Tmax,
+        :perturber_mass => perturber_mass,
+        :dfProp => dfProp
     )
 end
 
-function run_soliton_binary_test(; Xmax=50.0, Tmax=20.0, Nx=64, Nt=64, verbose=true)
-    
+function run_soliton_binary_test(; Xmax=50.0, Tmax=300.0, Nx=64, Nt=64,
+    A=sqrt(2.0), separation=20.0, orbital_velocity=0.2,
+    verbose=true)
+
     verbose && @info "Running soliton binary test: Nx=$Nx, Nt=$Nt"
-    
-    IC = (x, y, z) -> analytic_soliton_binary_3d(x, y, z, 0.0)
-    
+
+    IC = (x, y, z) -> analytic_soliton_binary_3d(x, y, z, 0.0;
+        A=A, separation=separation, orbital_velocity=orbital_velocity)
+
     ψ_final, fig, figMOND, chi2RC, dfProp, dfAcc, averaged_ψ2 = SPE3D_waveDM(;
         Xmax=Xmax, Ymax=Xmax, Zmax=Xmax, Tmax=Tmax,
         Nx=Nx, Ny=Nx, Nz=Nx, Nt=Nt,
@@ -271,7 +297,7 @@ function run_soliton_binary_test(; Xmax=50.0, Tmax=20.0, Nx=64, Nt=64, verbose=t
         outputdir=joinpath(OUTPUT_DIR, "soliton_binary"),
         title="Soliton Binary",
         gpu=false,
-        Realtime=false,
+        Realtime=true,
         plotOptical=false,
         plotWaveDM=false,
         FDM_mass_ratio=1.0,
@@ -279,6 +305,8 @@ function run_soliton_binary_test(; Xmax=50.0, Tmax=20.0, Nx=64, Nt=64, verbose=t
         best_fit_halo_mass=false,
         save_IC=false,
         save_phi=false,
+        plot_virial = true,
+        mₐ=mₐ, aₛ=aₛ, Ωₘ₀=Ωₘ₀,
     )
 
     return Dict(
@@ -286,11 +314,13 @@ function run_soliton_binary_test(; Xmax=50.0, Tmax=20.0, Nx=64, Nt=64, verbose=t
         :x => collect(LinRange(-Xmax, Xmax, Nx)),
         :y => collect(LinRange(-Xmax, Xmax, Nx)),
         :z => collect(LinRange(-Xmax, Xmax, Nx)),
-        :Nx => Nx, :Nt => Nt, :Xmax => Xmax, :Tmax => Tmax
+        :Nx => Nx, :Nt => Nt,
+        :Xmax => Xmax, :Tmax => Tmax,
+        :dfProp => dfProp
     )
 end
 
-function run_tde_convergence_test(; Xmax=50.0, Tmax=15.0, Nx_list=[48, 64, 96, 128], Nt_list=nothing, verbose=true)
+function run_tde_convergence_test(; Xmax=50.0, Tmax=100.0, Nx_list=[48, 64, 96], Nt_list=nothing, verbose=true)
     if isnothing(Nt_list)
         Nt_list = Nx_list
     end
@@ -298,31 +328,29 @@ function run_tde_convergence_test(; Xmax=50.0, Tmax=15.0, Nx_list=[48, 64, 96, 1
     verbose && @info "Running TDE convergence test"
 
     profiles = []
-    mass_ratios = Float64[]
+    results = []
 
     for (i, Nx) in enumerate(Nx_list)
         verbose && @info "  Nx = $Nx"
         Nt = Nt_list[min(i, length(Nt_list))]
         result = run_tde_test(Xmax=Xmax, Tmax=Tmax, Nx=Nx, Nt=Nt, verbose=false)
 
-        push!(mass_ratios, result[:mass_ratio])
+        push!(results, result)
 
         x = result[:x]
-        N = length(x)
-        iz_center = div(N, 2)
-        iy_center = div(N, 2)
-        rho_line = abs2.(result[:ψ])[iz_center, iy_center, :]
-        push!(profiles, (x=result[:x], rho=rho_line, label="Nx=$Nx"))
+        iz_center = div(Nx, 2)
+        rho_slice = abs2.(result[:ψ])[:, :, iz_center]
+        push!(profiles, (x=x, y=x, rho=rho_slice, label="Nx=$Nx"))
     end
 
     return Dict(
         :Nx_list => Nx_list,
         :profiles => profiles,
-        :mass_ratios => mass_ratios
+        :results => results
     )
 end
 
-function run_collision_convergence_test(; Xmax=60.0, Tmax=10.0, Nx_list=[48, 64, 96, 128], Nt_list=nothing, verbose=true)
+function run_collision_convergence_test(; Xmax=60.0, Tmax=100.0, Nx_list=[48, 64, 96], Nt_list=nothing, verbose=true)
     if isnothing(Nt_list)
         Nt_list = Nx_list
     end
@@ -330,6 +358,7 @@ function run_collision_convergence_test(; Xmax=60.0, Tmax=10.0, Nx_list=[48, 64,
     verbose && @info "Running collision convergence test"
 
     profiles = []
+    results = []
 
     for (i, Nx) in enumerate(Nx_list)
         verbose && @info "  Nx = $Nx"
@@ -338,18 +367,21 @@ function run_collision_convergence_test(; Xmax=60.0, Tmax=10.0, Nx_list=[48, 64,
 
         x = result[:x]
         N = length(x)
+        iy_center = div(N, 2)
         iz_center = div(N, 2)
-        rho_line = abs2.(result[:ψ])[:, :, iz_center]
-        push!(profiles, (x=result[:x], y=result[:y], rho=rho_line, label="Nx=$Nx"))
+        rho_line = abs2.(result[:ψ])[iy_center, iz_center, :]
+        push!(profiles, (x=x, rho=rho_line, label="Nx=$Nx"))
+        push!(results, result)
     end
 
     return Dict(
         :Nx_list => Nx_list,
-        :profiles => profiles
+        :profiles => profiles,
+        :results => results
     )
 end
 
-function run_binary_convergence_test(; Xmax=50.0, Tmax=20.0, Nx_list=[48, 64, 96, 128], Nt_list=nothing, verbose=true)
+function run_binary_convergence_test(; Xmax=50.0, Tmax=300.0, Nx_list=[48, 64, 96], Nt_list=nothing, verbose=true)
     if isnothing(Nt_list)
         Nt_list = Nx_list
     end
@@ -357,6 +389,7 @@ function run_binary_convergence_test(; Xmax=50.0, Tmax=20.0, Nx_list=[48, 64, 96
     verbose && @info "Running binary convergence test"
 
     profiles = []
+    results = []
 
     for (i, Nx) in enumerate(Nx_list)
         verbose && @info "  Nx = $Nx"
@@ -365,25 +398,100 @@ function run_binary_convergence_test(; Xmax=50.0, Tmax=20.0, Nx_list=[48, 64, 96
 
         x = result[:x]
         N = length(x)
+        iy_center = div(N, 2)
         iz_center = div(N, 2)
-        rho_line = abs2.(result[:ψ])[:, :, iz_center]
-        push!(profiles, (x=result[:x], y=result[:y], rho=rho_line, label="Nx=$Nx"))
+        rho_line = abs2.(result[:ψ])[iy_center, iz_center, :]
+        push!(profiles, (x=x, rho=rho_line, label="Nx=$Nx"))
+        push!(results, result)
     end
 
     return Dict(
         :Nx_list => Nx_list,
-        :profiles => profiles
+        :profiles => profiles,
+        :results => results
     )
 end
 
-function run_spatial_convergence_test(; Xmax=30.0, Tmax=2.0, Nx_list=[32, 64, 128, 192], Nt=64, verbose=true)
-    
+# ============================================================================
+# Temporal Convergence Tests for Collision, Binary, and TDE
+# ============================================================================
+
+function run_collision_temporal_convergence_test(; Xmax=60.0, Tmax=100.0, Nx=64, Nt_list=[48, 64, 96], verbose=true)
+    verbose && @info "Running collision temporal convergence test"
+
+    profiles = []
+    results = []
+
+    for Nt in Nt_list
+        verbose && @info "  Nt = $Nt"
+        result = run_soliton_collision_test(Xmax=Xmax, Tmax=Tmax, Nx=Nx, Nt=Nt, verbose=false)
+
+        x = result[:x]
+        iy_center = div(Nx, 2)
+        iz_center = div(Nx, 2)
+        rho_line = abs2.(result[:ψ])[iy_center, iz_center, :]
+        push!(profiles, (x=x, rho=rho_line, label="Nt=$Nt"))
+        push!(results, result)
+    end
+
+    return Dict(
+        :Nt_list => Nt_list,
+        :profiles => profiles,
+        :results => results
+    )
+end
+
+function run_binary_temporal_convergence_test(; Xmax=50.0, Tmax=300.0, Nx=64, Nt_list=[48, 64, 96], verbose=true)
+    verbose && @info "Running binary temporal convergence test"
+
+    profiles = []
+    results = []
+
+    for Nt in Nt_list
+        verbose && @info "  Nt = $Nt"
+        result = run_soliton_binary_test(Xmax=Xmax, Tmax=Tmax, Nx=Nx, Nt=Nt, verbose=false)
+
+        x = result[:x]
+        iy_center = div(Nx, 2)
+        iz_center = div(Nx, 2)
+        rho_line = abs2.(result[:ψ])[iy_center, iz_center, :]
+        push!(profiles, (x=x, rho=rho_line, label="Nt=$Nt"))
+        push!(results, result)
+    end
+
+    return Dict(
+        :Nt_list => Nt_list,
+        :profiles => profiles,
+        :results => results
+    )
+end
+
+function run_tde_temporal_convergence_test(; Xmax=50.0, Tmax=100.0, Nx=64, Nt_list=[48, 64, 96], verbose=true)
+    verbose && @info "Running TDE temporal convergence test"
+
+    results = []
+
+    for Nt in Nt_list
+        verbose && @info "  Nt = $Nt"
+        result = run_tde_test(Xmax=Xmax, Tmax=Tmax, Nx=Nx, Nt=Nt, verbose=false)
+        push!(results, result)
+    end
+
+    return Dict(
+        :Nt_list => Nt_list,
+        :results => results
+    )
+end
+
+function run_spatial_convergence_test(; Xmax=30.0, Tmax=2.0, Nx_list=[32, 64], Nt=96, verbose=true)
+
     verbose && @info "Running spatial convergence test"
-    
+
     errors_l2 = Float64[]
     errors_linf = Float64[]
     rel_errors_l2 = Float64[]
     profiles = []
+    results = []
 
     for Nx in Nx_list
         verbose && @info "  Nx = $Nx"
@@ -392,12 +500,13 @@ function run_spatial_convergence_test(; Xmax=30.0, Tmax=2.0, Nx_list=[32, 64, 12
         push!(errors_linf, result[:error_linf])
         push!(rel_errors_l2, result[:rel_error_l2])
         push!(profiles, (x=result[:x], rho=abs2.(result[:ψ]), label="Nx=$Nx"))
+        push!(results, result)
     end
-    
+
     dx_list = 2 * Xmax ./ Nx_list
     orders_l2 = Float64[]
     orders_linf = Float64[]
-    
+
     for i in 2:length(Nx_list)
         if errors_l2[i-1] > 0
             push!(orders_l2, log(errors_l2[i]/errors_l2[i-1]) / log(dx_list[i]/dx_list[i-1]))
@@ -410,7 +519,7 @@ function run_spatial_convergence_test(; Xmax=30.0, Tmax=2.0, Nx_list=[32, 64, 12
             push!(orders_linf, NaN)
         end
     end
-    
+
     return Dict(
         :Nx_list => Nx_list,
         :dx_list => dx_list,
@@ -419,11 +528,12 @@ function run_spatial_convergence_test(; Xmax=30.0, Tmax=2.0, Nx_list=[32, 64, 12
         :rel_errors_l2 => rel_errors_l2,
         :orders_l2 => orders_l2,
         :orders_linf => orders_linf,
-        :profiles => profiles
+        :profiles => profiles,
+        :results => results
     )
 end
 
-function run_temporal_convergence_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt_list=[32, 64, 128, 192], verbose=true)
+function run_temporal_convergence_test(; Xmax=30.0, Tmax=2.0, Nx=96, Nt_list=[32, 64], verbose=true)
 
     verbose && @info "Running temporal convergence test"
 
@@ -431,6 +541,7 @@ function run_temporal_convergence_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt_list=[32
     errors_linf = Float64[]
     rel_errors_l2 = Float64[]
     profiles = []
+    results = []
 
     for Nt in Nt_list
         verbose && @info "  Nt = $Nt"
@@ -439,12 +550,13 @@ function run_temporal_convergence_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt_list=[32
         push!(errors_linf, result[:error_linf])
         push!(rel_errors_l2, result[:rel_error_l2])
         push!(profiles, (x=result[:x], rho=abs2.(result[:ψ]), label="Nt=$Nt"))
+        push!(results, result)
     end
-    
+
     dt_list = Tmax ./ Nt_list
     orders_l2 = Float64[]
     orders_linf = Float64[]
-    
+
     for i in 2:length(Nt_list)
         if errors_l2[i-1] > 0
             push!(orders_l2, log(errors_l2[i]/errors_l2[i-1]) / log(dt_list[i]/dt_list[i-1]))
@@ -457,7 +569,7 @@ function run_temporal_convergence_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt_list=[32
             push!(orders_linf, NaN)
         end
     end
-    
+
     return Dict(
         :Nt_list => Nt_list,
         :dt_list => dt_list,
@@ -466,7 +578,8 @@ function run_temporal_convergence_test(; Xmax=30.0, Tmax=2.0, Nx=64, Nt_list=[32
         :rel_errors_l2 => rel_errors_l2,
         :orders_l2 => orders_l2,
         :orders_linf => orders_linf,
-        :profiles => profiles
+        :profiles => profiles,
+        :results => results  # Include full results for dfProp
     )
 end
 
@@ -489,73 +602,35 @@ end
 function plot_spatial_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_spatial_convergence.png"))
 
     Nx_list = result[:Nx_list]
-    dx_list = result[:dx_list]
-    errors_l2 = result[:errors_l2]
-    errors_linf = result[:errors_linf]
-    orders_l2 = result[:orders_l2]
     profiles = result[:profiles]
 
-    fig = Figure(size=(1000, 400), fontsize=11)
-
-    # Left panel: Density profiles overlay
-    ax1 = Axis(fig[1, 1],
-        title="Density Profile Convergence",
-        xlabel="r",
-        ylabel="|ψ|²",
-        xgridvisible=true,
-        ygridvisible=true)
+    fig = Figure(size=(700, 500), fontsize=12)
 
     colors = [:blue, :orange, :green, :red, :purple]
-    alphas = [0.7, 0.8, 0.9, 1.0, 1.0]
+    linestyles = [:solid, :solid, :solid, :dash, :dashdot]
+
+    ax = Axis(fig[1, 1],
+        title="Single Soliton - Spatial Resolution Convergence",
+        xlabel="r",
+        ylabel="|ψ|²",
+        xgridvisible=false,
+        ygridvisible=false)
+
     for (i, p) in enumerate(profiles)
         Nx = length(p.x)
         iz_center = div(Nx, 2)
         iy_center = div(Nx, 2)
-        rho_line = p.rho[iz_center, iy_center, :]
+        rho_line = p.rho[iy_center, iz_center, :]
         r_line = abs.(p.x)
-        lines!(ax1, r_line, rho_line, color=colors[i], linewidth=2, alpha=alphas[i], label=p.label)
+        label = "$(Nx_list[i])³"
+        lines!(ax, r_line, rho_line, color=colors[min(i, length(colors))],
+               linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
     end
-    axislegend(ax1, position=:rt, framevisible=true)
-    xlims!(ax1, 0, 15)
-
-    # Right panel: Error convergence
-    ax2 = Axis(fig[1, 2],
-        title="Spatial Convergence Order",
-        xlabel="Grid spacing h",
-        ylabel="L2 Error",
-        xscale=log10,
-        yscale=log10,
-        xgridvisible=true,
-        ygridvisible=true)
-
-    scatter!(ax2, dx_list, errors_l2,
-        color=:blue, marker=:circle, markersize=10,
-        label="Numerical error")
-
-    # Reference lines
-    h_ref = dx_list[1]
-    order2_line = errors_l2[1] * (dx_list ./ h_ref).^2
-    order4_line = errors_l2[1] * (dx_list ./ h_ref).^4
-
-    lines!(ax2, dx_list, order2_line,
-        color=:gray, linestyle=:dash, linewidth=1.5, label="O(h²)")
-    lines!(ax2, dx_list, order4_line,
-        color=:lightgray, linestyle=:dot, linewidth=1.5, label="O(h⁴)")
-
-    axislegend(ax2, position=:lb, framevisible=true)
+    axislegend(ax, position=:rt, framevisible=true)
+    xlims!(ax, 0, 5)
 
     save(save_path, fig, px_per_unit=2)
     @info "Saved: $save_path"
-
-    println("\n" * "="^60)
-    println("Spatial Convergence Results:")
-    println("="^60)
-    println("Nx\t\th\t\tL2 Error\t\tL∞ Error\t\tOrder L2")
-    for i in eachindex(Nx_list)
-        order_str = i > 1 ? @sprintf("%.2f", orders_l2[i-1]) : "-"
-        println("$(Nx_list[i])\t\t$(@sprintf("%.4e", dx_list[i]))\t\t$(@sprintf("%.4e", errors_l2[i]))\t\t$(@sprintf("%.4e", errors_linf[i]))\t\t$order_str")
-    end
-    println("="^60)
 
     return fig
 end
@@ -563,70 +638,35 @@ end
 function plot_temporal_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_temporal_convergence.png"))
 
     Nt_list = result[:Nt_list]
-    dt_list = result[:dt_list]
-    errors_l2 = result[:errors_l2]
-    errors_linf = result[:errors_linf]
-    orders_l2 = result[:orders_l2]
     profiles = result[:profiles]
 
-    fig = Figure(size=(1000, 400), fontsize=11)
-
-    # Left panel: Density profiles overlay
-    ax1 = Axis(fig[1, 1],
-        title="Temporal Convergence - Density Profiles",
-        xlabel="r",
-        ylabel="|ψ|²",
-        xgridvisible=true,
-        ygridvisible=true)
+    fig = Figure(size=(700, 500), fontsize=12)
 
     colors = [:blue, :orange, :green, :red, :purple]
-    alphas = [0.7, 0.8, 0.9, 1.0, 1.0]
+    linestyles = [:solid, :solid, :solid, :dash, :dashdot]
+
+    ax = Axis(fig[1, 1],
+        title="Single Soliton - Temporal Resolution Convergence",
+        xlabel="r",
+        ylabel="|ψ|²",
+        xgridvisible=false,
+        ygridvisible=false)
+
     for (i, p) in enumerate(profiles)
         Nx = length(p.x)
         iz_center = div(Nx, 2)
         iy_center = div(Nx, 2)
-        rho_line = p.rho[iz_center, iy_center, :]
+        rho_line = p.rho[iy_center, iz_center, :]
         r_line = abs.(p.x)
-        lines!(ax1, r_line, rho_line, color=colors[i], linewidth=2, alpha=alphas[i], label=p.label)
+        label = "Nt=$(Nt_list[i])"
+        lines!(ax, r_line, rho_line, color=colors[min(i, length(colors))],
+               linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
     end
-    axislegend(ax1, position=:rt, framevisible=true)
-    xlims!(ax1, 0, 15)
-
-    # Right panel: Error convergence
-    ax2 = Axis(fig[1, 2],
-        title="Temporal Convergence Order",
-        xlabel="Time step Δt",
-        ylabel="L2 Error",
-        xscale=log10,
-        yscale=log10,
-        xgridvisible=true,
-        ygridvisible=true)
-
-    scatter!(ax2, dt_list, errors_l2,
-        color=:blue, marker=:circle, markersize=10,
-        label="Numerical error")
-
-    # Reference lines
-    dt_ref = dt_list[1]
-    order2_line = errors_l2[1] * (dt_list ./ dt_ref).^2
-
-    lines!(ax2, dt_list, order2_line,
-        color=:gray, linestyle=:dash, linewidth=1.5, label="O(Δt²)")
-
-    axislegend(ax2, position=:lb, framevisible=true)
+    axislegend(ax, position=:rt, framevisible=true)
+    xlims!(ax, 0, 5)
 
     save(save_path, fig, px_per_unit=2)
     @info "Saved: $save_path"
-
-    println("\n" * "="^60)
-    println("Temporal Convergence Results:")
-    println("="^60)
-    println("Nt\t\tΔt\t\tL2 Error\t\tL∞ Error\t\tOrder L2")
-    for i in eachindex(Nt_list)
-        order_str = i > 1 ? @sprintf("%.2f", orders_l2[i-1]) : "-"
-        println("$(Nt_list[i])\t\t$(@sprintf("%.4e", dt_list[i]))\t\t$(@sprintf("%.4e", errors_l2[i]))\t\t$(@sprintf("%.4e", errors_linf[i]))\t\t$order_str")
-    end
-    println("="^60)
 
     return fig
 end
@@ -677,56 +717,6 @@ function plot_tde_result(result; save_path=joinpath(FIGURES_DIR, "fig_tde.png"))
     println("Mass Ratio:   $(@sprintf("%.2f", 100*result[:mass_ratio]))%")
     println("Perturber Mass: $(result[:perturber_mass])")
     println("="^60)
-
-    return fig
-end
-
-function plot_energy_conservation(result; save_path=joinpath(FIGURES_DIR, "fig_energy_conservation.png"))
-
-    ψ = result[:ψ]
-    Nx = result[:Nx]
-    Xmax = result[:Xmax]
-
-    Δ = 2 * Xmax / Nx
-    mass = compute_total_mass(ψ, ntuple(_ -> Δ, 3))
-    peak_density = compute_peak_density(ψ)
-    cx, cy, cz = find_soliton_center(ψ, result[:x], result[:y], result[:z])
-
-    println("\n" * "="^60)
-    println("Soliton Propagation Metrics:")
-    println("="^60)
-    println("Total Mass: $(@sprintf("%.6f", mass))")
-    println("Peak Density: $(@sprintf("%.6f", peak_density))")
-    println("Soliton Center: ($(@sprintf("%.3f", cx)), $(@sprintf("%.3f", cy)), $(@sprintf("%.3f", cz)))")
-    println("Expected Center: (0.0, 0.0, 0.0)")
-    println("Center Error: $(@sprintf("%.6f", sqrt(cx^2 + cy^2 + cz^2)))")
-    println("="^60)
-
-    fig = Figure(size=(600, 400), fontsize=12)
-    ax = Axis(fig[1, 1], title="Soliton Propagation Metrics")
-
-    # Create a simple table-like display
-    metrics = [
-        "Total Mass" => @sprintf("%.4f", mass),
-        "Peak Density" => @sprintf("%.4f", peak_density),
-        "Center X" => @sprintf("%.3f", cx),
-        "Center Y" => @sprintf("%.3f", cy),
-        "Center Z" => @sprintf("%.3f", cz),
-        "Center Error" => @sprintf("%.4f", sqrt(cx^2+cy^2+cz^2))
-    ]
-
-    y_pos = 0.9
-    for (label, value) in metrics
-        text!(ax, Point2(0.1, y_pos), text="$label:", fontsize=12, align=(:left, :top))
-        text!(ax, Point2(0.6, y_pos), text=value, fontsize=12, align=(:left, :top))
-        y_pos -= 0.12
-    end
-
-    hidedecorations!(ax)
-    hidespines!(ax)
-
-    save(save_path, fig, px_per_unit=2)
-    @info "Saved: $save_path"
 
     return fig
 end
@@ -908,101 +898,586 @@ function plot_soliton_binary(result; save_path=joinpath(FIGURES_DIR, "fig_solito
     return fig
 end
 
-function plot_tde_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_tde_convergence.png"))
+function plot_tde_convergence(spatial_result, temporal_result=nothing; save_path=joinpath(FIGURES_DIR, "fig_tde_convergence.png"))
 
-    Nx_list = result[:Nx_list]
-    profiles = result[:profiles]
-    mass_ratios = result[:mass_ratios]
+    spatial_results = spatial_result[:results]
+    spatial_Nx_list = spatial_result[:Nx_list]
 
-    fig = Figure(size=(1000, 400), fontsize=11)
+    fig = Figure(size=(1000, 800), fontsize=12)
 
-    # Left panel: Density profiles overlay
-    ax1 = Axis(fig[1, 1],
-        title="TDE Density Profile Convergence",
-        xlabel="x",
-        ylabel="|ψ|²",
-        xgridvisible=true,
-        ygridvisible=true)
+    colors = [:blue, :orange, :green, :red, :purple]
+    linestyles = [:solid, :solid, :solid, :dash, :dashdot]
 
-    colors = [:blue, :orange, :green, :red]
-    for (i, p) in enumerate(profiles)
-        N = length(p.x)
-        iy_center = div(N, 2)
-        rho_line = p.rho[iy_center, :]
-        lines!(ax1, p.x, rho_line, color=colors[i], linewidth=2, label=p.label)
+    # Top panel: Spatial resolution - Energy conservation over time
+    ax_top = Axis(fig[1, 1],
+        title="TDE - Spatial Resolution Convergence",
+        xlabel="Time",
+        ylabel=L"\Delta E_{total} / E_{total}",
+        xgridvisible=false,
+        ygridvisible=false)
+
+    for (i, res) in enumerate(spatial_results)
+        if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+            continue
+        end
+        dfProp = res[:dfProp]
+        if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+            continue
+        end
+
+        t = dfProp.t
+        PE = dfProp.PE_abs
+        KE = dfProp.KE
+        QE = dfProp.QE
+        E_total = KE .+ QE .- PE
+
+        if length(E_total) > 0 && E_total[1] != 0
+            dE_E = (E_total .- E_total[1]) ./ abs(E_total[1])
+            label = "$(spatial_Nx_list[i])³"
+            lines!(ax_top, t, dE_E, color=colors[min(i, length(colors))],
+                   linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+        end
     end
-    axislegend(ax1, position=:rt, framevisible=true)
+    hlines!(ax_top, [0], color=:black, linestyle=:dash)
+    axislegend(ax_top, position=:rt, framevisible=true)
 
-    # Right panel: Mass conservation vs resolution
-    ax2 = Axis(fig[1, 2],
-        title="TDE Mass Conservation",
-        xlabel="Nx",
-        ylabel="Mass Remaining (%)",
-        xgridvisible=true,
-        ygridvisible=true)
+    # Bottom panel: Temporal resolution - Energy conservation over time
+    if !isnothing(temporal_result)
+        temporal_results = temporal_result[:results]
+        temporal_Nt_list = temporal_result[:Nt_list]
 
-    scatter!(ax2, Nx_list, 100 .* mass_ratios,
-        color=:blue, marker=:circle, markersize=10)
+        ax_bottom = Axis(fig[2, 1],
+            title="TDE - Temporal Resolution Convergence",
+            xlabel="Time",
+            ylabel=L"\Delta E_{total} / E_{total}",
+            xgridvisible=false,
+            ygridvisible=false)
 
-    # Reference line at 100%
-    hlines!(ax2, 100.0, color=:gray, linestyle=:dash, linewidth=1.5, label="100%")
+        for (i, res) in enumerate(temporal_results)
+            if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+                continue
+            end
+            dfProp = res[:dfProp]
+            if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+                continue
+            end
 
-    axislegend(ax2, position=:lb, framevisible=true)
+            t = dfProp.t
+            PE = dfProp.PE_abs
+            KE = dfProp.KE
+            QE = dfProp.QE
+            E_total = KE .+ QE .- PE
+
+            if length(E_total) > 0 && E_total[1] != 0
+                dE_E = (E_total .- E_total[1]) ./ abs(E_total[1])
+                label = "Nt=$(temporal_Nt_list[i])"
+                lines!(ax_bottom, t, dE_E, color=colors[min(i, length(colors))],
+                       linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+            end
+        end
+        hlines!(ax_bottom, [0], color=:black, linestyle=:dash)
+        axislegend(ax_bottom, position=:rt, framevisible=true)
+    else
+        # Fallback: Just show final energy vs resolution
+        ax_bottom = Axis(fig[2, 1],
+            title="TDE - Final Energy vs Resolution",
+            xlabel="Grid Size Nx",
+            ylabel="Total Energy",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        total_energies = Float64[]
+        for res in spatial_results
+            if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+                push!(total_energies, NaN)
+                continue
+            end
+            dfProp = res[:dfProp]
+            if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+                push!(total_energies, NaN)
+                continue
+            end
+            PE = dfProp.PE_abs
+            KE = dfProp.KE
+            QE = dfProp.QE
+            E_total = KE .+ QE .- PE
+            push!(total_energies, E_total[1])
+        end
+        scatterlines!(ax_bottom, spatial_Nx_list, total_energies,
+            color=:blue, linewidth=2, marker=:circle, markersize=10)
+    end
 
     save(save_path, fig, px_per_unit=2)
     @info "Saved: $save_path"
 
-    println("\n" * "="^60)
-    println("TDE Convergence Results:")
-    println("="^60)
-    println("Nx\t\tMass Remaining")
-    for i in eachindex(Nx_list)
-        println("$(Nx_list[i])\t\t$(@sprintf("%.2f%%", 100*mass_ratios[i]))")
+    return fig
+end
+
+function plot_collision_convergence_energy(spatial_result, temporal_result=nothing; save_path=joinpath(FIGURES_DIR, "fig_collision_convergence_energy.png"))
+
+    spatial_results = spatial_result[:results]
+    spatial_Nx_list = spatial_result[:Nx_list]
+
+    fig = Figure(size=(1000, 800), fontsize=12)
+
+    colors = [:blue, :orange, :green, :red, :purple]
+    linestyles = [:solid, :solid, :solid, :dash, :dashdot]
+
+    ax_top = Axis(fig[1, 1],
+        title="Collision - Spatial Resolution Convergence",
+        xlabel="Time",
+        ylabel=L"\Delta E_{total} / E_{total}",
+        xgridvisible=false,
+        ygridvisible=false)
+
+    for (i, res) in enumerate(spatial_results)
+        if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+            continue
+        end
+        dfProp = res[:dfProp]
+        if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+            continue
+        end
+
+        t = dfProp.t
+        PE = dfProp.PE_abs
+        KE = dfProp.KE
+        QE = dfProp.QE
+        E_total = KE .+ QE .- PE
+
+        if length(E_total) > 0 && E_total[1] != 0
+            dE_E = (E_total .- E_total[1]) ./ abs(E_total[1])
+            label = "$(spatial_Nx_list[i])³"
+            lines!(ax_top, t, dE_E, color=colors[min(i, length(colors))],
+                   linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+        end
     end
-    println("="^60)
+    hlines!(ax_top, [0], color=:black, linestyle=:dash)
+    axislegend(ax_top, position=:rt, framevisible=true)
+
+    if !isnothing(temporal_result)
+        temporal_results = temporal_result[:results]
+        temporal_Nt_list = temporal_result[:Nt_list]
+
+        ax_bottom = Axis(fig[2, 1],
+            title="Collision - Temporal Resolution Convergence",
+            xlabel="Time",
+            ylabel=L"\Delta E_{total} / E_{total}",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        for (i, res) in enumerate(temporal_results)
+            if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+                continue
+            end
+            dfProp = res[:dfProp]
+            if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+                continue
+            end
+
+            t = dfProp.t
+            PE = dfProp.PE_abs
+            KE = dfProp.KE
+            QE = dfProp.QE
+            E_total = KE .+ QE .- PE
+
+            if length(E_total) > 0 && E_total[1] != 0
+                dE_E = (E_total .- E_total[1]) ./ abs(E_total[1])
+                label = "Nt=$(temporal_Nt_list[i])"
+                lines!(ax_bottom, t, dE_E, color=colors[min(i, length(colors))],
+                       linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+            end
+        end
+        hlines!(ax_bottom, [0], color=:black, linestyle=:dash)
+        axislegend(ax_bottom, position=:rt, framevisible=true)
+    else
+        ax_bottom = Axis(fig[2, 1],
+            title="Collision - Final Energy vs Resolution",
+            xlabel="Grid Size Nx",
+            ylabel="Total Energy",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        total_energies = Float64[]
+        for res in spatial_results
+            if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+                push!(total_energies, NaN)
+                continue
+            end
+            dfProp = res[:dfProp]
+            if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+                push!(total_energies, NaN)
+                continue
+            end
+            PE = dfProp.PE_abs
+            KE = dfProp.KE
+            QE = dfProp.QE
+            E_total = KE .+ QE .- PE
+            push!(total_energies, E_total[1])
+        end
+        scatterlines!(ax_bottom, spatial_Nx_list, total_energies,
+            color=:blue, linewidth=2, marker=:circle, markersize=10)
+    end
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
 
     return fig
 end
 
-function plot_collision_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_collision_convergence.png"))
+function plot_binary_convergence_energy(spatial_result, temporal_result=nothing; save_path=joinpath(FIGURES_DIR, "fig_binary_convergence_energy.png"))
 
-    Nx_list = result[:Nx_list]
+    spatial_results = spatial_result[:results]
+    spatial_Nx_list = spatial_result[:Nx_list]
+
+    fig = Figure(size=(1000, 800), fontsize=12)
+
+    colors = [:blue, :orange, :green, :red, :purple]
+    linestyles = [:solid, :solid, :solid, :dash, :dashdot]
+
+    ax_top = Axis(fig[1, 1],
+        title="Binary - Spatial Resolution Convergence",
+        xlabel="Time",
+        ylabel=L"\Delta E_{total} / E_{total}",
+        xgridvisible=false,
+        ygridvisible=false)
+
+    for (i, res) in enumerate(spatial_results)
+        if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+            continue
+        end
+        dfProp = res[:dfProp]
+        if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+            continue
+        end
+
+        t = dfProp.t
+        PE = dfProp.PE_abs
+        KE = dfProp.KE
+        QE = dfProp.QE
+        E_total = KE .+ QE .- PE
+
+        if length(E_total) > 0 && E_total[1] != 0
+            dE_E = (E_total .- E_total[1]) ./ abs(E_total[1])
+            label = "$(spatial_Nx_list[i])³"
+            lines!(ax_top, t, dE_E, color=colors[min(i, length(colors))],
+                   linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+        end
+    end
+    hlines!(ax_top, [0], color=:black, linestyle=:dash)
+    axislegend(ax_top, position=:rt, framevisible=true)
+
+    if !isnothing(temporal_result)
+        temporal_results = temporal_result[:results]
+        temporal_Nt_list = temporal_result[:Nt_list]
+
+        ax_bottom = Axis(fig[2, 1],
+            title="Binary - Temporal Resolution Convergence",
+            xlabel="Time",
+            ylabel=L"\Delta E_{total} / E_{total}",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        for (i, res) in enumerate(temporal_results)
+            if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+                continue
+            end
+            dfProp = res[:dfProp]
+            if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+                continue
+            end
+
+            t = dfProp.t
+            PE = dfProp.PE_abs
+            KE = dfProp.KE
+            QE = dfProp.QE
+            E_total = KE .+ QE .- PE
+
+            if length(E_total) > 0 && E_total[1] != 0
+                dE_E = (E_total .- E_total[1]) ./ abs(E_total[1])
+                label = "Nt=$(temporal_Nt_list[i])"
+                lines!(ax_bottom, t, dE_E, color=colors[min(i, length(colors))],
+                       linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+            end
+        end
+        hlines!(ax_bottom, [0], color=:black, linestyle=:dash)
+        axislegend(ax_bottom, position=:rt, framevisible=true)
+    else
+        ax_bottom = Axis(fig[2, 1],
+            title="Binary - Final Energy vs Resolution",
+            xlabel="Grid Size Nx",
+            ylabel="Total Energy",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        total_energies = Float64[]
+        for res in spatial_results
+            if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+                push!(total_energies, NaN)
+                continue
+            end
+            dfProp = res[:dfProp]
+            if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+                push!(total_energies, NaN)
+                continue
+            end
+            PE = dfProp.PE_abs
+            KE = dfProp.KE
+            QE = dfProp.QE
+            E_total = KE .+ QE .- PE
+            push!(total_energies, E_total[1])
+        end
+        scatterlines!(ax_bottom, spatial_Nx_list, total_energies,
+            color=:blue, linewidth=2, marker=:circle, markersize=10)
+    end
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+function plot_collision_convergence(spatial_result, temporal_result=nothing; save_path=joinpath(FIGURES_DIR, "fig_collision_convergence.png"))
+
+    spatial_profiles = spatial_result[:profiles]
+    spatial_Nx_list = spatial_result[:Nx_list]
+
+    fig = Figure(size=(700, 700), fontsize=12)
+
+    colors = [:blue, :orange, :green, :red, :purple]
+    linestyles = [:solid, :solid, :solid, :dash, :dashdot]
+
+    ax_top = Axis(fig[1, 1],
+        title="Collision - Spatial Resolution Convergence",
+        xlabel="x",
+        ylabel="Density",
+        xgridvisible=false,
+        ygridvisible=false)
+
+    for (i, p) in enumerate(spatial_profiles)
+        label = "$(spatial_Nx_list[i])³"
+        lines!(ax_top, p.x, p.rho, color=colors[min(i, length(colors))],
+               linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+    end
+    axislegend(ax_top, position=:rt, framevisible=true)
+    xlims!(ax_top, -10, 10)
+
+    if !isnothing(temporal_result)
+        temporal_profiles = temporal_result[:profiles]
+        temporal_Nt_list = temporal_result[:Nt_list]
+
+        ax_bottom = Axis(fig[2, 1],
+            title="Collision - Temporal Resolution Convergence",
+            xlabel="x",
+            ylabel="Density",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        for (i, p) in enumerate(temporal_profiles)
+            label = "Nt=$(temporal_Nt_list[i])"
+            lines!(ax_bottom, p.x, p.rho, color=colors[min(i, length(colors))],
+                   linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+        end
+        axislegend(ax_bottom, position=:rt, framevisible=true)
+    else
+        ax_bottom = Axis(fig[2, 1],
+            title="Collision - Density Profile Detail",
+            xlabel="x",
+            ylabel="Density",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        for (i, p) in enumerate(spatial_profiles)
+            label = "$(spatial_Nx_list[i])³"
+            lines!(ax_bottom, p.x, p.rho, color=colors[min(i, length(colors))],
+                   linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+        end
+        axislegend(ax_bottom, position=:rt, framevisible=true)
+        xlims!(ax_bottom, -10, 10)
+    end
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+function plot_binary_convergence(spatial_result, temporal_result=nothing; save_path=joinpath(FIGURES_DIR, "fig_binary_convergence.png"))
+
+    spatial_profiles = spatial_result[:profiles]
+    spatial_Nx_list = spatial_result[:Nx_list]
+
+    fig = Figure(size=(700, 700), fontsize=12)
+
+    colors = [:blue, :orange, :green, :red, :purple]
+    linestyles = [:solid, :solid, :solid, :dash, :dashdot]
+
+    ax_top = Axis(fig[1, 1],
+        title="Binary System - Spatial Resolution Convergence",
+        xlabel="x",
+        ylabel="Density",
+        xgridvisible=false,
+        ygridvisible=false)
+
+    for (i, p) in enumerate(spatial_profiles)
+        label = "$(spatial_Nx_list[i])³"
+        lines!(ax_top, p.x, p.rho, color=colors[min(i, length(colors))],
+               linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+    end
+    axislegend(ax_top, position=:rt, framevisible=true)
+    xlims!(ax_top, -15, 15)
+
+    if !isnothing(temporal_result)
+        temporal_profiles = temporal_result[:profiles]
+        temporal_Nt_list = temporal_result[:Nt_list]
+
+        ax_bottom = Axis(fig[2, 1],
+            title="Binary System - Temporal Resolution Convergence",
+            xlabel="x",
+            ylabel="Density",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        for (i, p) in enumerate(temporal_profiles)
+            label = "Nt=$(temporal_Nt_list[i])"
+            lines!(ax_bottom, p.x, p.rho, color=colors[min(i, length(colors))],
+                   linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+        end
+        axislegend(ax_bottom, position=:rt, framevisible=true)
+    else
+        ax_bottom = Axis(fig[2, 1],
+            title="Binary System - Density Profile Detail",
+            xlabel="x",
+            ylabel="Density",
+            xgridvisible=false,
+            ygridvisible=false)
+
+        for (i, p) in enumerate(spatial_profiles)
+            label = "$(spatial_Nx_list[i])³"
+            lines!(ax_bottom, p.x, p.rho, color=colors[min(i, length(colors))],
+                   linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+        end
+        axislegend(ax_bottom, position=:rt, framevisible=true)
+        xlims!(ax_bottom, -15, 15)
+    end
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+# ============================================================================
+# Temporal Convergence Plotting Functions
+# ============================================================================
+
+function plot_collision_temporal_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_collision_temporal_convergence.png"))
+    Nt_list = result[:Nt_list]
     profiles = result[:profiles]
 
-    fig = Figure(size=(1000, 400), fontsize=11)
+    fig = Figure(size=(700, 500), fontsize=12)
 
-    # Left panel: 2D density maps at different resolutions
+    colors = [:blue, :orange, :green, :red, :purple]
+    linestyles = [:solid, :solid, :dash, :dashdot]
+
+    ax = Axis(fig[1, 1],
+        title="Collision - Temporal Resolution Convergence",
+        xlabel="x",
+        ylabel="Density",
+        xgridvisible=false,
+        ygridvisible=false)
+
+    for (i, p) in enumerate(profiles)
+        label = "Nt=$(Nt_list[i])"
+        lines!(ax, p.x, p.rho, color=colors[min(i, length(colors))],
+               linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+    end
+    axislegend(ax, position=:rt, framevisible=true)
+    xlims!(ax, -10, 10)
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+function plot_binary_temporal_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_binary_temporal_convergence.png"))
+    Nt_list = result[:Nt_list]
+    profiles = result[:profiles]
+
+    fig = Figure(size=(700, 500), fontsize=12)
+
+    colors = [:blue, :orange, :green, :red, :purple]
+    linestyles = [:solid, :solid, :dash, :dashdot]
+
+    ax = Axis(fig[1, 1],
+        title="Binary System - Temporal Resolution Convergence",
+        xlabel="x",
+        ylabel="Density",
+        xgridvisible=false,
+        ygridvisible=false)
+
+    for (i, p) in enumerate(profiles)
+        label = "Nt=$(Nt_list[i])"
+        lines!(ax, p.x, p.rho, color=colors[min(i, length(colors))],
+               linewidth=2, linestyle=linestyles[min(i, length(linestyles))], label=label)
+    end
+    axislegend(ax, position=:rt, framevisible=true)
+    xlims!(ax, -15, 15)
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+function plot_tde_temporal_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_tde_temporal_convergence.png"))
+    Nt_list = result[:Nt_list]
+    results = result[:results]
+
+    fig = Figure(size=(1000, 400), fontsize=12)
+
     ax1 = Axis(fig[1, 1],
-        title="Collision Density at Different Resolutions",
-        xlabel="x",
-        ylabel="y",
-        xgridvisible=true,
-        ygridvisible=true)
+        title="TDE - Energy Convergence",
+        xlabel="Time",
+        ylabel="Total Energy",
+        xgridvisible=false,
+        ygridvisible=false)
 
-    colors = [:blue, :orange, :green, :red]
-    for (i, p) in enumerate(profiles)
-        N = length(p.x)
-        iz_center = div(N, 2)
-        rho_slice = p.rho[:, iz_center]
-        hm = heatmap!(ax1, p.x, p.y, rho_slice,
-            colormap=:viridis, alpha=0.3)
-    end
-
-    # Right panel: Profile line comparison
     ax2 = Axis(fig[1, 2],
-        title="Collision Profile Comparison",
-        xlabel="x",
-        ylabel="|ψ|²",
-        xgridvisible=true,
-        ygridvisible=true)
+        title="TDE - Energy Conservation Error",
+        xlabel="Time",
+        ylabel=L"\Delta E / E_0",
+        xgridvisible=false,
+        ygridvisible=false)
 
-    for (i, p) in enumerate(profiles)
-        N = length(p.x)
-        iz_center = div(N, 2)
-        iy_center = div(N, 2)
-        rho_line = p.rho[iy_center, :]
-        lines!(ax2, p.x, rho_line, color=colors[i], linewidth=2, label=p.label)
+    colors = [:blue, :orange, :green, :red, :purple]
+
+    for (i, res) in enumerate(results)
+        if !haskey(res, :dfProp) || isnothing(res[:dfProp])
+            continue
+        end
+        dfProp = res[:dfProp]
+        if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+            continue
+        end
+
+        t = dfProp.t
+        PE = dfProp.PE_abs
+        KE = dfProp.KE
+        QE = dfProp.QE
+        E_total = KE .+ QE .- PE
+
+        label = "Nt=$(Nt_list[i])"
+        lines!(ax1, t, E_total, color=colors[min(i, length(colors))], linewidth=2, label=label)
+
+        if length(E_total) > 0 && E_total[1] != 0
+            dE_E = (E_total .- E_total[1]) ./ abs(E_total[1])
+            lines!(ax2, t, dE_E, color=colors[min(i, length(colors))], linewidth=2, label=label)
+        end
     end
+
+    axislegend(ax1, position=:rt, framevisible=true)
     axislegend(ax2, position=:rt, framevisible=true)
 
     save(save_path, fig, px_per_unit=2)
@@ -1011,45 +1486,210 @@ function plot_collision_convergence(result; save_path=joinpath(FIGURES_DIR, "fig
     return fig
 end
 
-function plot_binary_convergence(result; save_path=joinpath(FIGURES_DIR, "fig_binary_convergence.png"))
+# ============================================================================
+# Virial Energy Terms Plotting
+# Based on the reference figure showing energy evolution
+# ============================================================================
 
-    Nx_list = result[:Nx_list]
-    profiles = result[:profiles]
+function plot_virial_energy_terms(dfProp; save_path=joinpath(FIGURES_DIR, "fig_virial_energy.png"), title="Virial Energy Terms")
+    if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+        @warn "dfProp missing virial energy columns (PE_abs, KE, QE). Skipping virial energy plot."
+        return nothing
+    end
 
-    fig = Figure(size=(1000, 400), fontsize=11)
+    t = dfProp.t
+    PE = dfProp.PE_abs  # Potential energy (absolute value)
+    KE = dfProp.KE      # Kinetic energy
+    QE = dfProp.QE      # Quantum energy
 
-    # Left panel: 2D density maps at different resolutions
+    # Energy components as shown in the reference figure
+    E_K_plus_Q = KE .+ QE           # Kinetic + Quantum (orange line in ref)
+    E_GP = -PE                      # Gravitational potential (green line in ref, negative because PE is stored as absolute)
+    E_total = KE .+ QE .- PE        # Total energy (blue line in ref)
+
+    fig = Figure(size=(800, 600), fontsize=14)
+
+    ax = Axis(fig[1, 1],
+        title=title,
+        xlabel="Time (code units)",
+        ylabel="Energy (code units)",
+        xgridvisible=true,
+        ygridvisible=true)
+
+    # Plot energy components matching the reference figure style
+    # E_K + E_Q (orange line)
+    lines!(ax, t, E_K_plus_Q, color=:orange, linewidth=2.5, label=L"E_K + E_Q")
+
+    # Total energy (blue line)
+    lines!(ax, t, E_total, color=:blue, linewidth=2.5, label="Total energy")
+
+    # E_GP self-interaction (green line)
+    lines!(ax, t, E_GP, color=:green, linewidth=2.5, label=L"E_{GP} (self-interaction)")
+
+    # Add text annotations similar to reference figure
+    text!(ax, t[1] + 0.05*(t[end]-t[1]), maximum(E_K_plus_Q)*0.9, text=L"E_K + E_Q", fontsize=12, color=:orange)
+    text!(ax, t[1] + 0.05*(t[end]-t[1]), E_total[1]*0.9, text="Total energy", fontsize=12, color=:blue)
+    text!(ax, t[1] + 0.05*(t[end]-t[1]), minimum(E_GP)*0.9, text=L"E_{GP} (self-interaction)", fontsize=12, color=:green)
+
+    axislegend(ax, position=:rt, framevisible=true)
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+function plot_virial_energy_convergence(results::Vector{Dict}; save_path=joinpath(FIGURES_DIR, "fig_virial_energy_convergence.png"), title="Virial Energy Convergence")
+    fig = Figure(size=(1000, 400), fontsize=12)
+
+    # Left panel: Total energy comparison
     ax1 = Axis(fig[1, 1],
-        title="Binary Density at Different Resolutions",
-        xlabel="x",
-        ylabel="y",
+        title="Total Energy Convergence",
+        xlabel="Time (code units)",
+        ylabel="Total Energy",
         xgridvisible=true,
         ygridvisible=true)
 
-    colors = [:blue, :orange, :green, :red]
-    for (i, p) in enumerate(profiles)
-        N = length(p.x)
-        iz_center = div(N, 2)
-        rho_slice = p.rho[:, iz_center]
-        heatmap!(ax1, p.x, p.y, rho_slice,
-            colormap=:viridis, alpha=0.3)
-    end
-
-    # Right panel: Profile line comparison
+    # Right panel: Energy components for finest resolution
     ax2 = Axis(fig[1, 2],
-        title="Binary Profile Comparison",
-        xlabel="x",
-        ylabel="|ψ|²",
+        title="Energy Components (Finest Resolution)",
+        xlabel="Time (code units)",
+        ylabel="Energy (code units)",
         xgridvisible=true,
         ygridvisible=true)
 
-    for (i, p) in enumerate(profiles)
-        N = length(p.x)
-        iz_center = div(N, 2)
-        iy_center = div(N, 2)
-        rho_line = p.rho[iy_center, :]
-        lines!(ax2, p.x, rho_line, color=colors[i], linewidth=2, label=p.label)
+    colors = [:blue, :orange, :green, :red, :purple]
+
+    for (i, result) in enumerate(results)
+        if !haskey(result, :dfProp) || isnothing(result[:dfProp])
+            continue
+        end
+        dfProp = result[:dfProp]
+        if !hasproperty(dfProp, :PE_abs) || !hasproperty(dfProp, :KE) || !hasproperty(dfProp, :QE)
+            continue
+        end
+
+        t = dfProp.t
+        PE = dfProp.PE_abs
+        KE = dfProp.KE
+        QE = dfProp.QE
+        E_total = KE .+ QE .- PE
+
+        label = haskey(result, :Nx) ? "Nx=$(result[:Nx])" : "Run $i"
+        lines!(ax1, t, E_total, color=colors[min(i, length(colors))], linewidth=2, label=label)
+
+        # Only plot components for the last (finest resolution) result
+        if i == length(results)
+            lines!(ax2, t, KE .+ QE, color=:orange, linewidth=2.5, label=L"E_K + E_Q")
+            lines!(ax2, t, E_total, color=:blue, linewidth=2.5, label="Total energy")
+            lines!(ax2, t, -PE, color=:green, linewidth=2.5, label=L"E_{GP}")
+        end
     end
+
+    axislegend(ax1, position=:rt, framevisible=true)
+    axislegend(ax2, position=:rt, framevisible=true)
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+# ============================================================================
+# Momentum Conservation Plot
+# Based on Prop.jl showing momentum components over time
+# ============================================================================
+
+function plot_momentum_conservation(dfProp; save_path=joinpath(FIGURES_DIR, "fig_momentum_conservation.png"), title="Momentum Conservation")
+    if !hasproperty(dfProp, :MomentumX) || !hasproperty(dfProp, :MomentumY) || !hasproperty(dfProp, :MomentumZ)
+        @warn "dfProp missing momentum columns (MomentumX, MomentumY, MomentumZ). Skipping momentum plot."
+        return nothing
+    end
+
+    t = dfProp.t
+    px = dfProp.MomentumX
+    py = dfProp.MomentumY
+    pz = dfProp.MomentumZ
+
+    fig = Figure(size=(1600, 600), fontsize=22)
+
+    ax = Axis(fig[1, 1],
+        title=title,
+        xlabel="t [Gyr]",
+        ylabel="p [Msun*kpc/Gyr]",
+        xgridvisible=true,
+        ygridvisible=true)
+
+    line_px = lines!(ax, t, px, color=:red, linewidth=2, label=L"p_x")
+    line_py = lines!(ax, t, py, color=:green, linewidth=2, label=L"p_y")
+    line_pz = lines!(ax, t, pz, color=:blue, linewidth=2, label=L"p_z")
+
+    hlines!(ax, [0]; color=:black, linestyle=:dash)
+    xlims!(ax, extrema(t))
+
+    Legend(fig[1, 2],
+        [line_px, line_py, line_pz],
+        [L"p_x", L"p_y", L"p_z"];
+        tellheight=false,
+        margin=(10, 10, 10, 10),
+        backgroundcolor=(:white, 0.5),
+    )
+
+    save(save_path, fig, px_per_unit=2)
+    @info "Saved: $save_path"
+
+    return fig
+end
+
+function plot_momentum_conservation_convergence(results::Vector{Dict}; save_path=joinpath(FIGURES_DIR, "fig_momentum_conservation_convergence.png"), title="Momentum Conservation Convergence")
+    fig = Figure(size=(1000, 400), fontsize=12)
+
+    # Left panel: Momentum magnitude comparison
+    ax1 = Axis(fig[1, 1],
+        title="Momentum Magnitude Convergence",
+        xlabel="Time (code units)",
+        ylabel="|p| [Msun*kpc/Gyr]",
+        xgridvisible=true,
+        ygridvisible=true)
+
+    # Right panel: Momentum components for finest resolution
+    ax2 = Axis(fig[1, 2],
+        title="Momentum Components (Finest Resolution)",
+        xlabel="Time (code units)",
+        ylabel="p [Msun*kpc/Gyr]",
+        xgridvisible=true,
+        ygridvisible=true)
+
+    colors = [:blue, :orange, :green, :red, :purple]
+
+    for (i, result) in enumerate(results)
+        if !haskey(result, :dfProp) || isnothing(result[:dfProp])
+            continue
+        end
+        dfProp = result[:dfProp]
+        if !hasproperty(dfProp, :MomentumX) || !hasproperty(dfProp, :MomentumY) || !hasproperty(dfProp, :MomentumZ)
+            continue
+        end
+
+        t = dfProp.t
+        px = dfProp.MomentumX
+        py = dfProp.MomentumY
+        pz = dfProp.MomentumZ
+        p_mag = sqrt.(px.^2 .+ py.^2 .+ pz.^2)
+
+        label = haskey(result, :Nx) ? "$(result[:Nx])³" : "Run $i"
+        lines!(ax1, t, p_mag, color=colors[min(i, length(colors))], linewidth=2, label=label)
+
+        # Only plot components for the last (finest resolution) result
+        if i == length(results)
+            lines!(ax2, t, px, color=:red, linewidth=2, label=L"p_x")
+            lines!(ax2, t, py, color=:green, linewidth=2, label=L"p_y")
+            lines!(ax2, t, pz, color=:blue, linewidth=2, label=L"p_z")
+            hlines!(ax2, [0]; color=:black, linestyle=:dash)
+        end
+    end
+
+    axislegend(ax1, position=:rt, framevisible=true)
     axislegend(ax2, position=:rt, framevisible=true)
 
     save(save_path, fig, px_per_unit=2)
@@ -1067,30 +1707,55 @@ end
 @info "Based on PyUltraLight (Edwards et al. 2018)"
 @info "="^70
 
-@info "\n[1/7] Running single soliton test..."
-result_soliton = run_single_soliton_test(Xmax=30.0, Tmax=2.0, Nx=96, Nt=96)
+@info "\n[1/9] Running single soliton spatial convergence test..."
+result_spatial_conv = run_spatial_convergence_test(Nx_list=[32, 64], Nt=96)
 
-@info "\n[2/7] Running spatial convergence test..."
-result_spatial_conv = run_spatial_convergence_test(Nx_list=[32, 48, 64, 96, 128], Nt=96)
+@info "\n[2/9] Running single soliton temporal convergence test..."
+result_temporal_conv = run_temporal_convergence_test(Nx=96, Nt_list=[32, 64])
 
-@info "\n[3/7] Running temporal convergence test..."
-result_temporal_conv = run_temporal_convergence_test(Nx=96, Nt_list=[32, 48, 64, 96, 128])
+@info "\n[3/9] Running soliton collision spatial convergence test..."
+result_collision_conv = run_collision_convergence_test(Nx_list=[32, 64])
 
-@info "\n[4/7] Running soliton collision convergence test..."
-result_collision_conv = run_collision_convergence_test(Nx_list=[48, 64, 96, 128])
+@info "\n[4/9] Running soliton collision temporal convergence test..."
+result_collision_temporal = run_collision_temporal_convergence_test(Nx=64, Nt_list=[32, 64])
 
-@info "\n[5/7] Running soliton binary convergence test..."
-result_binary_conv = run_binary_convergence_test(Nx_list=[48, 64, 96, 128])
+@info "\n[5/9] Running soliton binary spatial convergence test..."
+result_binary_conv = run_binary_convergence_test(Nx_list=[32, 64])
 
-@info "\n[6/7] Running TDE convergence test..."
-result_tde_conv = run_tde_convergence_test(Nx_list=[48, 64, 96, 128])
+@info "\n[6/9] Running soliton binary temporal convergence test..."
+result_binary_temporal = run_binary_temporal_convergence_test(Nx=64, Nt_list=[32, 64])
 
-@info "\n[7/7] Generating convergence figures..."
+@info "\n[7/9] Running TDE spatial convergence test..."
+result_tde_conv = run_tde_convergence_test(Nx_list=[32, 64])
+
+@info "\n[8/9] Running TDE temporal convergence test..."
+result_tde_temporal = run_tde_temporal_convergence_test(Nx=64, Nt_list=[32, 64])
+
+@info "\n[9/9] Generating all figures..."
+
+# Spatial convergence plots
 plot_spatial_convergence(result_spatial_conv)
+plot_collision_convergence(result_collision_conv, result_collision_temporal)
+plot_collision_convergence_energy(result_collision_conv, result_collision_temporal)
+plot_binary_convergence(result_binary_conv, result_binary_temporal)
+plot_binary_convergence_energy(result_binary_conv, result_binary_temporal)
+plot_tde_convergence(result_tde_conv, result_tde_temporal)
+
+# Temporal convergence plots
 plot_temporal_convergence(result_temporal_conv)
-plot_collision_convergence(result_collision_conv)
-plot_binary_convergence(result_binary_conv)
-plot_tde_convergence(result_tde_conv)
+plot_collision_temporal_convergence(result_collision_temporal)
+plot_binary_temporal_convergence(result_binary_temporal)
+plot_tde_temporal_convergence(result_tde_temporal)
+
+# Momentum conservation (use finest resolution)
+if !isempty(result_spatial_conv[:results])
+    finest_result = result_spatial_conv[:results][end]
+    if haskey(finest_result, :dfProp) && !isnothing(finest_result[:dfProp])
+        plot_momentum_conservation(finest_result[:dfProp],
+            save_path=joinpath(FIGURES_DIR, "fig_momentum_conservation_single_soliton.png"),
+            title="Momentum Conservation - Single Soliton")
+    end
+end
 
 @info "\n" * "="^70
 @info "All tests completed!"

@@ -153,10 +153,12 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
         if baryon_mode == :ignored
             baryon_particles = nothing
             ρ_baryon = nothing
+            Φ_b = nothing
+            ax_b = nothing
+            ay_b = nothing
+            az_b = nothing
             total_mass_baryon = 0.0u"Msun"
         elseif baryon_mode == :particles_static
-            baryon_particles = nothing
-
         end
     elseif model == :dwarf_Zhao
         model_halo = Zhao(halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio, halo_α, halo_β, halo_γ)
@@ -165,9 +167,12 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
         if baryon_mode == :ignored
             baryon_particles = nothing
             ρ_baryon = nothing
+            Φ_b = nothing
+            ax_b = nothing
+            ay_b = nothing
+            az_b = nothing
             total_mass_baryon = 0.0u"Msun"
         elseif baryon_mode == :particles_static
-            baryon_particles = nothing
         end
     else
         error("Unknown model: $model")
