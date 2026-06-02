@@ -4,6 +4,9 @@
 $(TYPEDSIGNATURES)
 
 Check if density `rho` is above the minimum threshold defined by spline `spl` at radius `r`.
+
+`spl` is expected to be a callable that accepts a vector of radii and returns a vector of threshold values (e.g. a `Dierckx.Spline1D`). 
+The function returns `true` when `rho` is strictly greater than the interpolated threshold at `r`.
 """
 function filter_min_rho(rho, r, spl)
     if rho <= spl([r])[1]

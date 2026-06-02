@@ -28,16 +28,18 @@ $(TYPEDSIGNATURES)
 
 Generate Milky Way initial conditions.
 """
-function generate_milkyway_initial_conditions(grid::SimulationGrid, config_IC::InitialConditionsConfig, config_units::AstroUnitsConfig)
+function generate_milkyway_initial_conditions(grid::SimulationGrid, config_IC::InitialConditionsConfig, config_units::AstroUnitsConfig, config_device::DeviceConfig, boundary)
     length_astro = config_units.length_astro
     density_astro = config_units.density_astro
+    potential_astro = config_units.potential_astro
+    acc_astro = config_units.acc_astro
 
     model_halo = Zhao(1.55e7u"Msun/kpc^3" * config_IC.FDM_mass_ratio, 11.75u"kpc" * config_IC.FDM_radius_ratio, 1.19, 2.95, 0.95)
     ρ_halo = sampling_density.(grid.r, model_halo, length_astro, density_astro) |> collect
     baryon_particles = nothing
     if config_IC.baryon_mode == :mesh
         ρ_baryon = density_baryon_MW.(grid.xxx*length_astro, grid.yyy*length_astro, grid.zzz*length_astro)/density_astro
-        Φ_b = collect(4π * fft_poisson(grid.Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
+        Φ_b = collect(4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
         ax_b, ay_b, az_b = grad_central(-grid.Δ..., Φ_b)
         total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
     elseif config_IC.baryon_mode == :particles_static || config_IC.baryon_mode == :particles_dynamic
@@ -47,11 +49,11 @@ function generate_milkyway_initial_conditions(grid::SimulationGrid, config_IC::I
         sim_force_baryon = Simulation(baryon_particles; GravitySolver = config_IC.GravitySolver, pids = config_IC.pids)
 
         @info "Computing baryonic potentials and forces with $(traitstring(config_IC.GravitySolver)) solver"
-        @time Φ_b = compute_potential(sim_force_baryon, pos, config_IC.SofteningLength, config_IC.GravitySolver, CPU()) ./ config_units.potential_astro
+        @time Φ_b = compute_potential(sim_force_baryon, pos, config_IC.SofteningLength, config_IC.GravitySolver, CPU()) ./ potential_astro
         @time acc_b = StructArray(compute_force(sim_force_baryon, pos, config_IC.SofteningLength, config_IC.GravitySolver, CPU()))
-        ax_b = upreferred.(acc_b.x ./ config_units.acc_astro)
-        ay_b = upreferred.(acc_b.y ./ config_units.acc_astro)
-        az_b = upreferred.(acc_b.z ./ config_units.acc_astro)
+        ax_b = upreferred.(acc_b.x ./ acc_astro)
+        ay_b = upreferred.(acc_b.y ./ acc_astro)
+        az_b = upreferred.(acc_b.z ./ acc_astro)
 
         total_mass_baryon = sum(baryon_particles.Mass)
         ρ_baryon = nothing

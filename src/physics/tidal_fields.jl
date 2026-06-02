@@ -40,6 +40,10 @@ $(TYPEDSIGNATURES)
 
 Compute tidal potential at current simulation time using config objects.
 Accesses config fields directly without internal unpacking.
+
+`rho_max_id` is the index of the density maximum in the mesh; it is updated
+on every iteration by the main loop and must be supplied explicitly here
+because the `SimulationGrid` itself does not carry simulation state.
 """
 function add_tidal_potential!(
     Φ_all,
@@ -48,11 +52,12 @@ function add_tidal_potential!(
     grid::SimulationGrid,
     config_gravity::GravityConfig,
     i::Int,
-    t::Vector{<:Real}
+    t::Vector{<:Real},
+    rho_max_id::CartesianIndex{3}
 )
     id_t = findfirstvalue(ustrip(u"Gyr", config_tidal.tidal_lookback_time) .- config_tidal.df_traj.time, t[i] * config_tidal.uT)
     if isnothing(id_t)
-        @warn "Current time $(t[i]*time_astro): setting lookback time = 0 Gyr"
+        @warn "Current time $(t[i] * config_tidal.uT) Gyr: setting lookback time = 0 Gyr"
         id_t = 1
     end
 
@@ -91,7 +96,7 @@ function add_tidal_potential!(
     end
 
     pot_tidal .-= pot_tidal[grid.rho_max_id]
-    cancel_field_gradient_at_center!(pot_tidal, grid.rho_max_id, grid.oneMatrix, grid.Nx, grid.Ny, grid.Nz)
+    cancel_field_gradient_at_center!(pot_tidal, grid.rho_max_id, grid.oneMatrix, grid.Nx, grid.Ny, grid.Nz, rho)
 
     Φ_all += pot_tidal
 end
