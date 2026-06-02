@@ -43,6 +43,7 @@ Accesses config fields directly without internal unpacking.
 """
 function add_tidal_potential!(
     Φ_all,
+    rho,
     config_tidal::TidalFieldConfig,
     grid::SimulationGrid,
     config_gravity::GravityConfig,
@@ -101,14 +102,24 @@ $(TYPEDSIGNATURES)
 Cancel out gradient of a field at a specified center point.
 This is a generic function that can be used for both potential fields and tidal fields.
 """
-function cancel_field_gradient_at_center!(field, center_id, oneMatrix, Nx, Ny, Nz)
+function cancel_field_gradient_at_center!(field, center_id, oneMatrix, Nx, Ny, Nz, rho)
     dp_dx = (field[center_id[1]+1, center_id[2],   center_id[3]]   - field[center_id[1]-1, center_id[2],   center_id[3]])/2
     dp_dy = (field[center_id[1],   center_id[2]+1, center_id[3]]   - field[center_id[1],   center_id[2]-1, center_id[3]])/2
     dp_dz = (field[center_id[1],   center_id[2],   center_id[3]+1] - field[center_id[1],   center_id[2],   center_id[3]-1])/2
 
-    field -= oneMatrix .* (collect(1:Nx) .- div(Nx,2)) * dp_dx
-    field -= oneMatrix .* (collect(1:Ny) .- div(Ny,2))' * dp_dy
-    field -= oneMatrix .* reshape(collect(1:Nz) .- div(Nz,2), 1, 1, Nz) * dp_dz
+    dp_field = oneMatrix .* (collect(1:Nx) .- div(Nx,2)) * dp_dx
+    field -= dp_field
+    sum_PE = sum(dp_field .* rho)
+
+    dp_field = oneMatrix .* (collect(1:Ny) .- div(Ny,2))' * dp_dy
+    field -= dp_field
+    sum_PE += sum(dp_field .* rho)
+
+    dp_field = oneMatrix .* reshape(collect(1:Nz) .- div(Nz,2), 1, 1, Nz) * dp_dz
+    field -= dp_field
+    sum_PE += sum(dp_field .* rho)
+
+    field .+= sum_PE / (Nx * Ny * Nz)
 
     return field
 end

@@ -28,3 +28,4 @@ temp/
 test/output/
 LocalPreferences.toml
 .vscode/
+test/simulation_SPE3D_validation.md

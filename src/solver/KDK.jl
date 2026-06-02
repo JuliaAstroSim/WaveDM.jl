@@ -22,6 +22,7 @@ function apply_kick_step!(
     device_ψ,
     ψ,
     V::F,
+    rho,
     rho_max,
     rho_max_id::CartesianIndex{3},
     grid::SimulationGrid,
@@ -40,8 +41,7 @@ function apply_kick_step!(
     config_device.gpu ? CUDA.unsafe_free!(device_Φ_WaveDM) : (device_Φ_WaveDM = nothing)
     
     if config_tidal.MW_tidal_field
-        add_tidal_potential!(Φ_all, config_tidal, grid, config_gravity, i, t)
-        cancel_field_gradient_at_center!(Φ_all, rho_max_id, grid.oneMatrix, grid.Nx, grid.Ny, grid.Nz)
+        add_tidal_potential!(Φ_all, rho, config_tidal, grid, config_gravity, i, t)
     end
     
     potential_grav_static = config_device.DeviceArray(Φ_all)
