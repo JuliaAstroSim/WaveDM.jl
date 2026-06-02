@@ -31,20 +31,18 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
     gases_TotalMass = config_profile.gases_TotalMass
     gases_ScaleRadius = config_profile.gases_ScaleRadius
     thickness_ratio_gases = config_profile.thickness_ratio_gases
+
+    ρ_baryon = Φ_b = ax_b = ay_b = az_b = nothing
+    total_mass_baryon = 0.0u"Msun"
+    baryon_particles = nothing
     if model == :MW
-        ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon, baryon_particles = generate_milkyway_initial_conditions(grid, config_IC, config_units)
+        ρ_halo, ρ_baryon, Φ_b, ax_b, ay_b, az_b, total_mass_baryon, baryon_particles = generate_milkyway_initial_conditions(grid, config_IC, config_units, config_device, boundary)
     elseif model == :SPARC_LTGs
-        if baryon_mode == :mesh
-        elseif baryon_mode == :particles_static
-        end
+        error("Model :SPARC_LTGs is not yet implemented.  Use :MW, :cluster_NFW, :cluster_Burkert, :Elliptical, :dwarf, :dwarf_NFW, or :dwarf_Zhao.")
     elseif model == :SPARC_Xray_ETGs
-        if baryon_mode == :mesh
-        elseif baryon_mode == :particles_static
-        end
+        error("Model :SPARC_Xray_ETGs is not yet implemented.  Use :MW, :cluster_NFW, :cluster_Burkert, :Elliptical, :dwarf, :dwarf_NFW, or :dwarf_Zhao.")
     elseif model == :SPARC_rotating_ETGs
-        if baryon_mode == :mesh
-        elseif baryon_mode == :particles_static
-        end
+        error("Model :SPARC_rotating_ETGs is not yet implemented.  Use :MW, :cluster_NFW, :cluster_Burkert, :Elliptical, :dwarf, :dwarf_NFW, or :dwarf_Zhao.")
     elseif model == :cluster_NFW
         model_halo = gNFW(halo_β, halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
@@ -53,11 +51,13 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             model_baryon = BetaModel(baryon_β, baryon_ρ0, baryon_r0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
 
-            Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
+            Φ_b = collect(4π * fft_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
         elseif baryon_mode == :particles_static
-            baryon_particles = nothing
+            error("baryon_mode=:particles_static is not yet implemented for model :cluster_NFW.  Use :mesh or :ignored.")
+        else
+            error("Unsupported baryon_mode $(baryon_mode) for model :cluster_NFW.  Use :mesh or :ignored.")
         end
     elseif model == :cluster_Burkert
         model_halo = Burkert(halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
@@ -67,11 +67,13 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             model_baryon = BetaModel(baryon_β, baryon_ρ0, baryon_r0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
 
-            Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
+            Φ_b = collect(4π * fft_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
         elseif baryon_mode == :particles_static
-            baryon_particles = nothing
+            error("baryon_mode=:particles_static is not yet implemented for model :cluster_Burkert.  Use :mesh or :ignored.")
+        else
+            error("Unsupported baryon_mode $(baryon_mode) for model :cluster_Burkert.  Use :mesh or :ignored.")
         end
     elseif model == :Elliptical
         model_halo = gNFW(halo_β, halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
@@ -81,23 +83,20 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             model_baryon = Jaffe(baryon_r0, baryon_ρ0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
 
-            Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], ρ_baryon, Periodic(), gpu ? GPU() : CPU()))
+            Φ_b = collect(4π * fft_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
         elseif baryon_mode == :particles_static
-            baryon_particles = nothing
+            error("baryon_mode=:particles_static is not yet implemented for model :Elliptical.  Use :mesh or :ignored.")
+        else
+            error("Unsupported baryon_mode $(baryon_mode) for model :Elliptical.  Use :mesh or :ignored.")
         end
     elseif model == :dwarf
         model_halo = gNFW(halo_β, halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
 
         if baryon_mode == :ignored
-            baryon_particles = nothing
-            ρ_baryon = nothing
-            Φ_b = nothing
-            ax_b = nothing
-            ay_b = nothing
-            az_b = nothing
+            # already set to nothing
             total_mass_baryon = 0.0u"Msun"
         elseif baryon_mode == :particles_static || baryon_mode == :particles_dynamic
             @info "Sampling stars"
@@ -145,34 +144,32 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
 
             ρ_baryon = nothing
             particles_Stellar = nothing
+        else
+            error("Unsupported baryon_mode $(baryon_mode) for model :dwarf.  Use :ignored, :particles_static, or :particles_dynamic.")
         end
     elseif model == :dwarf_NFW
         model_halo = NFW(halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
 
         if baryon_mode == :ignored
-            baryon_particles = nothing
-            ρ_baryon = nothing
-            Φ_b = nothing
-            ax_b = nothing
-            ay_b = nothing
-            az_b = nothing
+            # already set to nothing
             total_mass_baryon = 0.0u"Msun"
         elseif baryon_mode == :particles_static
+            error("baryon_mode=:particles_static is not yet implemented for model :dwarf_NFW.  Use :ignored.")
+        else
+            error("Unsupported baryon_mode $(baryon_mode) for model :dwarf_NFW.  Use :ignored.")
         end
     elseif model == :dwarf_Zhao
         model_halo = Zhao(halo_ρ0 * config_IC.FDM_mass_ratio, halo_r0 * config_IC.FDM_radius_ratio, halo_α, halo_β, halo_γ)
         ρ_halo = sampling_density.(r, model_halo, length_astro, density_astro) |> collect
 
         if baryon_mode == :ignored
-            baryon_particles = nothing
-            ρ_baryon = nothing
-            Φ_b = nothing
-            ax_b = nothing
-            ay_b = nothing
-            az_b = nothing
+            # already set to nothing
             total_mass_baryon = 0.0u"Msun"
         elseif baryon_mode == :particles_static
+            error("baryon_mode=:particles_static is not yet implemented for model :dwarf_Zhao.  Use :ignored.")
+        else
+            error("Unsupported baryon_mode $(baryon_mode) for model :dwarf_Zhao.  Use :ignored.")
         end
     else
         error("Unknown model: $model")

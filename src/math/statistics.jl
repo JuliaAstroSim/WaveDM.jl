@@ -115,7 +115,7 @@ function velocity_anisotropy(vx, vy, vz)
     σ = [std(vx), std(vy), std(vz)]
     max_σ = maximum(σ)
     min_σ = minimum(σ)
-    return anisotropy = 1 - (min_σ / max_σ) # 0 for isotropy, 1 for anisotropy
+    return 1 - (min_σ / max_σ) # 0 for isotropy, 1 for anisotropy
 end
 
 

@@ -359,7 +359,7 @@ Update progress bar with Unicode plots if enabled.
 function update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id,
     Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, _profile_r_mean, _profile_ρ_mean,
     best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star,
-    unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
+    unicode_heatmap_width, Xmax, Ymax, uT, uL, Nx, Δ)
 
     if unicode_plot
         if distributed_memory
@@ -372,7 +372,7 @@ function update_unicode_progress!(progress, i, t, unicode_plot, distributed_memo
             xoffset = -Xmax*uL,
             yoffset = -Ymax*uL,
             xfact = 2*Xmax*uL/Nx,
-            yfact = 2*Xmax*uL/Nx,
+            yfact = 2*Ymax*uL/Nx,
             height = unicode_heatmap_width,
             width = unicode_heatmap_width,
         )

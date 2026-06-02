@@ -755,7 +755,7 @@ function SPE3D_waveDM(;
                     best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
             end
 
-            update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, profile_r_mean[], profile_ρ_mean[], best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
+            update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, profile_r_mean[], profile_ρ_mean[], best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, Ymax, uT, uL, Nx, Δ)
 
             if need_to_interrupt(outputdir, remove = true)
                 breakflag = true
