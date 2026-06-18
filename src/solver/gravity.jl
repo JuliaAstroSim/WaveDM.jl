@@ -20,17 +20,17 @@ function compute_gravitational_potential(
         device_Φ_all = config_device.DeviceArray(device_Φ_WaveDM) + config_device.DeviceArray(config_gravity.Φ_b)
     else
         if config_gravity.baryon_mode == :ignored
-            device_Φ_all = device_Φ_WaveDM = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), config_device.gpu ? GPU() : CPU())
+            device_Φ_all = device_Φ_WaveDM = 4π * parallel_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), config_device)
         else
             device_Φ_b = config_device.DeviceArray(config_gravity.Φ_b)
-            device_Φ_WaveDM = 4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), config_device.gpu ? GPU() : CPU())
+            device_Φ_WaveDM = 4π * parallel_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ψ², Periodic(), config_device)
             device_Φ_all = device_Φ_WaveDM + device_Φ_b
-            
+
             config_device.gpu && CUDA.unsafe_free!(device_Φ_b)
             config_device.gpu && CUDA.unsafe_free!(device_Φ_WaveDM)
         end
     end
-    
+
     return device_Φ_all, device_Φ_WaveDM
 end
 

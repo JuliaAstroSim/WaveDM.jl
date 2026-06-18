@@ -51,7 +51,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             model_baryon = BetaModel(baryon_β, baryon_ρ0, baryon_r0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
 
-            Φ_b = collect(4π * fft_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
+            Φ_b = 4π * parallel_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device)
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
         elseif baryon_mode == :particles_static
@@ -67,7 +67,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             model_baryon = BetaModel(baryon_β, baryon_ρ0, baryon_r0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
 
-            Φ_b = collect(4π * fft_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
+            Φ_b = 4π * parallel_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device)
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
         elseif baryon_mode == :particles_static
@@ -83,7 +83,7 @@ function generate_initial_conditions(config_IC::InitialConditionsConfig, grid::S
             model_baryon = Jaffe(baryon_r0, baryon_ρ0)
             ρ_baryon = sampling_density.(r, model_baryon, length_astro, density_astro) |> collect
 
-            Φ_b = collect(4π * fft_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
+            Φ_b = 4π * parallel_poisson(Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device)
             ax_b, ay_b, az_b = grad_central(-Δ..., Φ_b)
             total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
         elseif baryon_mode == :particles_static
@@ -258,7 +258,12 @@ function compute_acceleration_field(ρ_halo, grid::SimulationGrid, boundary, gpu
 
         Φ_WaveDM = compute_potential(sim_mesh_force, mesh_particles.Pos, SofteningLength, Tree(), CPU()) ./ potential_astro
     else
-        Φ_WaveDM = collect(4π * fft_poisson(grid.Δ, [Nx-1, Ny-1, Nz-1], ρ_halo, Periodic(), gpu ? GPU() : CPU()))
+        # No boundary-specific `config_device` is in scope here; build a
+        # throwaway backend from the `gpu` hint.  In the WaveDM main
+        # loop this code path is replaced by the typed overload
+        # `parallel_poisson(..., config_device)` which sees the full backend state.
+        cfg = DeviceConfig(; gpu=gpu)
+        Φ_WaveDM = 4π * parallel_poisson(grid.Δ, [Nx-1, Ny-1, Nz-1], ρ_halo, Periodic(), cfg)
     end
 
     ax_WaveDM, ay_WaveDM, az_WaveDM = grad_central(-grid.Δ..., Φ_WaveDM)

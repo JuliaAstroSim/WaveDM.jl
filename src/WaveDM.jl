@@ -46,6 +46,22 @@ using OffsetArrays
 using DSP
 using Dates
 
+# Distributed-memory parallelism:
+#* `PhysicalMeshes.jl` provides the adaptive `ParallelBackend`
+#     abstraction (`:serial / :threads / :distributed / :gpu`).
+#* `DistributedArrays.jl` is required by some algorithms (e.g. the
+#     slab-decomposed 3D FFT for the distributed Poisson solver).
+#* Dagger.jl is intentionally NOT loaded: see
+#     JuliaParallel/Dagger.jl#649 for the DRef finalizer issue.
+using DistributedArrays
+using PhysicalMeshes: ParallelBackend,
+                      select_backend, detect_resources,
+                      is_serial, is_threads, is_distributed, is_gpu, is_parallel,
+                      to_device, to_host, distribute, release!,
+                      parallel_sum, parallel_maximum, parallel_minimum,
+                      parallel_findmax, parallel_quantile, parallel_sumprod,
+                      parallel_broadcast!, set_backend_fft_threads!
+
 # JuliaAstroSim encosystem
 using AstroSimBase
 using PhysicalParticles
@@ -85,9 +101,14 @@ export need_to_interrupt, findfirstvalue
 export filter_min_rho, func_dθ_dt
 export vec_cartesian_to_spherical, vec_cartesian_to_cylindrical
 
+export select_backend, detect_resources, parallel_poisson
+export is_serial, is_threads, is_distributed, is_gpu, is_parallel
+
 # Core modules (data structures and coordinates)
 include("core/coordinates.jl")
 include("core/configs.jl")
+
+include("parallel_poisson.jl")
 
 # Math utilities
 include("math/statistics.jl")
