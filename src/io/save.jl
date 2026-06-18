@@ -76,13 +76,13 @@ $(TYPEDSIGNATURES)
 
 Compute averaged density and acceleration fields.
 """
-function compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, gpu, GPU, CPU, Periodic, fft_poisson, grad_central)
+function compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, config_device::DeviceConfig)
     if average
         averaged_ψ2 = buffer_ψ2 / average_N
         if baryon_mode == :ignored
-            averaged_Φ_all = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(averaged_ψ2), Periodic(), gpu ? GPU() : CPU()))
+            averaged_Φ_all = 4π * parallel_poisson(Δ, [Nx-1, Ny-1, Nz-1], config_device.DeviceArray(averaged_ψ2), Periodic(), config_device)
         else
-            averaged_Φ_all = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(averaged_ψ2), Periodic(), gpu ? GPU() : CPU())) + collect(Φ_b)
+            averaged_Φ_all = 4π * parallel_poisson(Δ, [Nx-1, Ny-1, Nz-1], config_device.DeviceArray(averaged_ψ2), Periodic(), config_device) + collect(Φ_b)
         end
         averaged_ax_all, averaged_ay_all, averaged_az_all = grad_central(-Δ..., averaged_Φ_all)
         averaged_a_all = sqrt.(averaged_ax_all[:, :, div(end,2)].^2 .+ averaged_ay_all[:, :, div(end,2)].^2 .+ averaged_az_all[:, :, div(end,2)].^2)

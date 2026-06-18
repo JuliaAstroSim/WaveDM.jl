@@ -39,7 +39,7 @@ function generate_milkyway_initial_conditions(grid::SimulationGrid, config_IC::I
     baryon_particles = nothing
     if config_IC.baryon_mode == :mesh
         ρ_baryon = density_baryon_MW.(grid.xxx*length_astro, grid.yyy*length_astro, grid.zzz*length_astro)/density_astro
-        Φ_b = collect(4π * fft_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device.gpu ? GPU() : CPU()))
+        Φ_b = 4π * parallel_poisson(grid.Δ, [grid.Nx-1, grid.Ny-1, grid.Nz-1], ρ_baryon, boundary, config_device)
         ax_b, ay_b, az_b = grad_central(-grid.Δ..., Φ_b)
         total_mass_baryon = sum(ρ_baryon) * grid.unit_cell_volumn * density_astro
     elseif config_IC.baryon_mode == :particles_static || config_IC.baryon_mode == :particles_dynamic

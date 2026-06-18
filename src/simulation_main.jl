@@ -193,16 +193,11 @@ function SPE3D_waveDM(;
 )
     println("\n\n")
     mkpathIfNotExist(outputdir)
-    
-    if distributed_memory
-        @info "Distributed memory parallelism enabled!"
-        DA = DArray
-    else
-        DA = collect
-    end
 
-    @info gpu ? "Carrying out FFT on GPU" : "Carrying out FFT on CPU"
-    DeviceArray = gpu ? cu : collect # convertor
+    config_device = DeviceConfig(; gpu=gpu, distributed=distributed_memory)
+    DA = config_device.distribute_array
+    DeviceArray = config_device.DeviceArray
+    @info "Parallel backend: $(config_device.kind) (gpu=$(config_device.gpu), nthreads=$(config_device.nthreads), nworkers=$(config_device.nworkers))"
 
     @info "TimeMax: $(Tmax * time_astro)"
     @info "Xmax: $(Xmax * length_astro)"
@@ -246,7 +241,7 @@ function SPE3D_waveDM(;
             else
                 baryon_term = baryon
             end
-            Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(baryon_term), Periodic(), gpu ? GPU() : CPU()))
+            Φ_b = 4π * parallel_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(baryon_term), Periodic(), config_device)
         else
             Φ_b = baryon_potential
         end
@@ -306,7 +301,7 @@ function SPE3D_waveDM(;
         # mesh_particles = nothing # release memory
         Φ_WaveDM = compute_potential(sim_mesh_force, mesh_particles.Pos, SofteningLength, Tree(), CPU()) ./ potential_astro
     else
-        Φ_WaveDM = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], abs.(DeviceArray(ψ)).^2, Periodic(), gpu ? GPU() : CPU()))
+        Φ_WaveDM = 4π * parallel_poisson(Δ, [Nx-1, Ny-1, Nz-1], abs.(DeviceArray(ψ)).^2, Periodic(), config_device)
     end
 
     @info "Computing IC acc"
@@ -534,7 +529,6 @@ function SPE3D_waveDM(;
     ψ_last_t = similar(ψ)
     
     grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, r, oneMatrix, unit_cell_volumn)
-    config_device = DeviceConfig(gpu, DeviceArray, DA)
     config_tidal = TidalFieldConfig(MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL, MW_grid, MW_Phi, spl_pot, sim_force_baryon, particles_LMC, sim_traj_LMC)
     
     i_Nbody = 2
@@ -767,7 +761,7 @@ function SPE3D_waveDM(;
     unicode_plot && println("\n"^(div(unicode_heatmap_width,2)))
 
     dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix)
-    averaged_ψ2, averaged_a_all = compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, gpu, GPU, CPU, Periodic, fft_poisson, grad_central)
+    averaged_ψ2, averaged_a_all = compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, config_device)
 
     if baryon_mode == :ignored
         # z=0, y=0 plane
@@ -996,7 +990,12 @@ function simulate_waveDM(;
         x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
         dt = Tmax / Nt
         t = Vector{Float64}(LinRange(0, Tmax, Nt))
-        DA = distributed_memory ? DArray : collect
+
+        config_device = DeviceConfig(; gpu=gpu, distributed=distributed_memory)
+        DA = config_device.distribute_array
+        # DeviceArray = config_device.DeviceArray
+        @info "Parallel backend: $(config_device.kind) (gpu=$(config_device.gpu), nthreads=$(config_device.nthreads), nworkers=$(config_device.nworkers))"
+
         oneMatrix = ones(Nx, Ny, Nz)
         xxx, yyy, zzz, rrr = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
         # RRR = sqrt.(xxx.^2 + yyy.^2)
@@ -1012,10 +1011,8 @@ function simulate_waveDM(;
         uRho = ustrip(u"Msun/kpc^3", density_astro)
         uMomentum = ustrip(u"Msun*kpc/Gyr", mass_astro * velocity_astro)
         
-        config_units = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
+        config_units = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro,
                                         uT, uL, uVel, uAcc, uRho, uMomentum, h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0_astro)
-        DeviceArray = gpu ? cu : collect # convertor
-        config_device = DeviceConfig(gpu, DeviceArray, DA)
         
         grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, rrr, oneMatrix, unit_cell_volumn)
         

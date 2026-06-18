@@ -10,9 +10,17 @@ function setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_
     length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength)
     if isnothing(MW_pot)
         @info "MW tidal force: computing potential on interpolation grid"
-        MW_x = Vector{Float64}(LinRange(-MW_pot_Xmax, MW_pot_Xmax, MW_pot_N)) ./ length_astro
-        MW_y = Vector{Float64}(LinRange(-MW_pot_Ymax, MW_pot_Ymax, MW_pot_N)) ./ length_astro
-        MW_z = Vector{Float64}(LinRange(-MW_pot_Zmax, MW_pot_Zmax, MW_pot_N)) ./ length_astro
+        # `MW_pot_Xmax` (and Y/Z) are physical lengths in `kpc`.  To obtain a
+        # dimensionless interpolation grid we (1) `ustrip` the units off the
+        # `LinRange` so that it becomes a plain `LinRange{Float64}`, then
+        # (2) divide by `length_astro` (also stripped to kpc).  The previous
+        # implementation tried to construct a `Vector{Float64}` directly from
+        # a `LinRange{Quantity{…, kpc}}`, which raised a `DimensionError`
+        # because `Float64` is dimensionless.
+        length_astro_kpc = ustrip(u"kpc", length_astro)
+        MW_x = ustrip.(u"kpc", LinRange(-MW_pot_Xmax, MW_pot_Xmax, MW_pot_N)) ./ length_astro_kpc
+        MW_y = ustrip.(u"kpc", LinRange(-MW_pot_Ymax, MW_pot_Ymax, MW_pot_N)) ./ length_astro_kpc
+        MW_z = ustrip.(u"kpc", LinRange(-MW_pot_Zmax, MW_pot_Zmax, MW_pot_N)) ./ length_astro_kpc
 
         MW_pos = PVector.(Base.Iterators.product(MW_x*length_astro, MW_y*length_astro, MW_z*length_astro))
 
@@ -26,7 +34,15 @@ function setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_
         end
     elseif MW_pot isa AbstractString
         @info "Loading MW tidal potential field from file: $(MW_pot)"
-        MW_x, MW_y, MW_z = load(MW_pot, "MW_x", "MW_y", "MW_z") ./ length_astro
+        # The on-disk arrays are stored in physical kpc; divide by
+        # `length_astro` (also kpc) to obtain the dimensionless grid the
+        # rest of WaveDM expects.  `ustrip` the result so the downstream
+        # `RectangleGrid` / `interpolate` call sites receive plain
+        # `Vector{Float64}` values.
+        length_astro_kpc = ustrip(u"kpc", length_astro)
+        MW_x = ustrip.(u"kpc", load(MW_pot, "MW_x")) ./ length_astro_kpc
+        MW_y = ustrip.(u"kpc", load(MW_pot, "MW_y")) ./ length_astro_kpc
+        MW_z = ustrip.(u"kpc", load(MW_pot, "MW_z")) ./ length_astro_kpc
         MW_Phi = load(MW_pot, "MW_Phi") / potential_astro
     end
 
@@ -95,8 +111,8 @@ function add_tidal_potential!(
         pot_tidal = pot_tidal + pot_LMC
     end
 
-    pot_tidal .-= pot_tidal[grid.rho_max_id]
-    cancel_field_gradient_at_center!(pot_tidal, grid.rho_max_id, grid.oneMatrix, grid.Nx, grid.Ny, grid.Nz, rho)
+    pot_tidal .-= pot_tidal[rho_max_id]
+    cancel_field_gradient_at_center!(pot_tidal, rho_max_id, grid.oneMatrix, grid.Nx, grid.Ny, grid.Nz, rho)
 
     Φ_all += pot_tidal
 end
@@ -124,7 +140,7 @@ function cancel_field_gradient_at_center!(field, center_id, oneMatrix, Nx, Ny, N
     field -= dp_field
     sum_PE += sum(dp_field .* rho)
 
-    field .+= sum_PE / (Nx * Ny * Nz)
+    field .+= sum_PE / sum(rho)
 
     return field
 end
