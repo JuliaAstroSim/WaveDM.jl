@@ -24,3 +24,6 @@ docs/site/
 Manifest.toml
 
 temp/
+LocalPreferences.toml
+test/output/
+.trae/
