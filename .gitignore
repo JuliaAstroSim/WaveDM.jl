@@ -24,6 +24,8 @@ docs/site/
 Manifest.toml
 
 temp/
-LocalPreferences.toml
-test/output/
 .trae/
+test/output/
+LocalPreferences.toml
+.vscode/
+test/simulation_SPE3D_validation.md

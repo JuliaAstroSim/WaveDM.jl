@@ -193,16 +193,11 @@ function SPE3D_waveDM(;
 )
     println("\n\n")
     mkpathIfNotExist(outputdir)
-    
-    if distributed_memory
-        @info "Distributed memory parallelism enabled!"
-        DA = DArray
-    else
-        DA = collect
-    end
 
-    @info gpu ? "Carrying out FFT on GPU" : "Carrying out FFT on CPU"
-    DeviceArray = gpu ? cu : collect # convertor
+    config_device = DeviceConfig(; gpu=gpu, distributed=distributed_memory)
+    DA = config_device.distribute_array
+    DeviceArray = config_device.DeviceArray
+    @info "Parallel backend: $(config_device.kind) (gpu=$(config_device.gpu), nthreads=$(config_device.nthreads), nworkers=$(config_device.nworkers))"
 
     @info "TimeMax: $(Tmax * time_astro)"
     @info "Xmax: $(Xmax * length_astro)"
@@ -246,7 +241,7 @@ function SPE3D_waveDM(;
             else
                 baryon_term = baryon
             end
-            Φ_b = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(baryon_term), Periodic(), gpu ? GPU() : CPU()))
+            Φ_b = 4π * parallel_poisson(Δ, [Nx-1, Ny-1, Nz-1], DeviceArray(baryon_term), Periodic(), config_device)
         else
             Φ_b = baryon_potential
         end
@@ -306,7 +301,7 @@ function SPE3D_waveDM(;
         # mesh_particles = nothing # release memory
         Φ_WaveDM = compute_potential(sim_mesh_force, mesh_particles.Pos, SofteningLength, Tree(), CPU()) ./ potential_astro
     else
-        Φ_WaveDM = collect(4π * fft_poisson(Δ, [Nx-1, Ny-1, Nz-1], abs.(DeviceArray(ψ)).^2, Periodic(), gpu ? GPU() : CPU()))
+        Φ_WaveDM = 4π * parallel_poisson(Δ, [Nx-1, Ny-1, Nz-1], abs.(DeviceArray(ψ)).^2, Periodic(), config_device)
     end
 
     @info "Computing IC acc"
@@ -534,7 +529,6 @@ function SPE3D_waveDM(;
     ψ_last_t = similar(ψ)
     
     grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, r, oneMatrix, unit_cell_volumn)
-    config_device = DeviceConfig(gpu, DeviceArray, DA)
     config_tidal = TidalFieldConfig(MW_tidal_field, MW_tidal_interpolate, LMC_tidal_field, uT, tidal_lookback_time, df_traj, df_traj_LMC, length_astro, uL, MW_grid, MW_Phi, spl_pot, sim_force_baryon, particles_LMC, sim_traj_LMC)
     
     i_Nbody = 2
@@ -547,7 +541,7 @@ function SPE3D_waveDM(;
             config_gravity = GravityConfig(boundary, Φ_b, sim_mesh_force, mesh_particles, SofteningLength, baryon_mode, GravitySolver, mass_astro)
             
             # Pass individual parameters to apply_kick_step! instead of KickStepConfig
-            Φ_all, Φ_WaveDM, spec = apply_kick_step!(device_ψ, ψ, V, rho_max, rho_max_id, grid, config_gravity, config_tidal, config_device, dt_kick, i, t)
+            Φ_all, Φ_WaveDM, spec = apply_kick_step!(device_ψ, ψ, V, rho, rho_max, rho_max_id, grid, config_gravity, config_tidal, config_device, dt_kick, i, t)
             
             ### Drift
             device_ψ = apply_drift_step!(spec, linear_phase, border, gpu, DeviceArray)
@@ -674,7 +668,41 @@ function SPE3D_waveDM(;
                 end
             end
 
-            # Update plot
+            # Update Observable arrays periodically (independent of Realtime visualization)
+            if iszero(mod(i, StepsBetweenSnapshots))
+                ArrayT[] = t[1:i] * uT
+                ArrayTotalMass[] = vcat(ArrayTotalMass[], ArrayTotalMass_temp); empty!(ArrayTotalMass_temp)
+                ArrayR[] = vcat(ArrayR[], ArrayR_temp); empty!(ArrayR_temp)
+                ArrayR1[] = vcat(ArrayR1[], ArrayR1_temp); empty!(ArrayR1_temp)
+                ArrayR2[] = vcat(ArrayR2[], ArrayR2_temp); empty!(ArrayR2_temp)
+                ArrayR3[] = vcat(ArrayR3[], ArrayR3_temp); empty!(ArrayR3_temp)
+                ArrayR4[] = vcat(ArrayR4[], ArrayR4_temp); empty!(ArrayR4_temp)
+                ArrayR5[] = vcat(ArrayR5[], ArrayR5_temp); empty!(ArrayR5_temp)
+                ArrayR6[] = vcat(ArrayR6[], ArrayR6_temp); empty!(ArrayR6_temp)
+                ArrayR7[] = vcat(ArrayR7[], ArrayR7_temp); empty!(ArrayR7_temp)
+                ArrayR8[] = vcat(ArrayR8[], ArrayR8_temp); empty!(ArrayR8_temp)
+                ArrayR9[] = vcat(ArrayR9[], ArrayR9_temp); empty!(ArrayR9_temp)
+
+                if plot_virial
+                    ArrayVirialPotential[] = vcat(ArrayVirialPotential[], ArrayVirialPotential_temp)
+                    empty!(ArrayVirialPotential_temp)
+                    ArrayTotalKineticE[] = vcat(ArrayTotalKineticE[], ArrayTotalKineticE_temp)
+                    empty!(ArrayTotalKineticE_temp)
+                    ArrayTotalQuantumE[] = vcat(ArrayTotalQuantumE[], ArrayTotalQuantumE_temp)
+                    empty!(ArrayTotalQuantumE_temp)
+                    ArrayVirial[] = vcat(ArrayVirial[], ArrayVirial_temp)
+                    empty!(ArrayVirial_temp)
+
+                    ArrayMomentumX[] = vcat(ArrayMomentumX[], ArrayMomentumX_temp)
+                    empty!(ArrayMomentumX_temp)
+                    ArrayMomentumY[] = vcat(ArrayMomentumY[], ArrayMomentumY_temp)
+                    empty!(ArrayMomentumY_temp)
+                    ArrayMomentumZ[] = vcat(ArrayMomentumZ[], ArrayMomentumZ_temp)
+                    empty!(ArrayMomentumZ_temp)
+                end
+            end
+
+            # Update plot (only when Realtime visualization is enabled)
             if Realtime && iszero(mod(i, StepsBetweenSnapshots))
                 if distributed_memory
                     SliceXY[] = dropdims(collect(rho[:, :, rho_max_id[3]]), dims = 3)
@@ -693,47 +721,15 @@ function SPE3D_waveDM(;
                 )
                 profile_r_mean[] = _profile_r_mean
                 profile_ρ_mean[] = _profile_ρ_mean
-                
-                # Update Observable arrays with corresponding time points to maintain consistent lengths
-                # ArrayT[] = vcat(ArrayT[], [t[i] * uT])
-                ArrayT[] = t[1:i] * uT
-                ArrayTotalMass[] = vcat(ArrayTotalMass[], ArrayTotalMass_temp); empty!(ArrayTotalMass_temp)
-                ArrayR[] = vcat(ArrayR[], ArrayR_temp); empty!(ArrayR_temp)
-                ArrayR1[] = vcat(ArrayR1[], ArrayR1_temp); empty!(ArrayR1_temp)
-                ArrayR2[] = vcat(ArrayR2[], ArrayR2_temp); empty!(ArrayR2_temp)
-                ArrayR3[] = vcat(ArrayR3[], ArrayR3_temp); empty!(ArrayR3_temp)
-                ArrayR4[] = vcat(ArrayR4[], ArrayR4_temp); empty!(ArrayR4_temp)
-                ArrayR5[] = vcat(ArrayR5[], ArrayR5_temp); empty!(ArrayR5_temp)
-                ArrayR6[] = vcat(ArrayR6[], ArrayR6_temp); empty!(ArrayR6_temp)
-                ArrayR7[] = vcat(ArrayR7[], ArrayR7_temp); empty!(ArrayR7_temp)
-                ArrayR8[] = vcat(ArrayR8[], ArrayR8_temp); empty!(ArrayR8_temp)
-                ArrayR9[] = vcat(ArrayR9[], ArrayR9_temp); empty!(ArrayR9_temp)
 
                 if plot_virial
-                    # Update Observable arrays by direct assignment to trigger automatic updates
-                    ArrayVirialPotential[] = vcat(ArrayVirialPotential[], ArrayVirialPotential_temp)
-                    empty!(ArrayVirialPotential_temp)
-                    ArrayTotalKineticE[] = vcat(ArrayTotalKineticE[], ArrayTotalKineticE_temp)
-                    empty!(ArrayTotalKineticE_temp)
-                    ArrayTotalQuantumE[] = vcat(ArrayTotalQuantumE[], ArrayTotalQuantumE_temp)
-                    empty!(ArrayTotalQuantumE_temp)
-                    ArrayVirial[] = vcat(ArrayVirial[], ArrayVirial_temp)
-                    empty!(ArrayVirial_temp)
-
-                    ArrayMomentumX[] = vcat(ArrayMomentumX[], ArrayMomentumX_temp)
-                    empty!(ArrayMomentumX_temp)
-                    ArrayMomentumY[] = vcat(ArrayMomentumY[], ArrayMomentumY_temp)
-                    empty!(ArrayMomentumY_temp)
-                    ArrayMomentumZ[] = vcat(ArrayMomentumZ[], ArrayMomentumZ_temp)
-                    empty!(ArrayMomentumZ_temp)
-
                     Makie.xlims!(AxisVirial, 0, ArrayT[][end])
                     Makie.ylims!(AxisVirial,
                         min(minimum(ArrayVirial[]), minimum(ArrayTotalQuantumE[]), minimum(ArrayTotalKineticE[]), minimum(ArrayVirialPotential[])),
                         max(maximum(ArrayVirial[]), maximum(ArrayTotalQuantumE[]), maximum(ArrayTotalKineticE[]), maximum(ArrayVirialPotential[])),
-                    ) 
+                    )
                 end
-                
+
                 Makie.xlims!(AxisR, 0, ArrayT[][end])
                 Makie.ylims!(AxisR, minimum(ArrayR1[]), maximum(ArrayR9[]))
 
@@ -753,7 +749,7 @@ function SPE3D_waveDM(;
                     best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
             end
 
-            update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, profile_r_mean[], profile_ρ_mean[], best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
+            update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, profile_r_mean[], profile_ρ_mean[], best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, Ymax, uT, uL, Nx, Δ)
 
             if need_to_interrupt(outputdir, remove = true)
                 breakflag = true
@@ -765,7 +761,7 @@ function SPE3D_waveDM(;
     unicode_plot && println("\n"^(div(unicode_heatmap_width,2)))
 
     dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix)
-    averaged_ψ2, averaged_a_all = compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, gpu, GPU, CPU, Periodic, fft_poisson, grad_central)
+    averaged_ψ2, averaged_a_all = compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, config_device)
 
     if baryon_mode == :ignored
         # z=0, y=0 plane
@@ -951,7 +947,7 @@ function simulate_waveDM(;
     boundary = Periodic(),
     SofteningLength = 1.0u"kpc",
     baryon_mode = :mesh,
-    gpu = true,
+    gpu = false,
 
     ### dwarfs
     stellar_TotalMass = NaN,
@@ -984,6 +980,7 @@ function simulate_waveDM(;
     a0_astro = C.ACC0 / length_astro * time_astro^2,
 
     distributed_memory = false,
+    export_particles = false,
     pids = workers(),
     kw...
 )
@@ -992,8 +989,13 @@ function simulate_waveDM(;
         @info "Initializing grid"
         x, y, z, Δ, unit_cell_volumn = setup_grid(Xmax, Ymax, Zmax, Nx, Ny, Nz)
         dt = Tmax / Nt
-        t = collect(LinRange(0, Tmax, Nt))
-        DA = distributed_memory ? DArray : collect
+        t = Vector{Float64}(LinRange(0, Tmax, Nt))
+
+        config_device = DeviceConfig(; gpu=gpu, distributed=distributed_memory)
+        DA = config_device.distribute_array
+        # DeviceArray = config_device.DeviceArray
+        @info "Parallel backend: $(config_device.kind) (gpu=$(config_device.gpu), nthreads=$(config_device.nthreads), nworkers=$(config_device.nworkers))"
+
         oneMatrix = ones(Nx, Ny, Nz)
         xxx, yyy, zzz, rrr = setup_coordinates(x, y, z, Nx, Ny, Nz, oneMatrix; DA)
         # RRR = sqrt.(xxx.^2 + yyy.^2)
@@ -1009,10 +1011,8 @@ function simulate_waveDM(;
         uRho = ustrip(u"Msun/kpc^3", density_astro)
         uMomentum = ustrip(u"Msun*kpc/Gyr", mass_astro * velocity_astro)
         
-        config_units = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro, 
+        config_units = AstroUnitsConfig(length_astro, time_astro, mass_astro, density_astro, acc_astro, velocity_astro, potential_astro,
                                         uT, uL, uVel, uAcc, uRho, uMomentum, h_astro, aₛ_astro, mₐ_astro, c_astro, κ_astro, G0, a0_astro)
-        DeviceArray = gpu ? cu : collect # convertor
-        config_device = DeviceConfig(gpu, DeviceArray, DA)
         
         grid = SimulationGrid(Xmax, Ymax, Zmax, Nx, Ny, Nz, Δ, x, y, z, xxx, yyy, zzz, rrr, oneMatrix, unit_cell_volumn)
         
@@ -1048,6 +1048,9 @@ function simulate_waveDM(;
         total_mass_baryon = 0.0u"Msun"
     end
 
+    if export_particles
+        return baryon_particles
+    end
 
     @info "Start SPE simulation"
     return SPE3D_waveDM(;

@@ -22,7 +22,7 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
     suffix = vis_config.suffix
     size = vis_config.size
     fig = Figure(; size)
-    
+
     ArrayT = Observable([t[1] * uT])
 
     AxisXY = Makie.Axis(fig[1,1];
@@ -62,7 +62,7 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
         xminorticks = IntervalsBetween(10),
         yminorticks = IntervalsBetween(10),
     )
-    
+
     AxisVirial = Makie.Axis(fig[2,2];
         xlabel = "t [Gyr]", ylabel = "virial",
         xminorticksvisible = true,
@@ -83,7 +83,7 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
     )
     Makie.xlims!(AxisDensityProfile, 0.5*Δ[1]*uL, Xmax*uL)
     Makie.ylims!(AxisDensityProfile, 1e3, 1e11)
-    
+
     if distributed_memory
         SliceXY = Observable(dropdims(collect(rho[:, :, rho_max_id[3]]), dims = 3))
         SliceYZ = Observable(dropdims(collect(rho[rho_max_id[1], :, :]), dims = 1))
@@ -93,7 +93,7 @@ function setup_visualization(grid::SimulationGrid, t::Vector, vis_config::Visual
         SliceYZ = Observable(rho[rho_max_id[1], :, :])
         SliceXZ = Observable(rho[:, rho_max_id[2], :])
     end
-    
+
     ArrayTotalMass = Observable([isinf(total_halo_mass) ? 0 : total_halo_mass])
     # Fix method ambiguity by explicitly calculating weighted std
     ArrayR = Observable([std(collect(r[:,:,div(end,2)]), aweights(collect(rho[:,:,div(end,2)]))) * uL]) #TODO this is strongly affected by rho
@@ -171,14 +171,14 @@ function setup_virial_visualization(ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_vol
     ArrayMomentumX = Observable([MomentumX])
     ArrayMomentumY = Observable([MomentumY])
     ArrayMomentumZ = Observable([MomentumZ])
-    
+
     # Compute energies and momenta
     VirialPotential = -0.5*sum(rho[2:end-1,2:end-1,2:end-1] .* Φ_all[2:end-1,2:end-1,2:end-1]) * unit_cell_volumn
     TotalKineticE = 0.5 * sum((ρvx[2:end-1,2:end-1,2:end-1].^2 + ρvy[2:end-1,2:end-1,2:end-1].^2 + ρvz[2:end-1,2:end-1,2:end-1].^2) ./ rho[2:end-1,2:end-1,2:end-1]) * unit_cell_volumn
     sqrt_rho_x, sqrt_rho_y, sqrt_rho_z = grad_central(Δ..., collect(sqrt_rho))
     TotalQuantumE = 0.5 * sum(sqrt_rho_x[2:end-1,2:end-1,2:end-1].^2 + sqrt_rho_y[2:end-1,2:end-1,2:end-1].^2 + sqrt_rho_z[2:end-1,2:end-1,2:end-1].^2) * unit_cell_volumn
     # sqrt_rho_x = sqrt_rho_y = sqrt_rho_z = nothing # release memory
-    
+
     # Setup observables
     ArrayVirialPotential = Observable([VirialPotential])
     ArrayTotalKineticE = Observable([TotalKineticE])
@@ -190,7 +190,7 @@ function setup_virial_visualization(ψ, Φ_all, rho, sqrt_rho, Δ, unit_cell_vol
     Makie.lines!(AxisVirial, ArrayT, ArrayTotalQuantumE, label = "Q")
     Makie.lines!(AxisVirial, ArrayT, ArrayVirial, label = "d²I/dt² = V + 2K + 2Q")
     axislegend(AxisVirial)
-    
+
     return (
         ArrayVirialPotential = ArrayVirialPotential,
         ArrayTotalKineticE = ArrayTotalKineticE,
@@ -244,7 +244,7 @@ Update visualization for virial theorem quantities during evolution.
 """
 function update_virial_visualization!(ArrayVirialPotential, ArrayVirialPotential_temp, ArrayTotalKineticE, ArrayTotalKineticE_temp, ArrayTotalQuantumE, ArrayTotalQuantumE_temp, ArrayVirial, ArrayVirial_temp,
     ArrayMomentumX, ArrayMomentumX_temp, ArrayMomentumY, ArrayMomentumY_temp, ArrayMomentumZ, ArrayMomentumZ_temp, AxisVirial, ArrayT)
-    
+
 end
 
 """
@@ -264,7 +264,7 @@ function setup_density_profile_visualization!(fig, AxisDensityProfile,
         # section = ceil(Int, Nx/2*sqrt(3)),
         section = ceil(Int, target_profile_rs * target_fitting_rs_ratio / length_astro / Δ[1]),
     )
-    
+
     profile_r_mean = Observable(deepcopy(_profile_r_mean))
     profile_ρ_mean = Observable(deepcopy(_profile_ρ_mean))
 
@@ -342,7 +342,7 @@ function setup_density_profile_visualization!(fig, AxisDensityProfile,
         valign = :top,
         margin = (10, 10, 10, 10),
     )
-    
+
     return (
         profile_r_mean = profile_r_mean,
         profile_ρ_mean = profile_ρ_mean,
@@ -359,8 +359,8 @@ Update progress bar with Unicode plots if enabled.
 function update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id,
     Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, _profile_r_mean, _profile_ρ_mean,
     best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star,
-    unicode_heatmap_width, Xmax, uT, uL, Nx, Δ)
-    
+    unicode_heatmap_width, Xmax, Ymax, uT, uL, Nx, Δ)
+
     if unicode_plot
         if distributed_memory
             slice_rho = dropdims(collect(rho[:, :, rho_max_id[3]]), dims=3)
@@ -372,7 +372,7 @@ function update_unicode_progress!(progress, i, t, unicode_plot, distributed_memo
             xoffset = -Xmax*uL,
             yoffset = -Ymax*uL,
             xfact = 2*Xmax*uL/Nx,
-            yfact = 2*Xmax*uL/Nx,
+            yfact = 2*Ymax*uL/Nx,
             height = unicode_heatmap_width,
             width = unicode_heatmap_width,
         )
@@ -428,7 +428,7 @@ This function encapsulates the `plotMOND` inner function from SPE3D_waveDM.
 """
 function plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro, acc_astro, minR, maxR, outputdir, title, suffix, section;
     filename = title)
-    
+
     rMOND = r[:, :, div(end,2)][:] * ustrip(length_astro)
     a_b = sqrt.(ax_b[:, :, div(end,2)].^2 .+ ay_b[:, :, div(end,2)].^2 .+ az_b[:, :, div(end,2)].^2)
     a_all = sqrt.(ax_all[:, :, div(end,2)].^2 .+ ay_all[:, :, div(end,2)].^2 .+ az_all[:, :, div(end,2)].^2)
@@ -451,7 +451,7 @@ function plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro,
     a_all_measurement = measurement.(a_all_mean[indexMinR:indexMaxR], a_all_std[indexMinR:indexMaxR])
     a_mond_measurement = measurement.(a_mond_mean[indexMinR:indexMaxR], a_mond_std[indexMinR:indexMaxR])
     MOND_errorrel = mean((a_all_measurement .- a_mond_measurement) ./ a_mond_measurement)
-    
+
     uAcc = ustrip(acc_astro)
 
     f1 = Makie.scatter!(ax, rMOND[:], a_b[:] * uAcc, markersize = 2, color = :red)
@@ -467,7 +467,7 @@ function plotMOND(ax_all, ay_all, az_all, ax_b, ay_b, az_b, a0, r, length_astro,
     f3b = Makie.band!(ax, r_mean, (a_mond_mean - a_mond_std) * uAcc, (a_mond_mean + a_mond_std) * uAcc, color = (:green, 0.2))
 
     f4 = Makie.hlines!(ax, [a0 * uAcc], color = :blue)
-    
+
     Legend(figMOND[1,2], [[f1, f1a, f1b], [f2, f2a, f2b], [f3, f3a, f3b], f4], ["baryon", "all", "mond", "a0"])
     Makie.xlims!(ax, 0, ustrip(u"kpc", 1.5 * maxR))
     Makie.ylims!(ax, 1.0e-11, 1.0e-9)

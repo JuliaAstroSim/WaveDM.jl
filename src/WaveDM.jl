@@ -46,6 +46,22 @@ using OffsetArrays
 using DSP
 using Dates
 
+# Distributed-memory parallelism:
+#* `PhysicalMeshes.jl` provides the adaptive `ParallelBackend`
+#     abstraction (`:serial / :threads / :distributed / :gpu`).
+#* `DistributedArrays.jl` is required by some algorithms (e.g. the
+#     slab-decomposed 3D FFT for the distributed Poisson solver).
+#* Dagger.jl is intentionally NOT loaded: see
+#     JuliaParallel/Dagger.jl#649 for the DRef finalizer issue.
+using DistributedArrays
+using PhysicalMeshes: ParallelBackend,
+                      select_backend, detect_resources,
+                      is_serial, is_threads, is_distributed, is_gpu, is_parallel,
+                      to_device, to_host, distribute, release!,
+                      parallel_sum, parallel_maximum, parallel_minimum,
+                      parallel_findmax, parallel_quantile, parallel_sumprod,
+                      parallel_broadcast!, set_backend_fft_threads!
+
 # JuliaAstroSim encosystem
 using AstroSimBase
 using PhysicalParticles
@@ -72,28 +88,66 @@ export SimulationGrid, DeviceConfig, TimeStepConfig, AstroUnitsConfig,
        DensityProfileConfig, MassRadiusConfig, VisualizationConfig,
        VisualizationData, ProfileFitConfig, RCFitConfig, BestFitConfig
 
+# Re-export commonly used functions for API compatibility
+export setup_grid, setup_coordinates, compute_timestep
+export setup_initial_conditions, solve_vector_equation
+export generate_initial_conditions
+export compute_gravitational_potential, apply_kick_step!, apply_drift_step!
+export setup_fft_operators, setup_absorption_boundary
+export compute_profile_fit_error, compute_rc_fit_error, compute_beta_star, update_best_fit!
+export save_initial_conditions, save_evolution_results, save_property_dataframe, compute_averaged_fields
+export setup_visualization, plotMOND
+export need_to_interrupt, findfirstvalue
+export filter_min_rho, func_dθ_dt
+export vec_cartesian_to_spherical, vec_cartesian_to_cylindrical
+
+export select_backend, detect_resources, parallel_poisson
+export is_serial, is_threads, is_distributed, is_gpu, is_parallel
+
+# Core modules (data structures and coordinates)
 include("core/coordinates.jl")
-
 include("core/configs.jl")
-include("core/statistics.jl")
-include("core/utils.jl")
-include("core/init.jl")
 
-include("plot/plot_runtime.jl")
+include("parallel_poisson.jl")
 
-include("MOND.jl")
+# Math utilities
+include("math/statistics.jl")
 
+# Utils modules
+include("utils/kernels.jl")
+include("utils/filters.jl")
+
+# Physics modules
+include("physics/MOND.jl")
+include("physics/tidal_fields.jl")
+include("physics/schrodinger.jl")
+include("physics/poisson.jl")
+
+# Solver modules
 include("solver/gravity.jl")
-include("solver/tidal_fields.jl")
 include("solver/KDK.jl")
+include("solver/fft_operators.jl")
 include("solver/best_fit_extraction.jl")
 
-include("initial_conditions.jl")
-include("io.jl")
-include("simulation.jl")
+# Initial conditions modules
+include("ic/profiles.jl")
+include("ic/milkyway.jl")
+include("ic/generation.jl")
 
-include("auxiliary.jl")
-include("plot/plot.jl")
+# Simulation modules
+include("simulation/utils.jl")
+include("simulation/setup.jl")
+include("simulation/loop.jl")
+
+# IO modules
+include("io/save.jl")
+
+# Visualization modules
+include("visualization/runtime.jl")
+include("visualization/plots.jl")
+
+# Main simulation files (to be split in future iterations)
+include("simulation_main.jl")
 
 include("precompile.jl")
 

@@ -1,17 +1,12 @@
-# Utility functions and constants for WaveDM
-
-# Constant parameters from temp/SPE-WaveDM.jl
-const kernel3 = ones(3,3,3) ./ 3^3
-const kernel5 = ones(5,5,5) ./ 5^3
-const kernel7 = ones(7,7,7) ./ 7^3
-const kernel9 = ones(9,9,9) ./ 9^3
-const kernel11 = ones(11,11,11) ./ 11^3
-const kernel15 = ones(15,15,15) ./ 15^3
+# Filter and utility functions for WaveDM
 
 """
 $(TYPEDSIGNATURES)
 
 Check if density `rho` is above the minimum threshold defined by spline `spl` at radius `r`.
+
+`spl` is expected to be a callable that accepts a vector of radii and returns a vector of threshold values (e.g. a `Dierckx.Spline1D`). 
+The function returns `true` when `rho` is strictly greater than the interpolated threshold at `r`.
 """
 function filter_min_rho(rho, r, spl)
     if rho <= spl([r])[1]
@@ -37,7 +32,6 @@ $(TYPEDSIGNATURES)
 Extract the ma number from a string like "ma(3.0)".
 """
 function extract_ma_number(s::AbstractString)
-    # ma(xx.xx)
     reg = match(r"ma\(([\d.]+)\)", s)
     if reg !== nothing
         return parse(Float64, reg[1])

@@ -27,13 +27,17 @@ makedocs(
     format = Documenter.HTML(
         prettyurls = !("local" in ARGS),
         canonical = "https://JuliaAstroSim.github.io/WaveDM.jl/dev",
-        # assets = ["assets/style.css"],
+        # assets = [
+            # "assets/WaveDM_architecture.png",
+            # "assets/style.css",
+        # ],
+        assets = ["assets/alpha_small.ico"],
         analytics = "UA-153693590-1",
         highlights = ["llvm", "yaml"],
     ),
     pages = [
         "Home" => "index.md",
-        "Introdution" => "introduction.md",
+        "Introduction" => "introduction.md",
         "Installation" => "installation.md",
         "Algorithms" => "algorithms.md",
         "APIs" => [

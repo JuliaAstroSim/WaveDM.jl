@@ -17,7 +17,7 @@ Grid and coordinate configuration for simulations.
 - `oneMatrix`: 3D matrix of ones with size (Nx, Ny, Nz)
 - `unit_cell_volumn`: Volume of a single grid cell
 """
-struct SimulationGrid{T}
+struct SimulationGrid{T} 
     Xmax::T
     Ymax::T
     Zmax::T
@@ -37,17 +37,81 @@ struct SimulationGrid{T}
 end
 
 """
-Device configuration for GPU/CPU execution.
+Thin compatibility wrapper around `ParallelBackend` so that the
+existing call sites (`config_device.gpu`, `config_device.DeviceArray`,
+`config_device.DA`) keep working.
+The preferred way to construct a
+backend is now [`select_backend`](@ref), which picks the best kind
+(`:serial` / `:threads` / `:distributed` / `:gpu`) automatically.
 
 # Fields
-- `gpu`: Boolean flag indicating whether to use GPU
-- `DeviceArray`: Function to convert arrays to device-specific arrays (e.g., cu for GPU)
-- `DA`: Function to create distributed arrays (e.g., DArray for distributed memory)
+- `backend::ParallelBackend`  The actual backend object.
+- `DeviceArray::Function`     Convenience alias of `backend.device_array`
+- `DA::Function`              Convenience alias of `backend.distribute_array`
+
+Constructors:
+- `DeviceConfig(; gpu=false, distributed=false, kind=:auto, ...)`
+    - Build via auto-detection.  Accepts the same kwargs as `select_backend`.
+- `DeviceConfig(gpu::Bool, device_array, distribute_array)`
+    - Backward-compat: build a minimal serial/GPU-style config without
+      invoking auto-detection.  The new code should prefer the keyword
+      constructor.
 """
 struct DeviceConfig
-    gpu::Bool
+    backend::ParallelBackend
     DeviceArray::Function
-    DA::Function  # Distributed Array type
+    DA::Function
+end
+
+# Keyword constructor: full auto-detection
+function DeviceConfig(; gpu::Bool=false, distributed::Bool=false, kind::Symbol=:auto, kw...)
+    backend = select_backend(; gpu=gpu, distributed=distributed, kind=kind, kw...)
+    return DeviceConfig(backend, backend.device_array, backend.distribute_array)
+end
+
+# Positional constructor for backward compatibility: build a minimal
+# backend of the corresponding kind, no auto-detection.
+function DeviceConfig(gpu::Bool, device_array::Function, distribute_array::Function)
+    kind = if gpu
+        :gpu
+    elseif distribute_array === identity
+        :serial
+    else
+        :distributed
+    end
+    backend = select_backend(; kind=kind, gpu=gpu)
+    # Override the auto-detected function fields with the ones the caller
+    # passed in.  This keeps old code paths working when the user hands
+    # us custom `cu` / `DArray` functions.
+    backend = ParallelBackend(
+        kind, gpu,
+        backend.nthreads, backend.nworkers, backend.pids,
+        backend.has_darrays, backend.has_parallelops,
+        device_array, distribute_array, backend.local_array, backend.release!,
+        backend.fft_threads,
+    )
+    return DeviceConfig(backend, device_array, distribute_array)
+end
+
+# Property forwarding: old call sites read `config_device.gpu` etc.
+function Base.getproperty(dc::DeviceConfig, sym::Symbol)
+    b = getfield(dc, :backend)
+    sym === :gpu              && return b.gpu
+    sym === :DeviceArray      && return getfield(dc, :DeviceArray)
+    sym === :DA               && return getfield(dc, :DA)
+    sym === :device_array     && return b.device_array
+    sym === :distribute_array && return b.distribute_array
+    sym === :local_array      && return b.local_array
+    sym === :release!         && return b.release!
+    sym === :kind             && return b.kind
+    sym === :nthreads         && return b.nthreads
+    sym === :nworkers         && return b.nworkers
+    sym === :pids             && return b.pids
+    sym === :fft_threads      && return b.fft_threads
+    sym === :has_darrays      && return b.has_darrays
+    sym === :has_parallelops  && return b.has_parallelops
+    sym === :backend          && return b
+    return getproperty(b, sym)
 end
 
 """
@@ -137,7 +201,7 @@ Initial conditions configuration.
 """
 struct InitialConditionsConfig{T}
     model::Symbol
-    baryon_mode
+    baryon_mode::Symbol
     Np::Int
     pids
     bulk_perturb::Bool
