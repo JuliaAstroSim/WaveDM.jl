@@ -112,12 +112,13 @@ If you use WaveDM.jl in your research, please cite it as:
 
 ```bibtex
 @article{MengAndDong2026WaveDMjl,
-  title  = {WaveDM.jl: An Adaptable Simulation Framework for Dynamics of
-            Baryonic and Wave Dark Matter on Galaxy Scales},
-  author = {Run-Yu Meng and Xiao-Bo Dong},
-  year   = {2026},
-  journal= {arXiv preprint},
-}
+    title = {WaveDM.jl: An Adaptable Simulation Framework for Dynamics of Baryonic and Wave Dark Matter on Galaxy Scales},
+   author = {Run-Yu Meng and Xiao-Bo Dong},
+  journal = {arXiv preprint},
+     year = 2026,
+    month = jun,
+      url = {https://arxiv.org/abs/2606.25026v1},
+  urldate = {2026-06-25}
 }
 ```
 
