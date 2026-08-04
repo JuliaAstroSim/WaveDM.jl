@@ -37,6 +37,7 @@ makedocs(
     ),
     pages = [
         "Home" => "index.md",
+        "Quickstart" => "quickstart.md",
         "Introduction" => "introduction.md",
         "Installation" => "installation.md",
         "Algorithms" => "algorithms.md",

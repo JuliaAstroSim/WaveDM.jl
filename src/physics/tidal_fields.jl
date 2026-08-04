@@ -144,3 +144,86 @@ function cancel_field_gradient_at_center!(field, center_id, oneMatrix, Nx, Ny, N
 
     return field
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+Quantify the error introduced by interpolating the pre-computed
+MW tidal potential on the SPE grid.
+
+For a sample of `n_sample` random points inside the SPE box,
+recompute the tidal potential directly from `spl_pot` and from
+`sim_force_baryon` (if provided), then compare against the values
+obtained by interpolating the precomputed `MW_Phi` on the same
+points via `GridInterpolations.interpolate`.
+
+Returns a NamedTuple with the maximum, mean, RMS, and median
+absolute error (in code units of `potential_astro`). The function
+also returns the sample points and the per-point errors so the
+caller can produce a scatter plot.
+
+The test should be called once per simulation, after the tidal
+field has been set up but before the main loop starts. It is
+useful for verifying that `MW_pot_N` is large enough for the
+chosen SPE resolution.
+"""
+function tidal_interpolation_accuracy(
+    MW_grid, MW_Phi, spl_pot, sim_force_baryon, SofteningLength,
+    length_astro, potential_astro,
+    Nx, Ny, Nz, Δx, Δy, Δz;
+    n_sample::Int = 200,
+    seed::Int = 1234,
+)
+    if isnothing(MW_grid) || isnothing(MW_Phi)
+        @warn "MW_grid or MW_Phi is nothing; tidal interpolation accuracy test skipped"
+        return (max_abs_err = NaN, mean_abs_err = NaN, rms_abs_err = NaN,
+                median_abs_err = NaN, sample_pts = nothing, errs = nothing,
+                interpolated = nothing, direct = nothing)
+    end
+
+    Random.seed!(seed)
+    # Sample n_sample points uniformly inside the SPE box, then shift
+    # to Galactocentric frame by adding zero (i.e. the SPE box is
+    # assumed centered on the satellite at the time of the test).
+    pts_code = [(
+        x = (rand() - 0.5) * 2 * Nx * Δx,
+        y = (rand() - 0.5) * 2 * Ny * Δy,
+        z = (rand() - 0.5) * 2 * Nz * Δz,
+    ) for _ in 1:n_sample]
+
+    # Interpolation on the grid
+    interp_vals = Float64[]
+    direct_vals  = Float64[]
+    for p in pts_code
+        # Interpolation is in code units (the grid is dimensionless)
+        v_interp = GridInterpolations.interpolate(MW_grid, MW_Phi,
+            (p.x, p.y, p.z))
+        push!(interp_vals, v_interp)
+
+        # Direct: compute from MW NFW spline + baryon particles
+        r_kpc = sqrt(p.x^2 + p.y^2 + p.z^2) * length_astro  # * u"kpc" if needed
+        pot_dm = spl_pot(ustrip(u"kpc", r_kpc))
+        if isnothing(sim_force_baryon)
+            pot_direct = pot_dm
+        else
+            pos = PVector(p.x * length_astro, p.y * length_astro, p.z * length_astro)
+            pot_b = compute_potential(sim_force_baryon, pos, SofteningLength,
+                sim_force_baryon.config.solver.grav, CPU())
+            pot_direct = pot_b + pot_dm
+        end
+        # Convert to code units: divide by potential_astro
+        push!(direct_vals, pot_direct / potential_astro)
+    end
+
+    errs = abs.(interp_vals .- direct_vals)
+    return (
+        max_abs_err    = maximum(errs),
+        mean_abs_err   = sum(errs) / length(errs),
+        rms_abs_err    = sqrt(sum(errs.^2) / length(errs)),
+        median_abs_err = Statistics.median(errs),
+        sample_pts     = pts_code,
+        errs           = errs,
+        interpolated   = interp_vals,
+        direct         = direct_vals,
+    )
+end

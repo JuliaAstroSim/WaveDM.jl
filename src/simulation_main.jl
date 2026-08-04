@@ -120,6 +120,14 @@ function SPE3D_waveDM(;
     ## ultra faint dwarfs: 
     extract_dwarf_granule = false,
     extract_min_t = 0.2u"Gyr",
+    extract_diagnostic_timeseries = false,  # NEW: time-series β*(t), v-field, mass-center
+    diagnostic_min_t = 0.0u"Gyr",            # NEW: when to start the time series (default = start)
+    diagnostic_stride = 1,                  # NEW: record every N timesteps (1 = every step)
+    diagnostic_r_bins_kpc = collect(0.0:0.1:2.0),  # NEW: shell bin edges for velocity field (kpc)
+    diagnostic_interior_kpc = 1.0,          # NEW: V2 interior mass radius (kpc)
+    diagnostic_rho_bound_threshold = 0.0,    # NEW: V4 bound-mass mask threshold (absolute code units)
+    diagnostic_beta_star_r_min_kpc = 0.3,   # NEW: Cooke-2022 inner slope lower radius (kpc)
+    diagnostic_beta_star_r_max_kpc = 0.8,   # NEW: Cooke-2022 inner slope upper radius (kpc)
     target_velocity_dispersion = [],
     target_velocity_dispersion_r = [],
     target_profile_model = :Zhao,  # default: MW
@@ -411,6 +419,39 @@ function SPE3D_waveDM(;
     ArrayMomentumY_temp = Float64[]
     ArrayMomentumZ_temp = Float64[]
 
+    # NEW (2026-07-22): storage for the β*(t) + velocity-field time series
+    if extract_diagnostic_timeseries
+        ArrayDiagT = Float64[]
+        ArrayDiagRhoC = Float64[]
+        ArrayDiagBoundMass = Float64[]
+        ArrayDiagInteriorMass = Float64[]
+        ArrayDiagBetaStarRM = Float64[]
+        ArrayDiagBetaStarMC = Float64[]
+        ArrayDiagBetaStarInner = Float64[]
+        ArrayDiagXcMass = Float64[]
+        ArrayDiagYcMass = Float64[]
+        ArrayDiagZcMass = Float64[]
+        ArrayDiagPE = Float64[]
+        ArrayDiagQE = Float64[]
+        ArrayDiagKE = Float64[]
+        # Velocity shell vectors: re-binned on a fixed grid for ease of plotting
+        # Bin edges are in code units (length_astro)
+        diagnostic_r_bins_code = diagnostic_r_bins_kpc ./ uL
+        n_shells = length(diagnostic_r_bins_kpc) - 1
+        ArrayDiagVrMean = [Float64[] for _ in 1:n_shells]
+        ArrayDiagVrStd  = [Float64[] for _ in 1:n_shells]
+        ArrayDiagVtMean = [Float64[] for _ in 1:n_shells]
+        ArrayDiagVtStd  = [Float64[] for _ in 1:n_shells]
+        ArrayDiagVfMean = [Float64[] for _ in 1:n_shells]
+        ArrayDiagVfStd  = [Float64[] for _ in 1:n_shells]
+        # DiagnosticSnapshot struct list for full-precision save
+        DiagnosticList = DiagnosticSnapshot[]
+        # Velocity-shells snapshot list (one NamedTuple per saved step)
+        VelocityShellList = NamedTuple[]
+        # Tidal interpolation accuracy diagnostic (run once after MW tidal setup)
+        TidalInterpAccuracy = nothing
+    end
+
     linear_phase = setup_fft_operators(Xmax, Ymax, Zmax, Nx, Ny, Nz, dt)  # Laplacian in Fourier space
     border = setup_absorption_boundary(Xmax, Ymax, Zmax, x, y, z, absorb_coeff, dt)
 
@@ -474,6 +515,19 @@ function SPE3D_waveDM(;
             MW_grid, MW_Phi, MW_x, MW_y, MW_z = setup_mw_tidal_field(MW_pot, MW_pot_Xmax, MW_pot_Ymax, MW_pot_Zmax, MW_pot_N, length_astro, potential_astro, spl_pot, sim_force_baryon, SofteningLength)
         else # Directly compute the potentials
         end
+    end
+
+    # NEW (2026-07-22): tidal interpolation accuracy diagnostic
+    if extract_diagnostic_timeseries && MW_tidal_field
+        @info "Running tidal-field interpolation accuracy diagnostic (n=200 sample points)"
+        TidalInterpAccuracy = tidal_interpolation_accuracy(
+            MW_grid, MW_Phi, spl_pot, sim_force_baryon, SofteningLength,
+            length_astro, potential_astro,
+            Nx, Ny, Nz, Δ[1], Δ[2], Δ[3];
+            n_sample = 200,
+            seed = 1234,
+        )
+        @info "Tidal interpolation accuracy: max=$(round(TidalInterpAccuracy.max_abs_err, digits=4)), mean=$(round(TidalInterpAccuracy.mean_abs_err, digits=4)), rms=$(round(TidalInterpAccuracy.rms_abs_err, digits=4)), median=$(round(TidalInterpAccuracy.median_abs_err, digits=4)) (code units of potential_astro)"
     end
     
     rho_max, rho_max_id = findmax(rho)
@@ -749,6 +803,54 @@ function SPE3D_waveDM(;
                     best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
             end
 
+            # NEW (2026-07-22): accumulate β*(t) + velocity-field + bound-mass time series
+            if extract_diagnostic_timeseries && (t[i] * time_astro >= diagnostic_min_t) && iszero(mod(i, diagnostic_stride))
+                # Latest virial terms (only available if plot_virial=true)
+                local _PE = plot_virial ? ArrayVirialPotential[end] : NaN
+                local _QE = plot_virial ? ArrayTotalQuantumE[end] : NaN
+                local _KE = plot_virial ? ArrayTotalKineticE[end] : NaN
+                diag = compute_diagnostic_snapshot(
+                    ψ, rho, xxx, yyy, zzz, r_mass_center, rho_max_id,
+                    t[i],  # code-unit time
+                    unit_cell_volumn, mass_astro, length_astro,
+                    _PE, _QE, _KE,
+                    diagnostic_r_bins_code;
+                    rho_bound_threshold = diagnostic_rho_bound_threshold,
+                    r_interior_kpc = diagnostic_interior_kpc,
+                    beta_star_r_min_kpc = diagnostic_beta_star_r_min_kpc,
+                    beta_star_r_max_kpc = diagnostic_beta_star_r_max_kpc,
+                )
+                push!(DiagnosticList, diag)
+                push!(ArrayDiagT, diag.t)
+                push!(ArrayDiagRhoC, diag.rho_c)
+                push!(ArrayDiagBoundMass, diag.bound_mass)
+                push!(ArrayDiagInteriorMass, diag.interior_mass)
+                push!(ArrayDiagBetaStarRM, diag.beta_star_rhomax)
+                push!(ArrayDiagBetaStarMC, diag.beta_star_masscenter)
+                push!(ArrayDiagBetaStarInner, diag.beta_star_rhomax_interior)
+                push!(ArrayDiagXcMass, diag.xc_mass)
+                push!(ArrayDiagYcMass, diag.yc_mass)
+                push!(ArrayDiagZcMass, diag.zc_mass)
+                push!(ArrayDiagPE, _PE)
+                push!(ArrayDiagQE, _QE)
+                push!(ArrayDiagKE, _KE)
+
+                # Velocity-field shells
+                vshells = compute_velocity_field_shells(
+                    ψ, xxx, yyy, zzz, r_mass_center, rho_max_id,
+                    diagnostic_r_bins_code,
+                )
+                push!(VelocityShellList, vshells)
+                for s in 1:length(diagnostic_r_bins_kpc) - 1
+                    push!(ArrayDiagVrMean[s], vshells.vr_mean[s])
+                    push!(ArrayDiagVrStd[s],  vshells.vr_std[s])
+                    push!(ArrayDiagVtMean[s], vshells.vθ_mean[s])
+                    push!(ArrayDiagVtStd[s],  vshells.vθ_std[s])
+                    push!(ArrayDiagVfMean[s], vshells.vφ_mean[s])
+                    push!(ArrayDiagVfStd[s],  vshells.vφ_std[s])
+                end
+            end
+
             update_unicode_progress!(progress, i, t, unicode_plot, distributed_memory, rho, rho_max_id, Realtime, StepsBetweenSnapshots, r_target, ρ_halo_target, profile_r_mean[], profile_ρ_mean[], best_fit_t, best_fit_error, current_fit_error, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, unicode_heatmap_width, Xmax, Ymax, uT, uL, Nx, Δ)
 
             if need_to_interrupt(outputdir, remove = true)
@@ -800,6 +902,36 @@ function SPE3D_waveDM(;
     CSV.write(joinpath(outputdir, "$(title), $(suffix) - acc.csv"), dfAcc)
 
     save_phi && save_evolution_results(ψ, Φ_all, ψ_last_t, average, averaged_ψ2, outputdir, title, suffix)
+
+    # NEW (2026-07-22): save the diagnostic time series
+    if extract_diagnostic_timeseries && length(DiagnosticList) > 0
+        @info "Saving diagnostic time series (n=$(length(DiagnosticList)) snapshots)"
+        # Pad velocity-shell arrays to a uniform length (in case last step
+        # didn't add shells due to stride rounding).
+        save_diagnostic_timeseries(
+            DiagnosticList, VelocityShellList, outputdir, title, suffix)
+
+        # Also save the velocity-shell snapshot list as a separate JLD2
+        # for fast shell-by-shell plotting without parsing the CSV.
+        save(joinpath(outputdir, "$(title), $(suffix) - VelocityShells.jld2"),
+            Dict(
+                "r_bins_kpc" => diagnostic_r_bins_kpc,
+                "t"          => ArrayDiagT,
+                "vr_mean"    => ArrayDiagVrMean,
+                "vr_std"     => ArrayDiagVrStd,
+                "vθ_mean"    => ArrayDiagVtMean,
+                "vθ_std"     => ArrayDiagVtStd,
+                "vφ_mean"    => ArrayDiagVfMean,
+                "vφ_std"     => ArrayDiagVfStd,
+            ))
+
+        # Save the tidal-interpolation accuracy diagnostic
+        if MW_tidal_field
+            save(joinpath(outputdir, "$(title), $(suffix) - TidalInterpAccuracy.jld2"),
+                Dict("accuracy" => TidalInterpAccuracy))
+            @info "Tidal interpolation accuracy saved to TidalInterpAccuracy.jld2"
+        end
+    end
 
     Makie.save(joinpath(outputdir, "$(title), $(suffix) - Overview Prop.png"), fig)
 
