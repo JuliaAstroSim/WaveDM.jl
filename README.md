@@ -7,9 +7,36 @@
 
 **WaveDM.jl: An Adaptable Simulation Framework for Dynamics of Baryonic and Wave Dark Matter on Galaxy Scales**
 
+> 👋 **First time here?** Open the [Quickstart](https://juliaastrosim.github.io/WaveDM.jl/dev/quickstart/) — it walks you through picking a model and running Crater II in under 10 minutes.
+
 WaveDM.jl is an open-source Julia package for high-performance simulations of wave (fuzzy) dark matter dynamics at galaxy scales.
 The code solves the time-dependent **Schrödinger–Poisson equation (SPE)** with a second-order pseudo-spectral split-step Fourier method.
 Its design philosophy centers on **adaptability** — making galaxy-scale simulations accessible to a broad range of astrophysicists — and **extensibility**, so the codebase can grow as a community-oriented project within the Julia ecosystem.
+
+## What's in the box — at a glance
+
+| Built-in preset                   | `model = …` keyword                   | What you get                                               |
+| --------------------------------- | ----------------------------------    | ---------------------------------------------------------  |
+| Crater II, Draco, Fornax, …       | `:dwarf_UFDs`                         | Ultra-faint dwarf halos (table via `list_galaxies()`)      |
+| Generic dwarf, NFW / gNFW / Zhao  | `:dwarf`, `:dwarf_NFW`, `:dwarf_Zhao` | Customisable dwarf halos                                   |
+| Milky Way (Zhu 2023 mass model)   | `:MW`                                 | Realistic host potential, with or without live baryons     |
+| Early-type galaxy                 | `:Elliptical`                         | gNFW halo + Jaffe stellar profile                          |
+| Galaxy cluster                    | `:cluster_NFW`, `:cluster_Burkert`    | NFW or Burkert halo + β-model ICM                          |
+| Custom Schrödinger problem        | any model + `IC`, `V`                 | NLO, BEC, optical lattices (see Examples §6 of code paper) |
+
+**Beginner-friendly introspectors:**
+
+```julia
+using WaveDM
+WaveDM.print_catalog()                  # full model × baryon_mode × galaxy table
+WaveDM.list_supported_models()           # programmatic access
+WaveDM.list_galaxies()                   # every UFD with L, b, rho0 (Hayashi 2023)
+# Per-catalog accessors and 1-based-id helpers:
+WaveDM.list_MW_satellites()              # Battaglia 2022 MW satellites
+WaveDM.list_SPARC_LTGs()                 # SPARC late-type galaxies
+WaveDM.list_cooke_dwarfs()               # Cooke 2022 massive-dwarf names
+WaveDM.ufd_index(df, Galaxy_id)          # → row index (uniform error message)
+```
 
 ---
 
@@ -56,17 +83,19 @@ using Unitful
 
 simulate_waveDM(;
     model           = :dwarf_UFDs,
-    Galaxy_id       = 6,                  # Crater II
+    Galaxy_id       = 6,                  # Crater II — try other ids via list_galaxies()
     V               = (x, y, z, ψ) -> 0.0,
-    Nx              = 384,
+    Nx              = 128,                # 128³ is a smoke test; use 384³ for production runs
     Xmax            = 20u"kpc",
-    Tmax            = 6.0u"Gyr",
+    Tmax            = 1.0u"Gyr",          # shorten for smoke test; 6 Gyr for production
     autoset_timestep = true,
-    gpu             = true,
-    Realtime        = true,
-    title           = "CraterII",
+    gpu             = false,              # set true if you have a CUDA GPU
+    Realtime        = false,              # set true if you have a monitor
+    title           = "TestRun",
 )
 ```
+
+> 💡 **First time?** Run `WaveDM.print_catalog()` after `using WaveDM` to see every supported model and ultra-faint dwarf Galaxy_id.
 
 Add the time-dependent MW tidal field, optionally perturbed by the LMC:
 

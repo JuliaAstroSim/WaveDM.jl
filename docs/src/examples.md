@@ -2,6 +2,12 @@
 
 This page walks through the end-to-end simulations discussed in §3 of the accompanying paper. Each example is a complete, runnable Julia script. Run from the Julia REPL or `julia --project` with the indicated packages installed.
 
+!!! tip "Before you start"
+    If you haven't run WaveDM.jl before, skim the [Quickstart](@ref) page first — it shows you how to
+    introspect the package with `list_supported_models()` / `list_galaxies()` / `print_catalog()`
+    so that you know which `model = :...` and `Galaxy_id = N` combinations are supported
+    before you write a 50-line script.
+
 ## 0. Smoke test (CPU, 64³)
 
 The fastest way to verify that WaveDM.jl is correctly installed and that the SPE loop is wired up. Runs in a few seconds on any machine.

@@ -190,3 +190,49 @@ Astrophysics, nonlinear optics, and condensed-matter physics thus share the same
 - ✓ You want a modular framework that supports general nonlinear Schrödinger problems.
 
 For purely cosmological wave-CDM simulations, dedicated cosmological codes (e.g. `UltraDark.jl`, `GAMER`) are more appropriate; WaveDM.jl focuses on **galactic dynamics**.
+
+## 7. Choosing a model — a one-page decision tree
+
+The [`model = :...` keyword](#3-key-features-of-wavedmjl) is the **first decision** every user makes. If you are not sure which one to use, work through this section top-to-bottom.
+
+```@raw html
+<style>
+.model-card { border: 1px solid #ddd; border-radius: 6px; padding: 1em 1.2em; margin: 0.8em 0; background: #fafafa; }
+.model-card h4 { margin: 0 0 0.4em 0; }
+.model-card code { background: #eef; padding: 1px 5px; border-radius: 3px; }
+.model-card ul { margin: 0.3em 0 0 0; padding-left: 1.4em; }
+</style>
+```
+
+<div class="model-card">
+<h4>🌌 I want a Milky-Way-sized halo with a realistic baryonic potential</h4>
+Use <code>model = :MW</code> with <code>baryon_mode = :mesh</code> for a fast calculation that resolves the bulge + discs on the same grid, or <code>baryon_mode = :particles_static</code> if you want the standard Zhu (2023) mass model sampled as 50 k–100 k N-body particles. Crater II satellites under a live MW tidal field live here.
+</div>
+
+<div class="model-card">
+<h4>🌑 I want a Crater II / Draco / ultra-faint dwarf simulation</h4>
+Use <code>model = :dwarf_UFDs</code>, then pick <code>Galaxy_id</code> from <code>list_galaxies()</code>. Right now only <code>Galaxy_id = 6</code> (Crater II) is wired up to a published halo; for the others, fall back to <code>:dwarf_NFW</code> with custom <code>halo_ρ0</code> / <code>halo_r0</code>.
+</div>
+
+<div class="model-card">
+<h4>🪐 I want a generic dwarf halo with my own parameters</h4>
+Use <code>model = :dwarf_NFW</code> (β = 1), <code>:dwarf_Zhao</code> (free α, β, γ), or <code>:dwarf</code> (gNFW + optional stellar disc).
+</div>
+
+<div class="model-card">
+<h4>🌠 I want an early-type galaxy or a galaxy cluster</h4>
+Use <code>:Elliptical</code> (gNFW halo + Jaffe stellar profile), <code>:cluster_NFW</code> (gNFW + β-model ICM), or <code>:cluster_Burkert</code> (Burkert halo + β-model ICM).
+</div>
+
+<div class="model-card">
+<h4>🧪 I want a non-astrophysics Schrödinger problem (NLO, BEC, …)</h4>
+Use <code>model = :MW</code> with a custom <code>IC = (x, y, z) -> …</code> and a custom <code>V = (x, y, z, ψ) -> …</code>. See [Examples §6](@ref) for the optical-lattice demo.
+</div>
+
+After you have picked the model, run
+
+```julia
+list_supported_models()
+```
+
+and look at the `baryon_mode` column to know which `baryon_mode` values the model accepts. The full matrix is also exposed programmatically — see the `print_catalog()` helper for a one-liner cheatsheet.

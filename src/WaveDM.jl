@@ -88,6 +88,20 @@ export SimulationGrid, DeviceConfig, TimeStepConfig, AstroUnitsConfig,
        DensityProfileConfig, MassRadiusConfig, VisualizationConfig,
        VisualizationData, ProfileFitConfig, RCFitConfig, BestFitConfig
 
+# Beginner-facing introspection helpers — see src/ic/catalog.jl
+# Each catalog gets a `list_<catalog>()` accessor (returns the AstroIC
+# DataFrame) plus a `<catalog>_index(df, id)` helper (turns a 1-based user
+# id into a row index, with a uniform error message).  `ufd_index` is the
+# original example; the other `*_index` helpers follow the same pattern so
+# adding a new catalog in `src/ic/catalog.jl` only takes a one-line
+# update of the `_CATALOG_LOADERS` dict.
+export list_supported_models, list_galaxies, print_catalog
+export list_MW_satellites, list_SPARC_LTGs,
+       list_SPARC_Xray_ETGs, list_SPARC_rotating_ETGs, list_cooke_dwarfs
+export ufd_index, MW_satellite_index,
+       SPARC_LTG_index, SPARC_Xray_ETG_index, SPARC_rotating_ETG_index,
+       cooke_dwarf_index
+
 # Re-export commonly used functions for API compatibility
 export setup_grid, setup_coordinates, compute_timestep
 export setup_initial_conditions, solve_vector_equation
@@ -95,6 +109,11 @@ export generate_initial_conditions
 export compute_gravitational_potential, apply_kick_step!, apply_drift_step!
 export setup_fft_operators, setup_absorption_boundary
 export compute_profile_fit_error, compute_rc_fit_error, compute_beta_star, update_best_fit!
+export compute_velocity_field_shells, compute_mass_weighted_center,
+       compute_interior_mass, compute_diagnostic_snapshot,
+       save_diagnostic_timeseries, detect_cuspy_windows,
+       DiagnosticSnapshot
+export tidal_interpolation_accuracy
 export save_initial_conditions, save_evolution_results, save_property_dataframe, compute_averaged_fields
 export setup_visualization, plotMOND
 export need_to_interrupt, findfirstvalue
@@ -132,6 +151,7 @@ include("solver/best_fit_extraction.jl")
 # Initial conditions modules
 include("ic/profiles.jl")
 include("ic/milkyway.jl")
+include("ic/catalog.jl")
 include("ic/generation.jl")
 
 # Simulation modules
