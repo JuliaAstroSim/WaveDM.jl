@@ -131,6 +131,29 @@ function SPE3D_waveDM(;
     target_velocity_dispersion = [],
     target_velocity_dispersion_r = [],
     target_profile_model = :Zhao,  # default: MW
+
+    ## Per-snapshot RAR a_0 diagnostic (2026-08-04):
+    ## When true, fit a_0 from the RAR at every recorded snapshot and
+    ## write it as a `RAR_a0` column to `... - Prop.csv`.  Requires
+    ## `baryon_mode != :ignored` (the fit needs a `a_b` / `a_all` pair).
+    ##
+    ## `RAR_snapshot_minR_kpc` / `RAR_snapshot_maxR_kpc` accept either a
+    ## numeric kpc value or the symbol `:auto`.  With `:auto` the per-
+    ## catalog defaults from `default_RAR_radial_window` are used (see
+    ## `src/ic/catalog.jl`):
+    ##   * `:dwarf_UFDs`        — `rMin = b/2`,  `rMax = 4 × b`     (Hayashi 2023)
+    ##   * `:SPARC_LTGs`        — `rMax = 2 × max(rs, RHI)`         (Lelli 2016c)
+    ##   * `:SPARC_Xray_ETGs`   — `rMin = 0.1 × Reff`, `rMax = 4 × Reff`
+    ##   * `:SPARC_rotating_ETGs` — `rMax = 4 × max(Reff, Rexp)`
+    ##   * `:MW`                — falls back to the SPE driver's `minR`/`maxR`
+    flag_RAR_snapshot = false,
+    RAR_snapshot_minR_kpc = :auto,
+    RAR_snapshot_maxR_kpc = :auto,
+    RAR_snapshot_stride = 1,                  # record every N steps
+    RAR_snapshot_lower = 1e-2,                # fit bound (× 1e-10 m/s²)
+    RAR_snapshot_upper = 1e2,                 # fit bound (× 1e-10 m/s²)
+    RAR_snapshot_slice = :rho_max,            # `:rho_max` or `:midplane`
+    
     target_profile_ρ0 = 1.55e7u"Msun/kpc^3",
     target_profile_ρ0_u = target_profile_ρ0 * Inf,
     target_profile_ρ0_d = target_profile_ρ0 * 0.0,
@@ -368,6 +391,9 @@ function SPE3D_waveDM(;
         grid, t, vis_config, data_config, config_units, distributed_memory
     )
 
+    # NEW (2026-08-04): Observable for the per-snapshot RAR a_0 time series
+    ArrayRAa0 = Observable(Float64[])
+
     if baryon_mode == :ignored
     else
         a_b = sqrt.(ax_b[:, :, div(end,2)].^2 .+ ay_b[:, :, div(end,2)].^2 .+ az_b[:, :, div(end,2)].^2)
@@ -450,6 +476,32 @@ function SPE3D_waveDM(;
         VelocityShellList = NamedTuple[]
         # Tidal interpolation accuracy diagnostic (run once after MW tidal setup)
         TidalInterpAccuracy = nothing
+    end
+
+    # NEW (2026-08-04): per-snapshot RAR a_0 storage
+    if flag_RAR_snapshot
+        if baryon_mode == :ignored
+            @warn "flag_RAR_snapshot=true requires `baryon_mode != :ignored` " *
+                  "(no `a_b` field available); disabling the diagnostic."
+            flag_RAR_snapshot = false
+        else
+            # Resolve the radial window now (so a typo / out-of-range
+            # Galaxy_id fails fast, before the SPE main loop kicks off).
+            # `minR` / `massRadius` are `u"kpc"` Quantities; we strip them
+            # here with `ustrip(...)` — same pattern as `uL = ustrip(u"kpc", length_astro)`
+            # elsewhere in this driver.
+            RAR_snapshot_minR_resolved, RAR_snapshot_maxR_resolved =
+                _resolve_rar_window(RAR_snapshot_minR_kpc,
+                                     RAR_snapshot_maxR_kpc,
+                                     model;
+                                     Galaxy_id = max(1, Galaxy_id),
+                                     floor_minR_kpc = ustrip(u"kpc", minR),
+                                     cap_maxR_kpc   = ustrip(u"kpc", massRadius))
+            @info "flag_RAR_snapshot: model=:$(model), Galaxy_id=$(Galaxy_id) " *
+                  "→ rMin = $(RAR_snapshot_minR_resolved) kpc, " *
+                  "rMax = $(RAR_snapshot_maxR_resolved) kpc"
+            ArrayRAa0_temp = Float64[]
+        end
     end
 
     linear_phase = setup_fft_operators(Xmax, Ymax, Zmax, Nx, Ny, Nz, dt)  # Laplacian in Fourier space
@@ -709,6 +761,55 @@ function SPE3D_waveDM(;
 
             a_all = sqrt.(ax_all[:, :, rho_max_id[3]].^2 .+ ay_all[:, :, rho_max_id[3]].^2 .+ az_all[:, :, rho_max_id[3]].^2)
 
+            # NEW (2026-08-04): per-snapshot RAR a_0 fit.
+            # Follows the same unit convention as the existing `dfAcc` build
+            # at the end of the SPE3D_waveDM driver (line ~879): everything
+            # stays in code-unit Float64 inside the loop, then `ustrip(length_astro)`
+            # / `ustrip(acc_astro)` are applied at the very end to enter
+            # physical m/s² units for the LsqFit call.
+            if flag_RAR_snapshot && iszero(mod(i-1, RAR_snapshot_stride))
+                # 1) Pick the slice axis.
+                if RAR_snapshot_slice == :midplane
+                    k_slice = div(Nz, 2) + 1   # z ≈ 0 midplane
+                else
+                    k_slice = rho_max_id[3]
+                end
+
+                # 2) Radial coordinate of the slice in *physical kpc* (plain Float64).
+                #    `r` is code-unit (dimensionless) and `length_astro` is the
+                #    conversion factor in `u"kpc"`.  `ustrip(length_astro)` gives
+                #    the bare Float64 multiplier — same pattern as `rMOND` above.
+                r_slice_kpc = collect(r[:, :, k_slice]) * ustrip(u"kpc", length_astro)
+
+                # 3) a_b and a_all slices in *physical m/s²* (plain Float64).
+                #    `ax_* / ay_* / az_*` are in code units (dimensionless).
+                #    Multiplying by `ustrip(acc_astro)` (= `uAcc`) gives plain
+                #    Float64 in m/s².  No Quantity math here — same pattern as
+                #    the `dfAcc` builder at line ~879.
+                acc = ustrip(u"m/s^2", acc_astro)
+                ab_slice  = sqrt.(ax_b[:,  :, k_slice].^2 .+
+                                  ay_b[:,  :, k_slice].^2 .+
+                                  az_b[:,  :, k_slice].^2) .* acc
+                aal_slice = sqrt.(ax_all[:, :, k_slice].^2 .+
+                                  ay_all[:, :, k_slice].^2 .+
+                                  az_all[:, :, k_slice].^2) .* acc
+
+                # 4) Restrict to the configured (minR, maxR) radial window.
+                #    Both `r_slice_kpc` and the resolved bounds are plain Float64
+                #    in kpc, so this is a plain numeric compare (no `ustrip`).
+                idx_RAR = (RAR_snapshot_minR_resolved .<= r_slice_kpc) .&
+                          (r_slice_kpc .<= RAR_snapshot_maxR_resolved)
+
+                if count(idx_RAR) >= 2
+                    push!(ArrayRAa0_temp, fit_RAR_a0(ab_slice[idx_RAR],
+                                                     aal_slice[idx_RAR];
+                                                     lower = RAR_snapshot_lower,
+                                                     upper = RAR_snapshot_upper))
+                else
+                    push!(ArrayRAa0_temp, NaN)
+                end
+            end
+
             if average
                 if t[i] * time_astro >= average_start_t
                     buffer_ψ2 += rho
@@ -753,6 +854,11 @@ function SPE3D_waveDM(;
                     empty!(ArrayMomentumY_temp)
                     ArrayMomentumZ[] = vcat(ArrayMomentumZ[], ArrayMomentumZ_temp)
                     empty!(ArrayMomentumZ_temp)
+                end
+
+                if flag_RAR_snapshot
+                    ArrayRAa0[] = vcat(ArrayRAa0[], ArrayRAa0_temp)
+                    empty!(ArrayRAa0_temp)
                 end
             end
 
@@ -862,7 +968,7 @@ function SPE3D_waveDM(;
 
     unicode_plot && println("\n"^(div(unicode_heatmap_width,2)))
 
-    dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix)
+    dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix; ArrayRAa0 = flag_RAR_snapshot ? ArrayRAa0 : nothing)
     averaged_ψ2, averaged_a_all = compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, config_device)
 
     if baryon_mode == :ignored

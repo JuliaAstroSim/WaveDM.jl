@@ -37,11 +37,18 @@ end
 $(TYPEDSIGNATURES)
 
 Create and save property DataFrame.
+
+When `ArrayRAa0` is supplied (an `Observable{Float64[]}` populated by the
+per-snapshot RAR fit in [`SPE3D_waveDM`](@ref)), a `:RAR_a0 [m/s²]`
+column is added to the saved CSV.  If `ArrayRAa0[]` is empty (e.g. the
+flag was off for the whole run) the column is filled with `NaN` so the
+header still exists and downstream parsers don't choke.
 """
 function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5,
     ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial,
     ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial,
-    ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix)
+    ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix;
+    ArrayRAa0 = nothing)
 
     dfProp = DataFrame(
         :t => ArrayT[],
@@ -65,6 +72,16 @@ function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, Arra
         dfProp[!,:MomentumX] = ArrayMomentumX[]
         dfProp[!,:MomentumY] = ArrayMomentumY[]
         dfProp[!,:MomentumZ] = ArrayMomentumZ[]
+    end
+    if ArrayRAa0 !== nothing
+        # Pad with NaN if no snapshots were recorded (length(ArrayRAa0[]) < nrow(dfProp))
+        col = ArrayRAa0[]
+        if length(col) < nrow(dfProp)
+            col = vcat(col, fill(NaN, nrow(dfProp) - length(col)))
+        elseif length(col) > nrow(dfProp)
+            col = col[1:nrow(dfProp)]
+        end
+        dfProp[!, :RAR_a0] = col
     end
     CSV.write(joinpath(outputdir, "$(title), $(suffix) - Prop.csv"), dfProp)
 

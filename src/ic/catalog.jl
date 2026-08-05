@@ -375,6 +375,176 @@ function cooke_dwarf_index(name::AbstractString)
 end
 
 # ===========================================================================
+# Per-catalog RAR radial-window defaults
+# ---------------------------------------------------------------------------
+# The per-snapshot RAR a_0 diagnostic in `SPE3D_waveDM` needs a radial
+# window `[rMin, rMax]`.  Crater II (~1 kpc) and the MW (~30 kpc) need
+# *very* different windows, so it pays to look up the catalog-appropriate
+# defaults from the same place where the catalog lives.  These helpers
+# mirror the choices used in `SPE-SPARC.jl`:
+#
+#   * SPARC X-ray ETGs           — `rMin = 0.1 × Reff`,  `rMax = 4 × Reff`
+#   * SPARC rotating ETGs        — `rMax = 4 × max(Reff, Rexp)`
+#   * SPARC LTGs                 — `rMax = 2 × max(rs, RHI)`
+#   * UFDs (Hayashi 2023)        — `rMin = b / 2`,       `rMax = 4 × b`
+#                                  where `b` is the projected half-light
+#                                  radius (the natural "Reff" analog for
+#                                  dwarf galaxies)
+#   * MW                         — fall back to the hardcoded
+#                                  `minR = 8 kpc` / `maxR = 15 kpc` of
+#                                  the SPE driver.
+#
+# The function takes a `catalog::Symbol` (`:dwarf_UFDs`, `:SPARC_LTGs`,
+# `:SPARC_Xray_ETGs`, `:SPARC_rotating_ETGs`, or `:MW`) and an optional
+# `Galaxy_id` (1-based row index into the matching DataFrame), and returns
+# a `(minR_kpc, maxR_kpc)::Tuple{Float64,Float64}`.
+# ===========================================================================
+
+"""
+    default_RAR_radial_window(catalog::Symbol;
+                              Galaxy_id::Integer = 1,
+                              minR_kpc::Real = 0.0,
+                              maxR_kpc::Real = Inf) -> (minR_kpc, maxR_kpc)
+
+Return a per-catalog default `(rMin, rMax)` window (both in kpc) suitable
+for fitting the Radial Acceleration Relation (RAR) for the galaxy at
+`Galaxy_id` in the given `catalog`.
+
+`minR_kpc` / `maxR_kpc` act as floor / ceiling overrides — if the catalog
+default would be smaller than `minR_kpc`, that is returned; if larger than
+`maxR_kpc`, that is returned.  This matches the `max(rMin, rMin_cell_i, 0.1 Reff)`
+clamp pattern used in `SPE-SPARC.jl`.
+
+| `catalog`            | source                                              |
+| -------------------- | --------------------------------------------------- |
+| `:dwarf_UFDs`        | Hayashi 2023 — `rMin = b/2`, `rMax = 4 × b` (kpc)   |
+| `:SPARC_LTGs`        | Lelli 2016c — `rMax = 2 × max(rs, RHI)` (kpc)       |
+| `:SPARC_Xray_ETGs`   | Lelli 2017 — `rMin = 0.1 × Reff`, `rMax = 4 × Reff` |
+| `:SPARC_rotating_ETGs` | Lelli 2017 — `rMax = 4 × max(Reff, Rexp)`           |
+| `:MW`                | falls back to `(minR_kpc, maxR_kpc)` (the SPE default) |
+
+For other catalogs (`:dwarf_massive`, etc.) the helper falls back to
+`(minR_kpc, maxR_kpc)` — users can override by passing their own.
+"""
+function default_RAR_radial_window(catalog::Symbol;
+                                    Galaxy_id::Integer = 1,
+                                    minR_kpc::Real = 0.0,
+                                    maxR_kpc::Real = Inf)
+    base = (Float64(minR_kpc), isinf(maxR_kpc) ? 0.0 : Float64(maxR_kpc))
+    catalog === :MW && return base
+
+    if catalog === :dwarf_UFDs
+        df = AstroIC.load_data_UFDs()
+        1 ≤ Galaxy_id ≤ nrow(df) || throw(ArgumentError(
+            "`Galaxy_id = $Galaxy_id` is out of range for `:dwarf_UFDs` (1..$(nrow(df)))."
+        ))
+        # Hayashi 2023 `b` is the projected half-light radius in pc.
+        # Use `b/2` as the inner cutoff (consistent with `rMin = 0.1 Reff`
+        # for Reff ≈ 5 b) and `4 b` as the outer cutoff (analogous to
+        # `rMax = 4 Reff` in the SPARC ETG routines).
+        b_kpc = ustrip(u"kpc", df.b[Galaxy_id])
+        rmin_cat = b_kpc / 2
+        rmax_cat = 4 * b_kpc
+    elseif catalog === :SPARC_LTGs
+        df = AstroIC.load_SPARC_LTGs_data()
+        1 ≤ Galaxy_id ≤ nrow(df) || throw(ArgumentError(
+            "`Galaxy_id = $Galaxy_id` is out of range for `:SPARC_LTGs` (1..$(nrow(df)))."
+        ))
+        # SPARC LTG column names are `rs` (scale radius, kpc) and `RHI`
+        # (HI disk radius, kpc).  Both are kpc in the loader.
+        rs_kpc  = Float64(df.rs[Galaxy_id])
+        RHI_kpc = Float64(df.RHI[Galaxy_id])
+        rmax_cat = 2 * max(rs_kpc, RHI_kpc)
+        rmin_cat = 0.0  # SPARC LTGs do not impose a fixed rMin in SPE-SPARC.jl
+    elseif catalog === :SPARC_Xray_ETGs
+        df = AstroIC.load_SPARC_Xray_ETGs_data()
+        1 ≤ Galaxy_id ≤ nrow(df) || throw(ArgumentError(
+            "`Galaxy_id = $Galaxy_id` is out of range for `:SPARC_Xray_ETGs` (1..$(nrow(df)))."
+        ))
+        Reff_kpc = Float64(df.Reff[Galaxy_id])
+        rmin_cat = 0.1 * Reff_kpc
+        rmax_cat = 4.0  * Reff_kpc
+    elseif catalog === :SPARC_rotating_ETGs
+        df = AstroIC.load_SPARC_rotating_ETGs_data()
+        1 ≤ Galaxy_id ≤ nrow(df) || throw(ArgumentError(
+            "`Galaxy_id = $Galaxy_id` is out of range for `:SPARC_rotating_ETGs` (1..$(nrow(df)))."
+        ))
+        Reff_kpc = Float64(df.Reff[Galaxy_id])
+        Rexp_kpc = Float64(df.Rexp[Galaxy_id])
+        rmax_cat = 4 * max(Reff_kpc, Rexp_kpc)
+        rmin_cat = 0.0  # SPE-SPARC.jl uses no explicit rMin for rotating ETGs
+    else
+        # Unknown / unsupported catalog: fall back to the user-supplied
+        # floor / ceiling unchanged.
+        return base
+    end
+
+    # Floor / ceiling overrides
+    rmin = max(rmin_cat, Float64(minR_kpc))
+    rmax = if isinf(maxR_kpc)
+        rmax_cat
+    else
+        min(rmax_cat, Float64(maxR_kpc))
+    end
+    return (rmin, rmax)
+end
+
+"""
+    _resolve_rar_window(minR_kpc, maxR_kpc, catalog::Symbol; Galaxy_id = 1,
+                       floor_minR_kpc = 0.0, cap_maxR_kpc = Inf)
+
+Resolve a user-supplied `(minR_kpc, maxR_kpc)` pair into concrete kpc
+floats (all returned values are plain `Float64`).  Each of `minR_kpc` /
+`maxR_kpc` may be either a numeric `Real` (in kpc) or the symbol `:auto` —
+in the latter case the per-catalog default from
+[`default_RAR_radial_window`](@ref) is used, with the *other* override
+acting as the floor / ceiling.
+
+`floor_minR_kpc` and `cap_maxR_kpc` follow the same convention: any
+`Quantity{<:Any, 𝐋, ...}` is stripped to kpc via `ustrip(u"kpc", x)`.
+Callers in `SPE3D_waveDM` strip units before calling (using the same
+`ustrip(u"kpc", …)` pattern as `uL = ustrip(u"kpc", length_astro)`)
+but the helper stays friendly to bare-`Real` and `Quantity` inputs.
+
+This is the helper used by [`SPE3D_waveDM`](@ref)'s `flag_RAR_snapshot`
+path so users can write `RAR_snapshot_minR_kpc = :auto, RAR_snapshot_maxR_kpc = :auto`
+and get sensible defaults for any catalog / galaxy combination.
+"""
+function _resolve_rar_window(minR_kpc, maxR_kpc, catalog::Symbol;
+                              Galaxy_id::Integer = 1,
+                              floor_minR_kpc = 0.0,
+                              cap_maxR_kpc = Inf)
+    # Tolerate either a bare Real or a Quantity[<length unit>] — strip to kpc.
+    _kpc(x::Real)    = Float64(x)
+    _kpc(x::Quantity) = Float64(ustrip(u"kpc", x))
+    _kpc(::Nothing)  = 0.0
+
+    auto = :auto
+    is_auto_min = minR_kpc === auto || (minR_kpc isa Real && minR_kpc < 0)
+    is_auto_max = maxR_kpc === auto || (maxR_kpc isa Real && maxR_kpc < 0)
+
+    if is_auto_min || is_auto_max
+        cat_min, cat_max = default_RAR_radial_window(catalog;
+                                                      Galaxy_id = Galaxy_id,
+                                                      minR_kpc = 0.0,
+                                                      maxR_kpc = Inf)
+        rmin = is_auto_min ? cat_min : _kpc(minR_kpc)
+        rmax = is_auto_max ? cat_max : _kpc(maxR_kpc)
+    else
+        rmin = _kpc(minR_kpc)
+        rmax = _kpc(maxR_kpc)
+    end
+    # Apply the universal floor / ceiling from the caller's kwarg defaults
+    rmin = max(rmin, _kpc(floor_minR_kpc))
+    rmax = if isinf(_kpc(cap_maxR_kpc))
+        rmax
+    else
+        min(rmax, _kpc(cap_maxR_kpc))
+    end
+    return (rmin, rmax)
+end
+
+# ===========================================================================
 # Human-readable catalog summary
 # ===========================================================================
 

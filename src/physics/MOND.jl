@@ -11,6 +11,51 @@ Milgrom_inv(a_b, a_MOND, nuIndex) = a_MOND > a_b ? a_b * (((2*(a_MOND/a_b)^nuInd
 # modelRAR(x, p) = x ./ (1 .- exp.(-sqrt.(abs.(x)/abs(p[1]))))
 modelRAR(x, p) = x ./ (1 .- exp.(-sqrt.(abs.(x)/p[1])))
 
+"""
+    fit_RAR_a0(a_b, a_all; lower = 1e-2, upper = 1e2) -> a0_value
+
+Least-squares fit of the Radial Acceleration Relation (RAR)
+
+    a_all ≈ a_b / (1 - exp(-sqrt(a_b / a_0)))
+
+via [`modelRAR`](@ref) on the per-cell pair `(a_b, a_all)`.
+
+Both input arrays must already be in physical `m/s²` units (plain `Float64`
+in m/s², as the SPE3D_waveDM driver passes them after stripping `acc_astro`).
+The returned `a0_value` is also in `m/s²`.  If `length(a_b) < 2` or the
+fit is otherwise degenerate, the function returns `NaN` instead of
+throwing — this keeps the per-snapshot diagnostic in `SPE3D_waveDM` from
+blowing up an entire run.
+
+This is the same fit that powers `plot_acc_RAR!` / `compute_RAR`; lifted
+into its own function so the per-snapshot a_0 time series can call it
+without dragging the whole plotting machinery.
+"""
+function fit_RAR_a0(a_b, a_all;
+                    lower::Real = 1e-2,
+                    upper::Real = 1e2)
+    length(a_b) < 2 && return NaN
+    length(a_b) != length(a_all) && error(
+        "fit_RAR_a0: `a_b` and `a_all` must have the same length " *
+        "(got $(length(a_b)) vs $(length(a_all)))."
+    )
+    # Use the same units scaling as `plot_acc_RAR!`: multiply by 1e10 so the
+    # fit happens in units of 1e-10 m/s², matching `modelRAR`'s free param `p[1]`.
+    # Inputs are expected to already be plain Float64 in m/s² (the
+    # SPE3D_waveDM driver strips `acc_astro` before calling).  If callers
+    # pass a `Quantity` array we strip it here so the helper stays friendly
+    # to both representations.
+    ab  = ustrip.(a_b)  .* 1e10
+    aal = ustrip.(a_all) .* 1e10
+    try
+        fit = curve_fit(modelRAR, ab, aal, [1.2]; lower = [lower], upper = [upper])
+        return fit.param[1] * 1e-10  # m/s²
+    catch err
+        @warn "fit_RAR_a0: fit failed: $(err)"
+        return NaN
+    end
+end
+
 
 function compute_RAR(dfAcc;
     minR = 8.0u"kpc",

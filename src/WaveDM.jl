@@ -101,6 +101,9 @@ export list_MW_satellites, list_SPARC_LTGs,
 export ufd_index, MW_satellite_index,
        SPARC_LTG_index, SPARC_Xray_ETG_index, SPARC_rotating_ETG_index,
        cooke_dwarf_index
+# Per-catalog default `(rMin, rMax)` for RAR-style fits; see
+# `src/ic/catalog.jl` for the per-catalog recipes (mirrors `SPE-SPARC.jl`).
+export default_RAR_radial_window
 
 # Re-export commonly used functions for API compatibility
 export setup_grid, setup_coordinates, compute_timestep
