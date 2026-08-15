@@ -153,6 +153,9 @@ function SPE3D_waveDM(;
     RAR_snapshot_lower = 1e-2,                # fit bound (× 1e-10 m/s²)
     RAR_snapshot_upper = 1e2,                 # fit bound (× 1e-10 m/s²)
     RAR_snapshot_slice = :rho_max,            # `:rho_max` or `:midplane`
+
+    ## Stream `... - Prop.csv` row-by-row as the run progresses.
+    flag_stream_Prop_csv = false,
     
     target_profile_ρ0 = 1.55e7u"Msun/kpc^3",
     target_profile_ρ0_u = target_profile_ρ0 * Inf,
@@ -502,6 +505,38 @@ function SPE3D_waveDM(;
                   "rMax = $(RAR_snapshot_maxR_resolved) kpc"
             ArrayRAa0_temp = Float64[]
         end
+    end
+
+    if flag_stream_Prop_csv
+        prop_csv_path = joinpath(outputdir, "$(title), $(suffix) - Prop.csv")
+        # Same column schema as `save_property_dataframe` below.
+        header_df = DataFrame(
+            :t => Float64[],
+            :R => Float64[],
+            :R1 => Float64[], :R2 => Float64[], :R3 => Float64[],
+            :R4 => Float64[], :R5 => Float64[], :R6 => Float64[],
+            :R7 => Float64[], :R8 => Float64[], :R9 => Float64[],
+            :TotalMass => Float64[],
+        )
+        if plot_virial
+            header_df[!, :PE_abs]   = Float64[]
+            header_df[!, :KE]      = Float64[]
+            header_df[!, :QE]      = Float64[]
+            header_df[!, :Virial]  = Float64[]
+            header_df[!, :MomentumX] = Float64[]
+            header_df[!, :MomentumY] = Float64[]
+            header_df[!, :MomentumZ] = Float64[]
+        end
+        if flag_RAR_snapshot
+            header_df[!, :RAR_a0] = Float64[]
+        end
+        # Single header write (no append).  This overwrites any pre-existing
+        # file with the same name, matching the final-write semantics below.
+        CSV.write(prop_csv_path, header_df)
+        @info "flag_stream_Prop_csv: opened $(prop_csv_path) with header " *
+              "(rows will be appended every $(StepsBetweenSnapshots) steps)"
+    else
+        prop_csv_path = nothing
     end
 
     linear_phase = setup_fft_operators(Xmax, Ymax, Zmax, Nx, Ny, Nz, dt)  # Laplacian in Fourier space
@@ -859,6 +894,30 @@ function SPE3D_waveDM(;
                 if flag_RAR_snapshot
                     ArrayRAa0[] = vcat(ArrayRAa0[], ArrayRAa0_temp)
                     empty!(ArrayRAa0_temp)
+                end
+
+                if flag_stream_Prop_csv && prop_csv_path !== nothing
+                    row_df = DataFrame(
+                        :t => [ArrayT[][end]],
+                        :R => [ArrayR[][end]],
+                        :R1 => [ArrayR1[][end]], :R2 => [ArrayR2[][end]], :R3 => [ArrayR3[][end]],
+                        :R4 => [ArrayR4[][end]], :R5 => [ArrayR5[][end]], :R6 => [ArrayR6[][end]],
+                        :R7 => [ArrayR7[][end]], :R8 => [ArrayR8[][end]], :R9 => [ArrayR9[][end]],
+                        :TotalMass => [ArrayTotalMass[][end]],
+                    )
+                    if plot_virial
+                        row_df[!, :PE_abs]    = [ArrayVirialPotential[][end]]
+                        row_df[!, :KE]        = [ArrayTotalKineticE[][end]]
+                        row_df[!, :QE]        = [ArrayTotalQuantumE[][end]]
+                        row_df[!, :Virial]    = [ArrayVirial[][end]]
+                        row_df[!, :MomentumX] = [ArrayMomentumX[][end]]
+                        row_df[!, :MomentumY] = [ArrayMomentumY[][end]]
+                        row_df[!, :MomentumZ] = [ArrayMomentumZ[][end]]
+                    end
+                    if flag_RAR_snapshot
+                        row_df[!, :RAR_a0] = [ArrayRAa0[][end]]
+                    end
+                    CSV.write(prop_csv_path, row_df; append = true)
                 end
             end
 
