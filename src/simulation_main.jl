@@ -944,13 +944,13 @@ function SPE3D_waveDM(;
                 if plot_virial
                     Makie.xlims!(AxisVirial, 0, ArrayT[][end])
                     Makie.ylims!(AxisVirial,
-                        min(minimum(ArrayVirial[]), minimum(ArrayTotalQuantumE[]), minimum(ArrayTotalKineticE[]), minimum(ArrayVirialPotential[])),
-                        max(maximum(ArrayVirial[]), maximum(ArrayTotalQuantumE[]), maximum(ArrayTotalKineticE[]), maximum(ArrayVirialPotential[])),
+                        min(minimum(filter(x->!isnan(x), ArrayVirial[])), minimum(filter(x->!isnan(x), ArrayTotalQuantumE[])), minimum(filter(x->!isnan(x), ArrayTotalKineticE[])), minimum(filter(x->!isnan(x), ArrayVirialPotential[]))),
+                        max(maximum(filter(x->!isnan(x), ArrayVirial[])), maximum(filter(x->!isnan(x), ArrayTotalQuantumE[])), maximum(filter(x->!isnan(x), ArrayTotalKineticE[])), maximum(filter(x->!isnan(x), ArrayVirialPotential[]))),
                     )
                 end
 
                 Makie.xlims!(AxisR, 0, ArrayT[][end])
-                Makie.ylims!(AxisR, minimum(ArrayR1[]), maximum(ArrayR9[]))
+                Makie.ylims!(AxisR, minimum(filter(x->!isnan(x), ArrayR1[])), maximum(filter(x->!isnan(x), ArrayR9[])))
 
                 if dynamic_colorrange
                     ColorRange[] = (0, maximum(abs.(ψ).^2)/10)
