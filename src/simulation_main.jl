@@ -128,6 +128,27 @@ function SPE3D_waveDM(;
     diagnostic_rho_bound_threshold = 0.0,    # NEW: V4 bound-mass mask threshold (absolute code units)
     diagnostic_beta_star_r_min_kpc = 0.3,   # NEW: Cooke-2022 inner slope lower radius (kpc)
     diagnostic_beta_star_r_max_kpc = 0.8,   # NEW: Cooke-2022 inner slope upper radius (kpc)
+
+    ## Per-timestep kinetic-energy-bin decomposition (2026-08-28):
+    ## When true, every `StepsBetweenSnapshots` snapshot also appends
+    ## β*(t) (inner slope within `KEbin_mass_min`..`KEbin_mass_max`), two
+    ## sets of per-speed-bin mass fractions, and eight total masses (all
+    ## inside r ≤ KEbin_r_max: per-speed-bin masses `M_KE_*`; plus four
+    ## un-binned spherical shells `M_shell_0_<rke>`, `M_shell_<rke>_rs`,
+    ## `M_shell_rs_10`, `M_shell_10_inf` with `rs = target_profile_rs`) to
+    ## `... - Prop.csv`:
+    ##   `KEfrac_<lo>_<hi>`     — annulus [KEbin_mass_min, KEbin_mass_max]
+    ##   `KEfrac_in_<lo>_<hi>`  — interior r ≤ KEbin_r_max
+    ## Speed bins are defined by `KEbin_v_edges` (km/s; last bin to ∞);
+    ## cells are restricted to `KEbin_r_max`.  Uses the same core as the
+    ## single-snapshot plot (`compute_kinetic_bin_profiles`).
+    ## NOTE: CPU diagnostics — the velocity field is rebuilt from the
+    ## wavefunction phase on CPU at each recorded snapshot.
+    flag_stream_KEbins = false,
+    KEbin_r_max = 0.8u"kpc",
+    KEbin_v_edges = [0.0, 30.0, 60.0, 90.0],  # km/s
+    KEbin_mass_min = 0.3u"kpc",               # β*(t) & annulus mass-fraction window
+    KEbin_mass_max = 0.8u"kpc",
     target_velocity_dispersion = [],
     target_velocity_dispersion_r = [],
     target_profile_model = :Zhao,  # default: MW
@@ -155,7 +176,7 @@ function SPE3D_waveDM(;
     RAR_snapshot_slice = :rho_max,            # `:rho_max` or `:midplane`
 
     ## Stream `... - Prop.csv` row-by-row as the run progresses.
-    flag_stream_Prop_csv = false,
+    flag_stream_Prop_csv = true,
     
     target_profile_ρ0 = 1.55e7u"Msun/kpc^3",
     target_profile_ρ0_u = target_profile_ρ0 * Inf,
@@ -507,6 +528,55 @@ function SPE3D_waveDM(;
         end
     end
 
+    # Column names for the kinetic-energy-bin fractions — two sets, shared by
+    # the Prop.csv header and the per-row writes:
+    #   "KEfrac_<lo>_<hi>"     — annulus [KEbin_mass_min, KEbin_mass_max]
+    #   "KEfrac_in_<lo>_<hi>"  — interior r ≤ KEbin_r_max
+    KEbin_frac_columns = Symbol[]
+    KEbin_inner_frac_columns = Symbol[]
+    KEbin_r_max_kpc = ustrip(u"kpc", KEbin_r_max)
+    if flag_stream_KEbins
+        KEbin_frac_columns = [b < length(KEbin_v_edges) ?
+            Symbol("KEfrac_$(KEbin_v_edges[b])_$(KEbin_v_edges[b+1])") :
+            Symbol("KEfrac_gt_$(KEbin_v_edges[end])")
+            for b in 1:length(KEbin_v_edges)]
+        KEbin_inner_frac_columns = [b < length(KEbin_v_edges) ?
+            Symbol("KEfrac_in_$(KEbin_v_edges[b])_$(KEbin_v_edges[b+1])") :
+            Symbol("KEfrac_in_gt_$(KEbin_v_edges[end])")
+            for b in 1:length(KEbin_v_edges)]
+    end
+    # Total-mass columns (Msun), streamed into Prop.csv for a future
+    # "mass evolution" panel:
+    #   M_KE_<lo>_<hi>          — per-speed-bin mass inside r ≤ KEbin_r_max
+    #   M_shell_0_<rke>         — mass within [0, KEbin_r_max] kpc (un-binned)
+    #   M_shell_<rke>_rs        — mass within [KEbin_r_max, target_profile_rs] kpc
+    #   M_shell_rs_10           — mass within [target_profile_rs, 10] kpc
+    #   M_shell_10_inf          — mass within (10, box edge] kpc
+    MKE_columns = Symbol[]
+    MShell_columns = Symbol[]
+    if flag_stream_KEbins
+        MKE_columns = [b < length(KEbin_v_edges) ?
+            Symbol("M_KE_$(KEbin_v_edges[b])_$(KEbin_v_edges[b+1])") :
+            Symbol("M_KE_gt_$(KEbin_v_edges[end])")
+            for b in 1:length(KEbin_v_edges)]
+        MShell_columns = [
+            Symbol("M_shell_0_$(KEbin_r_max_kpc)"),
+            Symbol("M_shell_$(KEbin_r_max_kpc)_rs"),
+            Symbol("M_shell_rs_10"),
+            Symbol("M_shell_10_inf"),
+        ]
+    end
+    # Per-snapshot KE-bin diagnostics, accumulated for the final Prop.csv
+    # write (the streaming rows re-use the same per-snapshot values):
+    #   ArrayBetaStar — β*(t) at each snapshot
+    #   ArrayKEfrac   — annulus fractions then inner fractions, flat per snapshot
+    #   ArrayMKE      — per-speed-bin masses inside r ≤ KEbin_r_max (Msun), flat per snapshot
+    #   ArrayMShell   — four un-binned shell masses (Msun), flat per snapshot
+    ArrayBetaStar = Float64[]
+    ArrayKEfrac = Float64[]
+    ArrayMKE = Float64[]
+    ArrayMShell = Float64[]
+
     if flag_stream_Prop_csv
         prop_csv_path = joinpath(outputdir, "$(title), $(suffix) - Prop.csv")
         # Same column schema as `save_property_dataframe` below.
@@ -529,6 +599,21 @@ function SPE3D_waveDM(;
         end
         if flag_RAR_snapshot
             header_df[!, :RAR_a0] = Float64[]
+        end
+        if flag_stream_KEbins
+            header_df[!, :beta_star] = Float64[]
+            for col in KEbin_frac_columns
+                header_df[!, col] = Float64[]
+            end
+            for col in KEbin_inner_frac_columns
+                header_df[!, col] = Float64[]
+            end
+            for col in MKE_columns
+                header_df[!, col] = Float64[]
+            end
+            for col in MShell_columns
+                header_df[!, col] = Float64[]
+            end
         end
         # Single header write (no append).  This overwrites any pre-existing
         # file with the same name, matching the final-write semantics below.
@@ -896,6 +981,62 @@ function SPE3D_waveDM(;
                     empty!(ArrayRAa0_temp)
                 end
 
+                # KE-bin diagnostics: computed once per snapshot, stored for
+                # the final Prop.csv write and re-used by the streamed rows.
+                ke_beta_star_i = NaN
+                ke_frac_annulus_i = Float64[]
+                ke_frac_inner_i = Float64[]
+                ke_M_bin_i = Float64[]
+                ke_M_shell_i = Float64[]
+                if flag_stream_KEbins
+                    # CPU diagnostics: rebuild the Madelung velocity from ψ
+                    # via ρv = Im(ψ* ∇ψ) (same numerics as the plotting script)
+                    # and bin cells by kinetic energy.
+                    ψ_c   = collect(ψ)
+                    rho_c = collect(rho)
+                    vx, vy, vz = compute_madelung_velocity(ψ_c, xxx, yyy, zzz; rho = rho_c)
+                    ke_res = compute_kinetic_bin_profiles(r_mass_center, rho_c, vx, vy, vz;
+                        r_max = KEbin_r_max,
+                        v_bin_edges = KEbin_v_edges,
+                        section = ceil(Int, KEbin_r_max_kpc / uL / Δ[1]),
+                        uL = uL, uV = uVel, uDensity = uRho,
+                        r_min_mass = KEbin_mass_min,
+                        r_max_mass = KEbin_mass_max,
+                        uniform_interval = true,
+                    )
+                    ke_beta_star_i = compute_beta_star(r_mass_center, rho_c,
+                        KEbin_mass_min, KEbin_mass_max, length_astro)
+                    ke_frac_annulus_i = ke_res.mass_fraction
+                    ke_frac_inner_i = ke_res.mass_fraction_inner
+
+                    # Total masses (Msun) for a future "mass evolution" panel:
+                    #   per-speed-bin mass inside r ≤ KEbin_r_max (from the
+                    #     additive inner fractions × inner total mass), and
+                    #   four un-binned spherical shells [0, KEbin_r_max],
+                    #     [KEbin_r_max, rs], [rs, 10], (10, box edge] kpc.
+                    M_inner_phys = ustrip(u"Msun",
+                        ke_res.mass_total_inner * unit_cell_volumn * mass_astro)
+                    ke_M_bin_i = [f * M_inner_phys for f in ke_frac_inner_i]
+                    rs_kpc = ustrip(u"kpc", target_profile_rs)
+                    M_0_rke   = M_inner_phys
+                    M_rke_rs  = ustrip(u"Msun", sum(rho_c[
+                        (KEbin_r_max_kpc / uL .< r_mass_center) .&
+                        (r_mass_center .<= rs_kpc / uL)]) * unit_cell_volumn * mass_astro)
+                    M_rs_10   = ustrip(u"Msun", sum(rho_c[
+                        (rs_kpc / uL .< r_mass_center) .&
+                        (r_mass_center .<= 10.0 / uL)]) * unit_cell_volumn * mass_astro)
+                    M_gt_10   = ustrip(u"Msun", sum(rho_c[
+                        r_mass_center .> 10.0 / uL]) * unit_cell_volumn * mass_astro)
+                    ke_M_shell_i = [M_0_rke, M_rke_rs, M_rs_10, M_gt_10]
+
+                    push!(ArrayBetaStar, ke_beta_star_i)
+                    append!(ArrayKEfrac, ke_frac_annulus_i)
+                    append!(ArrayKEfrac, ke_frac_inner_i)
+                    append!(ArrayMKE, ke_M_bin_i)
+                    append!(ArrayMShell, ke_M_shell_i)
+                    ψ_c = rho_c = vx = vy = vz = ke_res = nothing
+                end
+
                 if flag_stream_Prop_csv && prop_csv_path !== nothing
                     row_df = DataFrame(
                         :t => [ArrayT[][end]],
@@ -916,6 +1057,23 @@ function SPE3D_waveDM(;
                     end
                     if flag_RAR_snapshot
                         row_df[!, :RAR_a0] = [ArrayRAa0[][end]]
+                    end
+                    if flag_stream_KEbins
+                        # Re-use the per-snapshot KE-bin diagnostics computed
+                        # above (avoid recomputing the velocity field here).
+                        row_df[!, :beta_star] = [ke_beta_star_i]
+                        for (col, frac) in zip(KEbin_frac_columns, ke_frac_annulus_i)
+                            row_df[!, col] = [frac]
+                        end
+                        for (col, frac) in zip(KEbin_inner_frac_columns, ke_frac_inner_i)
+                            row_df[!, col] = [frac]
+                        end
+                        for (col, m) in zip(MKE_columns, ke_M_bin_i)
+                            row_df[!, col] = [m]
+                        end
+                        for (col, m) in zip(MShell_columns, ke_M_shell_i)
+                            row_df[!, col] = [m]
+                        end
                     end
                     CSV.write(prop_csv_path, row_df; append = true)
                 end
@@ -1027,7 +1185,7 @@ function SPE3D_waveDM(;
 
     unicode_plot && println("\n"^(div(unicode_heatmap_width,2)))
 
-    dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix; ArrayRAa0 = flag_RAR_snapshot ? ArrayRAa0 : nothing)
+    dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix; ArrayRAa0 = flag_RAR_snapshot ? ArrayRAa0 : nothing, ArrayBetaStar = flag_stream_KEbins ? ArrayBetaStar : nothing, ArrayKEfrac = flag_stream_KEbins ? ArrayKEfrac : nothing, KEbin_frac_columns = KEbin_frac_columns, KEbin_inner_frac_columns = KEbin_inner_frac_columns, ArrayMKE = flag_stream_KEbins ? ArrayMKE : nothing, MKE_columns = MKE_columns, ArrayMShell = flag_stream_KEbins ? ArrayMShell : nothing, MShell_columns = MShell_columns)
     averaged_ψ2, averaged_a_all = compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, config_device)
 
     if baryon_mode == :ignored

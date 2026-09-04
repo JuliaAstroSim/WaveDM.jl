@@ -116,6 +116,8 @@ export compute_velocity_field_shells, compute_mass_weighted_center,
        compute_interior_mass, compute_diagnostic_snapshot,
        save_diagnostic_timeseries, detect_cuspy_windows,
        DiagnosticSnapshot
+export compute_kinetic_bin_profiles
+export compute_madelung_velocity
 export tidal_interpolation_accuracy
 export save_initial_conditions, save_evolution_results, save_property_dataframe, compute_averaged_fields
 export setup_visualization, plotMOND

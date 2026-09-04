@@ -133,6 +133,38 @@ end
 """
 $(TYPEDSIGNATURES)
 
+Reconstruct the Madelung velocity field via the mass-weighted form
+
+    ρ v = Im(ψ* ∇ψ),    v = ρ v / ρ,
+
+using `grad_central` on ψ and its conjugate — the exact numerics of
+`SPE_WaveDM_dwarfs_paper_massive.jl`'s velocity block (unlike a phase
+gradient `∇arg(ψ)`, this form has no phase branch-cut artefacts; cells
+with ρ = 0 give NaN and simply fall outside every speed bin).
+"""
+function compute_madelung_velocity(ψ, xxx, yyy, zzz; rho = abs.(ψ).^2)
+    Δx = xxx[2,1,1] - xxx[1,1,1]
+    Δy = yyy[1,2,1] - yyy[1,1,1]
+    Δz = zzz[1,1,2] - zzz[1,1,1]
+
+    ψx, ψy, ψz = grad_central(Δx, Δy, Δz, ψ)
+    ψc = conj.(ψ)
+    ψcx, ψcy, ψcz = grad_central(Δx, Δy, Δz, ψc)
+
+    ρvx = real.((ψc .* ψx - ψ .* ψcx) / (2im))
+    ρvy = real.((ψc .* ψy - ψ .* ψcy) / (2im))
+    ρvz = real.((ψc .* ψz - ψ .* ψcz) / (2im))
+
+    vx = ρvx ./ rho
+    vy = ρvy ./ rho
+    vz = ρvz ./ rho
+
+    return vx, vy, vz
+end
+
+"""
+$(TYPEDSIGNATURES)
+
 Compute spherically-averaged radial, zenithal, azimuthal velocity
 moments in shells defined by `r_bins` (in code units of `length_astro`).
 
@@ -152,23 +184,7 @@ function compute_velocity_field_shells(
     ψ, xxx, yyy, zzz, r_mass_center, rho_max_id,
     r_bins; # Vector{Float64} of bin edges in code units
 )
-    # Madelung velocity field: v = ∇S / m = ∇arg(ψ) / m
-    phase = angle.(ψ .+ eps(ComplexF64))  # eps() protects against ψ=0
-
-    Nx, Ny, Nz = size(ψ)
-    Δx, Δy, Δz = xxx[2,1,1] - xxx[1,1,1], yyy[1,2,1] - yyy[1,1,1], zzz[1,1,2] - zzz[1,1,1]
-
-    # Central differences on the grid (FFT-based would be cleaner; see TODO)
-    vx = similar(real.(ψ)); vy = similar(vx); vz = similar(vx)
-    @inbounds for k in 1:Nz, j in 1:Ny, i in 2:Nx-1
-        vx[i,j,k] = (phase[i+1,j,k] - phase[i-1,j,k]) / (2Δx)
-    end
-    @inbounds for k in 1:Nz, j in 2:Ny-1, i in 1:Nx
-        vy[i,j,k] = (phase[i,j+1,k] - phase[i,j-1,k]) / (2Δy)
-    end
-    @inbounds for k in 2:Nz-1, j in 1:Ny, i in 1:Nx
-        vz[i,j,k] = (phase[i,j,k+1] - phase[i,j,k-1]) / (2Δz)
-    end
+    vx, vy, vz = compute_madelung_velocity(ψ, xxx, yyy, zzz)
 
     # Spherical velocity components about rho_max center
     x_rel = xxx .- xxx[rho_max_id]
@@ -219,6 +235,158 @@ function compute_velocity_field_shells(
         vr_mean = vr_mean, vr_std = vr_std,
         vθ_mean = vθ_mean, vθ_std = vθ_std,
         vφ_mean = vφ_mean, vφ_std = vφ_std,
+    )
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Decompose the density profile within the truncation radius `r_max` (kpc)
+by specific kinetic energy `½v²`: cells are split into speed bins with
+edges `v_bin_edges` (km/s; the last bin extends to +∞).
+
+Each bin's profile is the **additive density contribution**
+
+    ρ_b(r) = (1 / N_r) Σ_{cells i ∈ radial bin r ∩ speed bin b} ρ_i,
+
+i.e. the cell-density mean over *all* cells of the radial bin (cells
+outside the speed bin contribute 0).  The binning therefore satisfies
+`Σ_b ρ_b(r) = ρ_total(r)` bin by bin, where `ρ_total` is the plain mean
+profile of all cells inside `r_max` — individual bin lines can never
+exceed the total line.  (A plain mean over the subset would instead be
+mass-weighted-averaged and *not* additive.)
+
+Per-bin mass fractions inside the annulus `[r_min_mass, r_max_mass]`
+(kpc) are returned together with the total mass of that annulus; the
+per-bin fractions over the KE-bin interior (`r ≤ r_max`) are returned as
+`mass_fraction_inner` so both sets can be streamed to `Prop.csv`.
+
+The radial range of the *decomposed profiles* is controlled by
+`r_profile_max` (dimensionful kpc; defaults to `r_max`): this lets the
+plot cover the whole simulated volume while keeping the mass-fraction
+windows pinned to `r_max` (e.g. 0.8 kpc).  `section` counts the number of
+radial bins across `r_profile_max` (in the plotting script: one bin per
+grid cell within that range).
+
+The radial inputs (`r_max`, `r_min_mass`, `r_max_mass`, `r_profile_max`)
+are required to be dimensionful kpc quantities (they are stripped via
+`ustrip`; plain numbers are not supported and will raise a
+`DimensionError`).  `v_bin_edges` is a vector of plain numbers in km/s.
+
+Design notes for reuse in `simulation_main.jl`
+----------------------------------------------
+All inputs are plain grid quantities in code units plus the unit-conversion
+factors (`uL`, `uV`, `uDensity` in kpc / km/s / Msun·kpc⁻³), matching the
+quantities already available at every timestep inside the main loop
+(`r_mass_center`, `rho`, `length_astro`, ...).  Only the velocity components
+are needed additionally; they can be obtained with the same phase-gradient
+reconstruction used in `compute_velocity_field_shells`.  This function
+therefore ports to the per-timestep `Prop.csv` accumulation with no change
+other than computing `vx, vy, vz` beforehand.
+"""
+function compute_kinetic_bin_profiles(r_mass_center, rho, vx, vy, vz;
+        r_max, v_bin_edges, section, uL, uV, uDensity,
+        r_min_mass, r_max_mass, uniform_interval = true,
+        r_profile_max = nothing)
+
+    # Strip the dimensionful radial keywords to plain Float64 (kpc);
+    # `v_bin_edges` is already a plain number vector in km/s.
+    r_max_kpc        = ustrip(u"kpc", r_max)
+    r_min_mass_kpc   = ustrip(u"kpc", r_min_mass)
+    r_max_mass_kpc   = ustrip(u"kpc", r_max_mass)
+    r_profile_kpc    = isnothing(r_profile_max) ? r_max_kpc : ustrip(u"kpc", r_profile_max)
+    v_bin_edges_flat = collect(Float64, v_bin_edges)
+
+    length(v_bin_edges_flat) >= 2 || throw(ArgumentError("v_bin_edges needs at least 2 edges"))
+    issorted(v_bin_edges_flat) || throw(ArgumentError("v_bin_edges must be sorted in ascending order"))
+
+    # Radial mask for the decomposed profiles (extends to r_profile_kpc).
+    r_filter = r_mass_center .<= r_profile_kpc / uL
+    v_mag = @. sqrt(vx^2 + vy^2 + vz^2) * uV         # speed in km/s (NaN cells fall in no bin)
+
+    edges = vcat(v_bin_edges_flat, Inf)
+    n_bins = length(edges) - 1
+    labels = [b < n_bins ? "$(v_bin_edges_flat[b])–$(v_bin_edges_flat[b+1])" :
+                           ">$(v_bin_edges_flat[end])" for b in 1:n_bins]  # km/s
+
+    # Flatten the cells inside the profile radius once, so that every
+    # speed bin and the total profile share the same radial binning (same
+    # x data → identical bin centers) and the decomposition is additive.
+    r_flat   = r_mass_center[r_filter]
+    rho_flat = rho[r_filter]
+    v_flat   = v_mag[r_filter]
+
+    # Mass-fraction annulus; on the uniform grid mass ∝ ρ.
+    r_annulus_flat = (r_min_mass_kpc / uL .<= r_flat) .& (r_flat .<= r_max_mass_kpc / uL)
+    M_annulus_total = sum(rho_flat[r_annulus_flat])
+    # if M_annulus_total <= 0
+    #     @warn "compute_kinetic_bin_profiles: no cell inside the mass-fraction annulus " *
+    #           "[$(r_min_mass_kpc), $(r_max_mass_kpc)] kpc; fractions set to 0"
+    # end
+    # KE-bin interior window (r ≤ r_max), independent of the profile radius.
+    r_inner_flat = r_flat .<= r_max_kpc / uL
+    M_inner_total = sum(rho_flat[r_inner_flat])
+
+    r_mean_list   = Vector{Vector{Float64}}()
+    rho_mean_list = Vector{Vector{Float64}}()
+    rho_std_list  = Vector{Vector{Float64}}()
+    bin_N_list    = Vector{Vector{Int}}()
+    mass_fraction       = zeros(n_bins)
+    mass_fraction_inner = zeros(n_bins)
+
+    for b in 1:n_bins
+        in_kin = (edges[b] .<= v_flat) .& (v_flat .< edges[b+1])
+        mass_fraction[b] = M_annulus_total > 0 ?
+            sum(rho_flat[in_kin .& r_annulus_flat]) / M_annulus_total : 0.0
+        mass_fraction_inner[b] = M_inner_total > 0 ?
+            sum(rho_flat[in_kin .& r_inner_flat]) / M_inner_total : 0.0
+
+        if !any(in_kin)
+            # @warn "compute_kinetic_bin_profiles: speed bin $(labels[b]) km/s " *
+            #       "has no cell within r ≤ $(r_profile_kpc) kpc"
+            push!(r_mean_list, Float64[])
+            push!(rho_mean_list, Float64[])
+            push!(rho_std_list, Float64[])
+            push!(bin_N_list, Int[])
+            continue
+        end
+
+        # Additive contribution: cells outside this speed bin contribute 0.
+        rho_contrib = rho_flat .* in_kin
+        r_m, ρ_m, _r_s, ρ_s, bN = distribution(r_flat, rho_contrib;
+            section = section, uniform_interval = uniform_interval, counts = true)
+        push!(r_mean_list, r_m .* uL)
+        push!(rho_mean_list, ρ_m .* uDensity)
+        push!(rho_std_list, ρ_s .* uDensity)
+        push!(bin_N_list, bN)
+    end
+
+    # Total profile within the truncation radius (reference line for plots);
+    # by construction Σ_b ρ_b = ρ_total band-by-band.
+    if any(r_filter)
+        r_m, ρ_m, _r_s, ρ_s = distribution(r_flat, rho_flat;
+            section = section, uniform_interval = uniform_interval)
+        r_mean_total   = r_m .* uL
+        rho_mean_total = ρ_m .* uDensity
+        rho_std_total  = ρ_s .* uDensity
+    else
+        # @warn "compute_kinetic_bin_profiles: no cell within r ≤ $(r_max_kpc) kpc"
+        r_mean_total = rho_mean_total = rho_std_total = Float64[]
+    end
+
+    return (
+        v_bin_labels   = labels,                  # ["0–30", ..., ">90"] km/s
+        r_mean         = r_mean_list,             # per-bin radial bin centers [kpc]
+        rho_mean       = rho_mean_list,           # per-bin density profiles [Msun/kpc³]
+        rho_std        = rho_std_list,            # per-bin density std [Msun/kpc³]
+        bin_N          = bin_N_list,              # per-bin radial-bin cell counts
+        mass_fraction  = mass_fraction,           # per-bin mass fraction within the annulus
+        mass_fraction_inner = mass_fraction_inner, # per-bin mass fraction within r ≤ r_max
+        r_mean_total   = r_mean_total,            # [kpc]
+        rho_mean_total = rho_mean_total,          # [Msun/kpc³]
+        rho_std_total  = rho_std_total,           # [Msun/kpc³]
+        mass_total_annulus = M_annulus_total,     # code-unit mass; × unit_cell_volumn × mass_astro → Msun
+        mass_total_inner   = M_inner_total,       # code-unit mass within r ≤ r_max
     )
 end
 

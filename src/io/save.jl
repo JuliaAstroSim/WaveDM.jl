@@ -43,12 +43,30 @@ per-snapshot RAR fit in [`SPE3D_waveDM`](@ref)), a `:RAR_a0 [m/s²]`
 column is added to the saved CSV.  If `ArrayRAa0[]` is empty (e.g. the
 flag was off for the whole run) the column is filled with `NaN` so the
 header still exists and downstream parsers don't choke.
+
+The kinetic-energy-bin columns (per-timestep β* and the two sets of speed-
+bin mass fractions streamed by `flag_stream_KEbins`) are appended when
+`ArrayBetaStar` / `ArrayKEfrac` are supplied.  `ArrayKEfrac` is flat with
+`2 × n_bins` entries per recorded snapshot, ordered `[annulus..., inner...]`
+per snapshot (this matches how `SPE3D_waveDM` accumulates it); the column
+names are taken from `KEbin_frac_columns` / `KEbin_inner_frac_columns` in
+the same order.
+
+The total-mass columns are appended when `ArrayMKE` / `ArrayMShell` are
+supplied: `ArrayMKE` is flat with `n_bins` per-bin masses (Msun, inside
+r ≤ KEbin_r_max) per snapshot; `ArrayMShell` is flat with the four
+un-binned shell masses `[0, KEbin_r_max]`, `[KEbin_r_max, rs]`,
+`[rs, 10 kpc]`, `(10 kpc, box edge]` per snapshot.  Short time series
+are NaN-padded to `nrow(dfProp)`.
 """
 function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5,
     ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial,
     ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial,
     ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix;
-    ArrayRAa0 = nothing)
+    ArrayRAa0 = nothing, ArrayBetaStar = nothing, ArrayKEfrac = nothing,
+    KEbin_frac_columns = Symbol[], KEbin_inner_frac_columns = Symbol[],
+    ArrayMKE = nothing, MKE_columns = Symbol[],
+    ArrayMShell = nothing, MShell_columns = Symbol[])
 
     dfProp = DataFrame(
         :t => ArrayT[],
@@ -82,6 +100,39 @@ function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, Arra
             col = col[1:nrow(dfProp)]
         end
         dfProp[!, :RAR_a0] = col
+    end
+    if ArrayBetaStar !== nothing || ArrayKEfrac !== nothing ||
+       ArrayMKE !== nothing || ArrayMShell !== nothing
+        n_rows = nrow(dfProp)
+        pad_col(v) = length(v) >= n_rows ? v[1:n_rows] : vcat(collect(v), fill(NaN, n_rows - length(v)))
+        n_bins = length(KEbin_frac_columns)
+        if ArrayBetaStar !== nothing
+            dfProp[!, :beta_star] = pad_col(ArrayBetaStar)
+        end
+        if ArrayKEfrac !== nothing
+            KEfrac = collect(ArrayKEfrac)
+            # Flat layout: 2*n_bins per snapshot, ordered [annulus..., inner...].
+            for (k, col) in enumerate(KEbin_frac_columns)      # annulus fractions
+                dfProp[!, col] = pad_col(KEfrac[k:2n_bins:end])
+            end
+            for (k, col) in enumerate(KEbin_inner_frac_columns) # inner fractions
+                dfProp[!, col] = pad_col(KEfrac[n_bins+k:2n_bins:end])
+            end
+        end
+        if ArrayMKE !== nothing
+            MKE = collect(ArrayMKE)
+            n_mke = max(length(MKE_columns), 1)
+            for (k, col) in enumerate(MKE_columns)              # per-speed-bin masses, flat n_bins/snapshot
+                dfProp[!, col] = pad_col(MKE[k:n_mke:end])
+            end
+        end
+        if ArrayMShell !== nothing
+            MSh = collect(ArrayMShell)
+            n_msh = max(length(MShell_columns), 1)
+            for (k, col) in enumerate(MShell_columns)           # three shell masses, flat 3/snapshot
+                dfProp[!, col] = pad_col(MSh[k:n_msh:end])
+            end
+        end
     end
     CSV.write(joinpath(outputdir, "$(title), $(suffix) - Prop.csv"), dfProp)
 
