@@ -118,6 +118,7 @@ export compute_velocity_field_shells, compute_mass_weighted_center,
        DiagnosticSnapshot
 export compute_kinetic_bin_profiles
 export compute_madelung_velocity
+export compute_vr_mean_shell
 export tidal_interpolation_accuracy
 export save_initial_conditions, save_evolution_results, save_property_dataframe, compute_averaged_fields
 export setup_visualization, plotMOND
@@ -170,6 +171,9 @@ include("io/save.jl")
 # Visualization modules
 include("visualization/runtime.jl")
 include("visualization/plots.jl")
+
+include("analysis/velocity_field.jl")
+include("analysis/dwarf_target_profile.jl")
 
 # Main simulation files (to be split in future iterations)
 include("simulation_main.jl")

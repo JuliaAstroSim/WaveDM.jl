@@ -146,9 +146,14 @@ function SPE3D_waveDM(;
     ## wavefunction phase on CPU at each recorded snapshot.
     flag_stream_KEbins = false,
     KEbin_r_max = 0.8u"kpc",
-    KEbin_v_edges = [0.0, 30.0, 60.0, 90.0],  # km/s
+    ## 低速区间细分（0-10/10-20/20-30 km/s），便于检查更精细的质量占比/质量演化
+    KEbin_v_edges = [0.0, 10.0, 20.0, 30.0, 60.0, 90.0],  # km/s
     KEbin_mass_min = 0.3u"kpc",               # β*(t) & annulus mass-fraction window
     KEbin_mass_max = 0.8u"kpc",
+    ## <v_r> diagnostic：各壳层（默认 0.3/0.5/0.8 kpc，±Δ[1]）内 r 方向平均速度
+    ## （km/s），随 flag_stream_KEbins 一起输出到 Prop.csv 的
+    ## `vr_mean_shell_<r>` 列（如 vr_mean_shell_0.3 / _0.5 / _0.8）
+    KEbin_vr_shells_kpc = [0.3, 0.5, 0.8] .* u"kpc",
     target_velocity_dispersion = [],
     target_velocity_dispersion_r = [],
     target_profile_model = :Zhao,  # default: MW
@@ -565,6 +570,7 @@ function SPE3D_waveDM(;
             Symbol("M_shell_rs_10"),
             Symbol("M_shell_10_inf"),
         ]
+        VRShell_columns = [Symbol("""vr_mean_shell_$(ustrip(u"kpc", r))""") for r in KEbin_vr_shells_kpc]
     end
     # Per-snapshot KE-bin diagnostics, accumulated for the final Prop.csv
     # write (the streaming rows re-use the same per-snapshot values):
@@ -576,6 +582,7 @@ function SPE3D_waveDM(;
     ArrayKEfrac = Float64[]
     ArrayMKE = Float64[]
     ArrayMShell = Float64[]
+    ArrayVRMeanShell = Float64[]   # 0.8 kpc 球壳内 <v_r>（km/s），逐快照
 
     if flag_stream_Prop_csv
         prop_csv_path = joinpath(outputdir, "$(title), $(suffix) - Prop.csv")
@@ -612,6 +619,9 @@ function SPE3D_waveDM(;
                 header_df[!, col] = Float64[]
             end
             for col in MShell_columns
+                header_df[!, col] = Float64[]
+            end
+            for col in VRShell_columns
                 header_df[!, col] = Float64[]
             end
         end
@@ -1029,6 +1039,19 @@ function SPE3D_waveDM(;
                         r_mass_center .> 10.0 / uL]) * unit_cell_volumn * mass_astro)
                     ke_M_shell_i = [M_0_rke, M_rke_rs, M_rs_10, M_gt_10]
 
+                    # <v_r> diagnostic: mean radial velocity inside each shell
+                    # (KEbin_vr_shells_kpc ± Δ[1] code units), km/s.
+                    v_r_sph, _, _ = vec_cartesian_to_spherical(vx, vy, vz,
+                        xxx .- xxx[rho_max_id], yyy .- yyy[rho_max_id],
+                        zzz .- zzz[rho_max_id], r_mass_center)
+                    vr_shell_i_list = Float64[]   # per-snapshot <v_r>, one per shell
+                    for r_sh in KEbin_vr_shells_kpc
+                        vr_sh_i = compute_vr_mean_shell(r_mass_center, v_r_sph,
+                            ustrip(u"kpc", r_sh), uL, uVel, Δ[1])
+                        push!(vr_shell_i_list, vr_sh_i)
+                        push!(ArrayVRMeanShell, vr_sh_i)
+                    end
+
                     push!(ArrayBetaStar, ke_beta_star_i)
                     append!(ArrayKEfrac, ke_frac_annulus_i)
                     append!(ArrayKEfrac, ke_frac_inner_i)
@@ -1073,6 +1096,9 @@ function SPE3D_waveDM(;
                         end
                         for (col, m) in zip(MShell_columns, ke_M_shell_i)
                             row_df[!, col] = [m]
+                        end
+                        for (col, v) in zip(VRShell_columns, vr_shell_i_list)
+                            row_df[!, col] = [v]
                         end
                     end
                     CSV.write(prop_csv_path, row_df; append = true)
@@ -1185,7 +1211,21 @@ function SPE3D_waveDM(;
 
     unicode_plot && println("\n"^(div(unicode_heatmap_width,2)))
 
-    dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ, outputdir, title, suffix; ArrayRAa0 = flag_RAR_snapshot ? ArrayRAa0 : nothing, ArrayBetaStar = flag_stream_KEbins ? ArrayBetaStar : nothing, ArrayKEfrac = flag_stream_KEbins ? ArrayKEfrac : nothing, KEbin_frac_columns = KEbin_frac_columns, KEbin_inner_frac_columns = KEbin_inner_frac_columns, ArrayMKE = flag_stream_KEbins ? ArrayMKE : nothing, MKE_columns = MKE_columns, ArrayMShell = flag_stream_KEbins ? ArrayMShell : nothing, MShell_columns = MShell_columns)
+    dfProp = save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5, ArrayR6, ArrayR7, ArrayR8, ArrayR9,
+        ArrayTotalMass, plot_virial, ArrayVirialPotential, ArrayTotalKineticE, ArrayTotalQuantumE, ArrayVirial, ArrayMomentumX, ArrayMomentumY, ArrayMomentumZ,
+        outputdir, title, suffix;
+        ArrayRAa0 = flag_RAR_snapshot ? ArrayRAa0 : nothing,
+        ArrayBetaStar = flag_stream_KEbins ? ArrayBetaStar : nothing,
+        ArrayKEfrac = flag_stream_KEbins ? ArrayKEfrac : nothing,
+        KEbin_frac_columns = KEbin_frac_columns,
+        KEbin_inner_frac_columns = KEbin_inner_frac_columns,
+        ArrayMKE = flag_stream_KEbins ? ArrayMKE : nothing,
+        MKE_columns = MKE_columns,
+        ArrayMShell = flag_stream_KEbins ? ArrayMShell : nothing,
+        MShell_columns = MShell_columns,
+        ArrayVRMeanShell = flag_stream_KEbins ? ArrayVRMeanShell : nothing,
+        VRShell_columns = VRShell_columns
+    )
     averaged_ψ2, averaged_a_all = compute_averaged_fields(average, buffer_ψ2, average_N, baryon_mode, a_all, Φ_b, Δ, Nx, Ny, Nz, config_device)
 
     if baryon_mode == :ignored
@@ -1286,7 +1326,7 @@ function SPE3D_waveDM(;
             close(best_fit_time_file)
         end
 
-        if baryon_mode == :ignored
+        if baryon_mode == :ignored || isinf(best_fit_error)
             # z=0, y=0 plane
             best_fit_dfAcc = DataFrame(
                 :r => vec(r[:, :, div(end,2)]) .* uL,

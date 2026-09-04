@@ -56,8 +56,11 @@ The total-mass columns are appended when `ArrayMKE` / `ArrayMShell` are
 supplied: `ArrayMKE` is flat with `n_bins` per-bin masses (Msun, inside
 r ≤ KEbin_r_max) per snapshot; `ArrayMShell` is flat with the four
 un-binned shell masses `[0, KEbin_r_max]`, `[KEbin_r_max, rs]`,
-`[rs, 10 kpc]`, `(10 kpc, box edge]` per snapshot.  Short time series
-are NaN-padded to `nrow(dfProp)`.
+`[rs, 10 kpc]`, `(10 kpc, box edge]` per snapshot.  When `ArrayVRMeanShell`
+is supplied, the shell-mean radial-velocity columns defined by
+`VRShell_columns` are appended (flat with `n_shells` entries per snapshot,
+one per `KEbin_vr_shells_kpc`, e.g. `vr_mean_shell_0.3/0.5/0.8`).  Short
+time series are NaN-padded to `nrow(dfProp)`.
 """
 function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, ArrayR4, ArrayR5,
     ArrayR6, ArrayR7, ArrayR8, ArrayR9, ArrayTotalMass, plot_virial,
@@ -66,7 +69,8 @@ function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, Arra
     ArrayRAa0 = nothing, ArrayBetaStar = nothing, ArrayKEfrac = nothing,
     KEbin_frac_columns = Symbol[], KEbin_inner_frac_columns = Symbol[],
     ArrayMKE = nothing, MKE_columns = Symbol[],
-    ArrayMShell = nothing, MShell_columns = Symbol[])
+    ArrayMShell = nothing, MShell_columns = Symbol[],
+    ArrayVRMeanShell = nothing, VRShell_columns = Symbol[])
 
     dfProp = DataFrame(
         :t => ArrayT[],
@@ -102,7 +106,8 @@ function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, Arra
         dfProp[!, :RAR_a0] = col
     end
     if ArrayBetaStar !== nothing || ArrayKEfrac !== nothing ||
-       ArrayMKE !== nothing || ArrayMShell !== nothing
+       ArrayMKE !== nothing || ArrayMShell !== nothing ||
+       ArrayVRMeanShell !== nothing
         n_rows = nrow(dfProp)
         pad_col(v) = length(v) >= n_rows ? v[1:n_rows] : vcat(collect(v), fill(NaN, n_rows - length(v)))
         n_bins = length(KEbin_frac_columns)
@@ -129,8 +134,15 @@ function save_property_dataframe(ArrayT, ArrayR, ArrayR1, ArrayR2, ArrayR3, Arra
         if ArrayMShell !== nothing
             MSh = collect(ArrayMShell)
             n_msh = max(length(MShell_columns), 1)
-            for (k, col) in enumerate(MShell_columns)           # three shell masses, flat 3/snapshot
+            for (k, col) in enumerate(MShell_columns)           # four shell masses, flat 4/snapshot
                 dfProp[!, col] = pad_col(MSh[k:n_msh:end])
+            end
+        end
+        if ArrayVRMeanShell !== nothing
+            VR = collect(ArrayVRMeanShell)
+            n_vr = max(length(VRShell_columns), 1)
+            for (k, col) in enumerate(VRShell_columns)             # shell-mean <v_r>, flat n_shells/snapshot
+                dfProp[!, col] = pad_col(VR[k:n_vr:end])
             end
         end
     end
