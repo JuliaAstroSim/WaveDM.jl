@@ -110,21 +110,25 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Mean radial velocity `⟨v_r⟩` inside a thin spherical shell centred at
-`r_center_kpc` (kpc, e.g. 0.8 kpc), covering the grid cells with
+Density-weighted mean radial velocity `⟨v_r⟩` inside a thin spherical shell
+centred at `r_center_kpc` (kpc, e.g. 0.8 kpc), covering the grid cells with
 
     |r − r_center| ≤ Δr          (Δr in code units, typically one cell `Δ[1]`)
 
 around the density-maximum centre.  `vr` is the spherical radial velocity
 component (code units, NaN at the centre — excluded by the shell mask).
+Each cell is weighted by its density `rho` (mass-weighted mean).
 
-Returns `⟨v_r⟩` in km/s (× `uV`); `NaN` if the shell contains no cells.
+Returns `⟨v_r⟩` in km/s (× `uV`); `NaN` if the shell contains no valid cells.
 """
-function compute_vr_mean_shell(r_mass_center, vr, r_center_kpc, uL, uV, Δr)
+function compute_vr_mean_shell(r_mass_center, rho, vr, r_center_kpc, uL, uV, Δr)
     r_center_code = r_center_kpc / uL
     tol = 1e-12 * (1 + abs(r_center_code) + abs(Δr))
     mask = (r_center_code - Δr - tol .<= r_mass_center) .&
            (r_mass_center .<= r_center_code + Δr + tol)
-    count(mask) == 0 && return NaN
-    return mean(vr[mask]) * uV   # km/s
+    w = rho[mask]
+    v = vr[mask]
+    ok = .!isnan.(w) .& .!isnan.(v)
+    count(ok) == 0 && return NaN
+    return sum(w[ok] .* v[ok]) / sum(w[ok]) * uV   # rho 加权平均 ⟨v_r⟩, km/s
 end

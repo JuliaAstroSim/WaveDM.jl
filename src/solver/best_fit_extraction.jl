@@ -45,17 +45,23 @@ $(TYPEDSIGNATURES)
 
 Compute rotation curve fitting error.
 This function encapsulates the RC fitting error computation from SPE3D_waveDM.
+
+`target_profile_rs` (the profile scale radius truncating the RC fit) must be a
+dimensionful kpc quantity, as it is stripped with `uL = ustrip(u"kpc", length_astro)`
+into the code units of `r_mass_center` and `Δ`; mixing a plain number with the
+dimensionful `length_astro` would leave a `kpc^-1` factor behind.
 """
-function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, config_units::AstroUnitsConfig, df_CO_RC, uniform_interval)
-    target_profile_rs = 0.1  # TODO: Get this from profile config
+function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, target_profile_rs, length_astro, Δ, config_units::AstroUnitsConfig, df_CO_RC, uniform_interval)
     velocity_astro = config_units.velocity_astro
     uL = config_units.uL
     
-    r_filter_3D = 0 .< r_mass_center .<= target_profile_rs * 1.0 / length_astro  # 3D filter
+    # rs_code = ustrip(u"kpc", target_profile_rs) / uL  # truncation radius in code units
+    # r_filter_3D = 0 .< r_mass_center .<= upreferred(target_profile_rs / length_astro)  # 3D filter
+    r_filter_3D = 0 .< r_mass_center .<= target_profile_rs / length_astro  # 3D filter
     ar_all = vec_cartesian_to_spherical(ax_all, ay_all, az_all, xxx.-xxx[rho_max_id], yyy.-yyy[rho_max_id], zzz.-zzz[rho_max_id], r_mass_center)[1];
     indices = findall(x->isnan(x), ar_all)
     ar_all[indices] .= 0
-    r_mean, ar_all_mean, _, ar_all_std = distribution(r_mass_center[r_filter_3D], abs.(ar_all[r_filter_3D]); section = ceil(Int, target_profile_rs / length_astro / Δ[1]), uniform_interval);
+    r_mean, ar_all_mean, _, ar_all_std = distribution(r_mass_center[r_filter_3D], abs.(ar_all[r_filter_3D]); section = ceil(Int, rs_code / Δ[1]), uniform_interval);
     vel_rot_all_mean = ustrip.(u"km/s", sqrt.(ar_all_mean .* r_mean) * velocity_astro)
     vel_rot_all_u = ustrip.(u"km/s", sqrt.((ar_all_mean + ar_all_std) .* r_mean) * velocity_astro)
     ar_all_d = ar_all_mean - ar_all_std

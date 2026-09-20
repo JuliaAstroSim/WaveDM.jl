@@ -41,6 +41,7 @@ This function handles the complete simulation workflow from initial condition se
 function SPE3D_waveDM(;
     model = :MW,
     Galaxy_id = 0,
+    GalaxyName = "",
     Xmax = 5,
     Ymax = Xmax,
     Zmax = Xmax,
@@ -208,7 +209,6 @@ function SPE3D_waveDM(;
     # average_N = 10, # average on the last few timesteps. If zero, simply take the last timestep for later computation
     average = false, # Reynolds time-averaging
     average_start_t = extract_min_t,
-    Galaxy_i = 0,
     average_snapshots = false,
 
     average_all = false, # spherical shell
@@ -571,6 +571,8 @@ function SPE3D_waveDM(;
             Symbol("M_shell_10_inf"),
         ]
         VRShell_columns = [Symbol("""vr_mean_shell_$(ustrip(u"kpc", r))""") for r in KEbin_vr_shells_kpc]
+    else
+        VRShell_columns = Symbol[]
     end
     # Per-snapshot KE-bin diagnostics, accumulated for the final Prop.csv
     # write (the streaming rows re-use the same per-snapshot values):
@@ -669,12 +671,10 @@ function SPE3D_waveDM(;
 
         if extract_mode == :RC
             @info "extracting snapshot that best-fitting the CO rotation curves"
-            if Galaxy_i < 1 || Galaxy_i > 6
-                error("Keyword Galaxy_i has to be integers ∈[1,6]")
+            if Galaxy_id < 1 || Galaxy_id > 6
+                error("Keyword Galaxy_id has to be integers ∈[1,6]")
             end
-            df_CO_RC = DataFrame(CSV.File(joinpath(folder_data, "Cooke2022_RC", "$(dfDwarf.Galaxy[Galaxy_i]).csv")))
-            df_CO_RC[!,"vel_e"] = df_CO_RC.vel_u .- df_CO_RC.vel
-            df_CO_RC[!,"vel_d"] = df_CO_RC.vel .- df_CO_RC.vel_e
+            df_CO_RC = load_massive_dwarf_CO_RC(GalaxyName)
         elseif extract_mode == :profile
             @info "extracting snapshot that best-fitting the density profile"
         end
@@ -682,7 +682,7 @@ function SPE3D_waveDM(;
         profile_config = ProfileFitConfig(target_profile_ρ0, target_profile_ρ0_u, target_profile_ρ0_d, target_profile_rs, target_profile_rs_u, target_profile_rs_d, 
                                                 target_profile_α, target_profile_α_u, target_profile_α_d, target_profile_β, target_profile_β_u, target_profile_β_d, 
                                                 target_profile_γ, target_profile_γ_u, target_profile_γ_d, target_fitting_rs_ratio, uniform_interval)
-        rc_config = RCFitConfig(target_beta_star, target_beta_star_u, target_beta_star_d, target_beta_star_r_min, target_beta_star_r_max, beta_star_error_threshold, Galaxy_i)
+        rc_config = RCFitConfig(target_beta_star, target_beta_star_u, target_beta_star_d, target_beta_star_r_min, target_beta_star_r_max, beta_star_error_threshold, Galaxy_id)
     end
 
     MW_grid = MW_Phi = nothing
@@ -1046,7 +1046,7 @@ function SPE3D_waveDM(;
                         zzz .- zzz[rho_max_id], r_mass_center)
                     vr_shell_i_list = Float64[]   # per-snapshot <v_r>, one per shell
                     for r_sh in KEbin_vr_shells_kpc
-                        vr_sh_i = compute_vr_mean_shell(r_mass_center, v_r_sph,
+                        vr_sh_i = compute_vr_mean_shell(r_mass_center, rho_c, v_r_sph,
                             ustrip(u"kpc", r_sh), uL, uVel, Δ[1])
                         push!(vr_shell_i_list, vr_sh_i)
                         push!(ArrayVRMeanShell, vr_sh_i)
@@ -1146,7 +1146,7 @@ function SPE3D_waveDM(;
                 if extract_mode == :profile
                     current_fit_error = compute_profile_fit_error(r_mass_center, rho, length_astro, Δ, density_astro, profile_config, target_profile_model, uniform_interval)
                 elseif extract_mode == :RC
-                    current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, length_astro, Δ, config_units, df_CO_RC, uniform_interval)
+                    current_fit_error = compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, zzz, rho_max_id, target_profile_rs, length_astro, Δ, config_units, df_CO_RC, uniform_interval)
                 end
                 best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star = update_best_fit!(
                     best_fit_error, best_fit_t, best_fit_beta_star_error, best_fit_beta_star, current_beta_star, current_fit_error, t, i, time_astro, best_fit_ψ, ψ, best_fit_ψ_last_t, ψ_last_t, best_fit_Φ_all, Φ_all, best_fit_a_all, a_all, rc_config, fig, outputdir, title, suffix, r_mass_center, rho, length_astro)
@@ -1155,9 +1155,9 @@ function SPE3D_waveDM(;
             # NEW (2026-07-22): accumulate β*(t) + velocity-field + bound-mass time series
             if extract_diagnostic_timeseries && (t[i] * time_astro >= diagnostic_min_t) && iszero(mod(i, diagnostic_stride))
                 # Latest virial terms (only available if plot_virial=true)
-                local _PE = plot_virial ? ArrayVirialPotential[end] : NaN
-                local _QE = plot_virial ? ArrayTotalQuantumE[end] : NaN
-                local _KE = plot_virial ? ArrayTotalKineticE[end] : NaN
+                local _PE = plot_virial ? last(ArrayVirialPotential) : NaN
+                local _QE = plot_virial ? last(ArrayTotalQuantumE) : NaN
+                local _KE = plot_virial ? last(ArrayTotalKineticE) : NaN
                 diag = compute_diagnostic_snapshot(
                     ψ, rho, xxx, yyy, zzz, r_mass_center, rho_max_id,
                     t[i],  # code-unit time
