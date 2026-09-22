@@ -61,7 +61,7 @@ function compute_rc_fit_error(r_mass_center, ax_all, ay_all, az_all, xxx, yyy, z
     ar_all = vec_cartesian_to_spherical(ax_all, ay_all, az_all, xxx.-xxx[rho_max_id], yyy.-yyy[rho_max_id], zzz.-zzz[rho_max_id], r_mass_center)[1];
     indices = findall(x->isnan(x), ar_all)
     ar_all[indices] .= 0
-    r_mean, ar_all_mean, _, ar_all_std = distribution(r_mass_center[r_filter_3D], abs.(ar_all[r_filter_3D]); section = ceil(Int, rs_code / Δ[1]), uniform_interval);
+    r_mean, ar_all_mean, _, ar_all_std = distribution(r_mass_center[r_filter_3D], abs.(ar_all[r_filter_3D]); section = ceil(Int, target_profile_rs / length_astro / Δ[1]), uniform_interval);
     vel_rot_all_mean = ustrip.(u"km/s", sqrt.(ar_all_mean .* r_mean) * velocity_astro)
     vel_rot_all_u = ustrip.(u"km/s", sqrt.((ar_all_mean + ar_all_std) .* r_mean) * velocity_astro)
     ar_all_d = ar_all_mean - ar_all_std

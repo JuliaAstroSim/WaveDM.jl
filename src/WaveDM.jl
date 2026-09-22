@@ -40,7 +40,6 @@ using Distributed
 using Strided
 using GridInterpolations
 using Zygote
-using Tullio
 using PaddedViews
 using OffsetArrays
 using DSP

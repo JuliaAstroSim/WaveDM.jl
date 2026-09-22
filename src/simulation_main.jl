@@ -176,7 +176,12 @@ function SPE3D_waveDM(;
     flag_RAR_snapshot = false,
     RAR_snapshot_minR_kpc = :auto,
     RAR_snapshot_maxR_kpc = :auto,
-    RAR_snapshot_stride = 1,                  # record every N steps
+    # Default `RAR_snapshot_stride` to `StepsBetweenSnapshots` so the
+    # per-snapshot RAR fit and the streamed Prop.csv row write stay in
+    # lockstep (otherwise the last row of Prop.csv can read a stale
+    # `RAR_a0` value, often NaN if the prior stride-aligned fit failed).
+    # Override only if you really want a different cadence.
+    RAR_snapshot_stride = StepsBetweenSnapshots,  # record every N steps
     RAR_snapshot_lower = 1e-2,                # fit bound (× 1e-10 m/s²)
     RAR_snapshot_upper = 1e2,                 # fit bound (× 1e-10 m/s²)
     RAR_snapshot_slice = :rho_max,            # `:rho_max` or `:midplane`
@@ -897,7 +902,7 @@ function SPE3D_waveDM(;
             # stays in code-unit Float64 inside the loop, then `ustrip(length_astro)`
             # / `ustrip(acc_astro)` are applied at the very end to enter
             # physical m/s² units for the LsqFit call.
-            if flag_RAR_snapshot && iszero(mod(i-1, RAR_snapshot_stride))
+            if flag_RAR_snapshot && iszero(mod(i, RAR_snapshot_stride))
                 # 1) Pick the slice axis.
                 if RAR_snapshot_slice == :midplane
                     k_slice = div(Nz, 2) + 1   # z ≈ 0 midplane
@@ -938,6 +943,14 @@ function SPE3D_waveDM(;
                 else
                     push!(ArrayRAa0_temp, NaN)
                 end
+                # Flush the per-stride temp into the Observable immediately so
+                # the streamed row write (L1082, gated by `StepsBetweenSnapshots`)
+                # always reads the up-to-date RAR_a0 — and the last snapshot's
+                # value is never dropped if `StepsBetweenSnapshots` and
+                # `RAR_snapshot_stride` desynchronize (fixes the trailing-NaN
+                # in Prop.csv when `i = Nt` is not a multiple of `StepsBetweenSnapshots`).
+                ArrayRAa0[] = vcat(ArrayRAa0[], ArrayRAa0_temp)
+                empty!(ArrayRAa0_temp)
             end
 
             if average
@@ -986,7 +999,13 @@ function SPE3D_waveDM(;
                     empty!(ArrayMomentumZ_temp)
                 end
 
-                if flag_RAR_snapshot
+                if flag_RAR_snapshot && !isempty(ArrayRAa0_temp)
+                    # Temp is now flushed immediately after each L900 push
+                    # (see the comment there). This branch only fires when a
+                    # snapshot was stride-aligned AND no L900 push happened
+                    # in between — i.e. when `RAR_snapshot_stride` is a
+                    # multiple of `StepsBetweenSnapshots`. Guard with
+                    # `!isempty` to keep the behaviour idempotent.
                     ArrayRAa0[] = vcat(ArrayRAa0[], ArrayRAa0_temp)
                     empty!(ArrayRAa0_temp)
                 end
