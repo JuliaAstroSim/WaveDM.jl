@@ -2,8 +2,9 @@
 Compile with:
 julia --project=docs/ --color=yes docs/make.jl
 
-Generate key:
-DocumenterTools.genkeys(user="JuliaAstroSim", repo="git@github.com:JuliaAstroSim/PhysicalParticles.jl.git")
+Deployment is handled by `deploydocs` below and authenticated with the
+auto-injected `GITHUB_TOKEN` (see `.github/workflows/ManuallyBuildDoc.yml`);
+no SSH deploy key (`DOCUMENTER_KEY`) is needed.
 """
 
 using Documenter
@@ -26,7 +27,7 @@ makedocs(
     authors = "islent",
     format = Documenter.HTML(
         prettyurls = !("local" in ARGS),
-        canonical = "https://JuliaAstroSim.github.io/WaveDM.jl/dev",
+        canonical = "https://juliaastrosim.github.io/WaveDM.jl/dev/",
         # assets = [
             # "assets/WaveDM_architecture.png",
             # "assets/style.css",
@@ -65,7 +66,8 @@ makedocs(
     warnonly = [:missing_docs, :cross_references, :docs_block],
 )
 
-# deploydocs(
-#     repo = "github.com/JuliaAstroSim/WaveDM.jl.git",
-#     target = "build",
-# )
+deploydocs(
+    repo = "github.com/JuliaAstroSim/WaveDM.jl.git",
+    target = "build",
+    devbranch = "main",
+)
