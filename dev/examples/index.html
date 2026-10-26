@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Examples · WaveDM.jl</title><meta name="title" content="Examples · WaveDM.jl"/><meta property="og:title" content="Examples · WaveDM.jl"/><meta property="twitter:title" content="Examples · WaveDM.jl"/><meta name="description" content="Documentation for WaveDM.jl."/><meta property="og:description" content="Documentation for WaveDM.jl."/><meta property="twitter:description" content="Documentation for WaveDM.jl."/><meta property="og:url" content="https://juliaastrosim.github.io/WaveDM.jl/dev/examples/"/><meta property="twitter:url" content="https://juliaastrosim.github.io/WaveDM.jl/dev/examples/"/><link rel="canonical" href="https://juliaastrosim.github.io/WaveDM.jl/dev/examples/"/><script async src="https://www.googletagmanager.com/gtag/js?id=UA-153693590-1"></script><script>  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'UA-153693590-1', {'page_path': location.pathname + location.search + location.hash});
+</script><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script><link href="../assets/small_alpha.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="WaveDM.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">WaveDM.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../introduction/">Introduction</a></li><li><a class="tocitem" href="../installation/">Installation</a></li><li><a class="tocitem" href="../algorithms/">Algorithms</a></li><li><span class="tocitem">APIs</span><ul><li><a class="tocitem" href="../api/configs/">Configs</a></li><li><a class="tocitem" href="../api/KDK/">KDK</a></li><li><a class="tocitem" href="../api/simulation/">Simulations</a></li></ul></li><li class="is-active"><a class="tocitem" href>Examples</a><ul class="internal"><li><a class="tocitem" href="#0.-Smoke-test-(CPU,-64)"><span>0. Smoke test (CPU, 64³)</span></a></li><li><a class="tocitem" href="#1.-Isolated-wave-DM-halo-(free-propagation,-Gaussian-IC)"><span>1. Isolated wave-DM halo (free propagation, Gaussian IC)</span></a></li><li><a class="tocitem" href="#2.-Milky-Way-ultra-faint-dwarf-—-Crater-II"><span>2. Milky Way ultra-faint dwarf — Crater II</span></a></li><li><a class="tocitem" href="#3.-Sampling-the-Milky-Way-as-a-static-N-body-background"><span>3. Sampling the Milky Way as a static N-body background</span></a></li><li><a class="tocitem" href="#4.-Trajectory-lookback-of-Crater-II"><span>4. Trajectory lookback of Crater II</span></a></li><li><a class="tocitem" href="#5.-Self-interacting-wave-DM"><span>5. Self-interacting wave DM</span></a></li><li><a class="tocitem" href="#6.-Custom-potential-—-cross-disciplinary-use"><span>6. Custom potential — cross-disciplinary use</span></a></li><li><a class="tocitem" href="#7.-Multi-level-parallel-execution"><span>7. Multi-level parallel execution</span></a></li><li><a class="tocitem" href="#8.-Re-using-initial-conditions-across-runs"><span>8. Re-using initial conditions across runs</span></a></li><li><a class="tocitem" href="#9.-Post-processing-—-radial-profile,-virial-energies,-mass-fraction-radii"><span>9. Post-processing — radial profile, virial energies, mass-fraction radii</span></a></li><li><a class="tocitem" href="#10.-Best-practices"><span>10. Best practices</span></a></li><li><a class="tocitem" href="#Next-steps"><span>Next steps</span></a></li></ul></li><li><a class="tocitem" href="../reference/">References and citations</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaAstroSim/WaveDM.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaAstroSim/WaveDM.jl/blob/main/docs/src/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h1><p>This page walks through the end-to-end simulations discussed in §3 of the accompanying paper (Meng &amp; Dong 2026). Each example is a complete, runnable Julia script. Run from the Julia REPL or <code>julia --project</code> with the indicated packages installed.</p><div class="admonition is-success" id="Before-you-start-39aad4b105313b20"><header class="admonition-header">Before you start<a class="admonition-anchor" href="#Before-you-start-39aad4b105313b20" title="Permalink"></a></header><div class="admonition-body"><p>If you haven&#39;t run WaveDM.jl before, skim the <a href="../quickstart/#Quickstart">Quickstart</a> page first — it shows you how to introspect the package with <code>list_supported_models()</code> / <code>list_galaxies()</code> / <code>print_catalog()</code> so that you know which <code>model = :...</code> and <code>Galaxy_id = N</code> combinations are supported before you write a 50-line script.</p></div></div><h2 id="0.-Smoke-test-(CPU,-64)"><a class="docs-heading-anchor" href="#0.-Smoke-test-(CPU,-64)">0. Smoke test (CPU, 64³)</a><a id="0.-Smoke-test-(CPU,-64)-1"></a><a class="docs-heading-anchor-permalink" href="#0.-Smoke-test-(CPU,-64)" title="Permalink"></a></h2><p>The fastest way to verify that WaveDM.jl is correctly installed and that the SPE loop is wired up. Runs in a few seconds on any machine.</p><pre><code class="language-julia hljs">using WaveDM
+
+simulate_waveDM(;
+    model = :MW,
+    baryon_mode = :ignored,          # skip baryon sampling for the smoke test
+    Xmax = 2.0,
+    Tmax = 0.001,
+    Nt   = 3,
+    Nx = Ny = Nz = 64,
+    gpu = false,
+    Realtime = false,
+    unicode_plot = true,             # terminal progress
+    outputdir = mktempdir(),
+)</code></pre><p>You should see several <code>@info</code> lines, a terminal heat-map of the density slice, and no errors.</p><h2 id="1.-Isolated-wave-DM-halo-(free-propagation,-Gaussian-IC)"><a class="docs-heading-anchor" href="#1.-Isolated-wave-DM-halo-(free-propagation,-Gaussian-IC)">1. Isolated wave-DM halo (free propagation, Gaussian IC)</a><a id="1.-Isolated-wave-DM-halo-(free-propagation,-Gaussian-IC)-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Isolated-wave-DM-halo-(free-propagation,-Gaussian-IC)" title="Permalink"></a></h2><p>Useful for verifying the KDK integrator in the simplest possible setup — no self-gravity, no baryons.</p><pre><code class="language-julia hljs">using WaveDM
+using Unitful
+
+simulate_waveDM(;
+    model = :MW,
+    IC_vel = (x, y, z) -&gt; exp(-(x^2 + y^2 + z^2) / 0.1^2),
+    baryon_mode = :ignored,
+    V     = (x, y, z, ψ) -&gt; 0.0,
+    κ     = 0,
+    Nx = Ny = Nz = 128,
+    Xmax = 2.0,
+    Tmax = 0.01,
+    Nt   = 200,
+    autoset_timestep = true,
+    gpu = false,
+    Realtime = true,
+    title = &quot;FreeProp&quot;,
+    outputdir = &quot;results/FreeProp&quot;,
+)</code></pre><p>The wave packet disperses under the kinetic operator; with <code>autoset_timestep = true</code> the timestep is chosen from the CFL criterion.</p><h2 id="2.-Milky-Way-ultra-faint-dwarf-—-Crater-II"><a class="docs-heading-anchor" href="#2.-Milky-Way-ultra-faint-dwarf-—-Crater-II">2. Milky Way ultra-faint dwarf — Crater II</a><a id="2.-Milky-Way-ultra-faint-dwarf-—-Crater-II-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Milky-Way-ultra-faint-dwarf-—-Crater-II" title="Permalink"></a></h2><p>The flagship case study from §3 of the paper. Crater II is modelled with a gNFW density profile:</p><p class="math-container">\[\rho_{\rm DM}(r) = \frac{\rho_0}{(r/r_s)^\beta (1 + r/r_s)^{3-\beta}},\]</p><p>with the Crater-II parameters from Hayashi et al. (2023). The boson mass is <span>$m_{22} = 50.0$</span>, the resolution is <span>$384^3$</span>, the box half-side is 20 kpc, and the run is 6 Gyr long. Baryons are neglected (Crater II is DM-dominated).</p><pre><code class="language-julia hljs">using WaveDM
+using Unitful
+
+simulate_waveDM(;
+    model       = :dwarf_UFDs,
+    Galaxy_id   = 6,                          # Crater II
+    baryon_mode = :ignored,
+    mₐ          = 50 * 1e-22 * 1.783e-36u&quot;kg&quot;,  # m₂₂ = 50
+    V           = (x, y, z, ψ) -&gt; 0.0,
+    Nx          = 384,
+    Xmax        = 20u&quot;kpc&quot;,
+    Tmax        = 6.0u&quot;Gyr&quot;,
+    autoset_timestep = true,
+    absorb_coeff     = 10,                    # moderate absorbing layer
+    bulk_size   = 4,                          # value used in the paper
+    gpu         = true,
+    Realtime    = true,
+    plot_virial = true,                       # monitor virial energies
+    title       = &quot;CraterII&quot;,
+    outputdir   = &quot;results/CraterII&quot;,
+)</code></pre><p>The simulation writes an overview figure, an MP4 of the live density slice, and a CSV with the time series of total mass, mass-fraction radii, and virial energies.</p><p>For production profile fitting, set <code>target_profile_model = :dwarf_Zhao</code> and pass the Crater II <code>target_profile_ρ0</code>, <code>target_profile_rs</code>, <code>target_profile_α</code>, <code>target_profile_β</code>, and <code>target_profile_γ</code> values from <code>AstroIC.load_data_UFDs()</code>. The short script above uses the built-in Crater II initial profile, but the default target profile is the Milky Way one.</p><h3 id="2.1-Crater-II-with-the-Milky-Way-tidal-field"><a class="docs-heading-anchor" href="#2.1-Crater-II-with-the-Milky-Way-tidal-field">2.1 Crater II with the Milky Way tidal field</a><a id="2.1-Crater-II-with-the-Milky-Way-tidal-field-1"></a><a class="docs-heading-anchor-permalink" href="#2.1-Crater-II-with-the-Milky-Way-tidal-field" title="Permalink"></a></h3><p>To add a time-dependent MW tidal field (and, optionally, the LMC perturbation) to the same halo:</p><pre><code class="language-julia hljs">using WaveDM
+using Unitful
+
+simulate_waveDM(;
+    model       = :dwarf_UFDs,
+    Galaxy_id   = 6,
+    baryon_mode = :ignored,
+    mₐ          = 50 * 1e-22 * 1.783e-36u&quot;kg&quot;,
+    V           = (x, y, z, ψ) -&gt; 0.0,
+    Nx          = 384,
+    Xmax        = 20u&quot;kpc&quot;,
+    Tmax        = 6.0u&quot;Gyr&quot;,
+    autoset_timestep = true,
+    absorb_coeff     = 10,
+    bulk_size   = 4,
+    MW_tidal_field = true,                    # MW tidal field
+    df_traj     = df_traj,                    # from the lookback step in §4
+    tidal_lookback_time = 6.0u&quot;Gyr&quot;,
+    LMC_tidal_field = true,                   # LMC perturbation
+    gpu         = true,
+    title       = &quot;CraterII_MW_LMC&quot;,
+    outputdir   = &quot;results/CraterII_MW_LMC&quot;,
+)</code></pre><p>The halo ends up in a <strong>tide-driven non-equilibrium state</strong> — the radially averaged velocity dispersion no longer matches the Jeans prediction, which is a useful diagnostic for stripping studies (see <a href="../algorithms/#63-velocity-dispersion-profile-post-processing-expensive">Algorithms §6.3</a>).</p><h2 id="3.-Sampling-the-Milky-Way-as-a-static-N-body-background"><a class="docs-heading-anchor" href="#3.-Sampling-the-Milky-Way-as-a-static-N-body-background">3. Sampling the Milky Way as a static N-body background</a><a id="3.-Sampling-the-Milky-Way-as-a-static-N-body-background-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Sampling-the-Milky-Way-as-a-static-N-body-background" title="Permalink"></a></h2><p>If you want to drive a wave-CDM simulation with an explicit N-body representation of the MW, sample the baryons with <code>AstroIC</code> and pass them in via <code>baryon_mode = :particles_static</code>:</p><pre><code class="language-julia hljs">using WaveDM
+using AstroIC
+using PhysicalParticles, UnitfulAstro, Unitful
+
+# Thin stellar disk
+disk_thin = generate(
+    AstroIC.ExponentialDisc(;
+        collection       = STAR,
+        NumSamples       = 50_000,
+        TotalMass        = 3.5e10u&quot;Msun&quot;,
+        ScaleRadius      = 2.42u&quot;kpc&quot;,
+        ScaleHeight      = 0.30u&quot;kpc&quot;,
+    )
+)
+
+# HI gas disk
+gas_HI = generate(
+    AstroIC.ExponentialDisc(;
+        collection       = GAS,
+        NumSamples       = 30_000,
+        TotalMass        = 8.0e9u&quot;Msun&quot;,
+        ScaleRadius      = 7.0u&quot;kpc&quot;,
+        ScaleHeight      = 0.085u&quot;kpc&quot;,
+        HoleRadius       = 4.0u&quot;kpc&quot;,         # R_m in the Zhu 2023 model
+    )
+)
+
+# Add a bulge, thick disk, etc. — see the paper for the full MW model
+particles = [disk_thin; gas_HI]
+
+simulate_waveDM(;
+    model              = :MW,
+    baryon_mode        = :particles_static,
+    baryon_particles   = particles,
+    GravitySolver      = Tree(),
+    SofteningLength    = 0.1u&quot;kpc&quot;,           # code default; ε ~ mean particle spacing
+    Nx = Ny = Nz = 256,
+    Xmax = 100u&quot;kpc&quot;,
+    Tmax = 3.0u&quot;Gyr&quot;,
+    autoset_timestep = true,
+    gpu = true,
+    title = &quot;MW_static_Nbody&quot;,
+    outputdir = &quot;results/MW_static_Nbody&quot;,
+)</code></pre><p><code>baryon_mode = :particles_static</code> means the MW particles are held fixed — their gravitational potential is evaluated at every SPE step but they do not move. This is the cheapest way to add a realistic host potential.</p><h2 id="4.-Trajectory-lookback-of-Crater-II"><a class="docs-heading-anchor" href="#4.-Trajectory-lookback-of-Crater-II">4. Trajectory lookback of Crater II</a><a id="4.-Trajectory-lookback-of-Crater-II-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Trajectory-lookback-of-Crater-II" title="Permalink"></a></h2><p><code>AstroIC.load_data_MW_satellites()</code> returns the Battaglia et al. (2022) observational catalogue. The script below integrates the Crater II orbit backward 6 Gyr in a time-dependent MW potential, with the LMC perturbation included. The resulting trajectory can then be fed to the wave-DM simulation as <code>tidal_initial_pos</code> / <code>tidal_initial_vel</code> / <code>df_traj</code>.</p><pre><code class="language-julia hljs">using AstroNbodySim, AstroIC, WaveDM
+using DataFrames, Unitful, PhysicalParticles
+using StructArrays
+
+# 1. Load the catalogue and pick Crater II
+df = AstroIC.load_data_MW_satellites()
+id = findfirst(df.Galaxy .== &quot;Crater II&quot;)
+
+# 2. Convert observables → Galactocentric initial state
+pos = PVector(df.X[id], df.Y[id], df.Z[id], u&quot;kpc&quot;)
+vel = -PVector(df.v_X[id], df.v_Y[id], df.v_Z[id], u&quot;km/s&quot;)
+
+# 3. Build a one-particle N-body system
+Crater_II = StructArray([Star(uAstro; id = 1)])
+Crater_II.Pos[1] = pos
+Crater_II.Vel[1] = vel
+
+# 4. Backward integration in a (time-dependent) MW potential
+function MW_bg_force(particle, t)
+    acc_DM = acc_from_MW_halo(particle)         # user-defined MW DM acceleration
+    acc_b  = acc_from_MW_baryons(particle)      # user-defined MW disk+bulge
+    return acc_DM + acc_b
+end
+
+sim_traj = Simulation(deepcopy(Crater_II);
+    bgforce   = Function[MW_bg_force],
+    TimeEnd   = 6.0u&quot;Gyr&quot;,
+    TimeStep  = 0.0u&quot;Gyr&quot;,                       # adaptive
+)
+run(sim_traj)
+
+# 5. The orbit is in `sim_traj.saveresult` — pass it as df_traj to a wave-DM run.</code></pre><p>The full MW background force should include the disk, bulge, and dark-matter halo (Zhu et al. 2023 form). See <code>examples/03_lookback.jl</code> in the repository for a complete working version with the LMC perturbation.</p><h2 id="5.-Self-interacting-wave-DM"><a class="docs-heading-anchor" href="#5.-Self-interacting-wave-DM">5. Self-interacting wave DM</a><a id="5.-Self-interacting-wave-DM-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Self-interacting-wave-DM" title="Permalink"></a></h2><p>Set <span>$\kappa \neq 0$</span> to add a contact self-interaction <span>$V = \kappa|\psi|^2$</span>. WaveDM.jl supports repulsive (<span>$\kappa &gt; 0$</span>) and attractive (<span>$\kappa &lt; 0$</span>) regimes.</p><pre><code class="language-julia hljs">using WaveDM
+using Unitful
+
+simulate_waveDM(;
+    model = :MW,
+    IC_vel = (x, y, z) -&gt; exp(-(x^2 + y^2 + z^2) / 0.1^2),
+    baryon_mode = :ignored,
+    V     = (x, y, z, ψ) -&gt; 0.0,
+    κ     = 50.0,                               # repulsive self-interaction
+    Nx = Ny = Nz = 128,
+    Xmax = 2.0,
+    Tmax = 0.05,
+    autoset_timestep = true,
+    gpu = true,
+    title = &quot;SelfInteracting&quot;,
+    outputdir = &quot;results/SelfInteracting&quot;,
+)</code></pre><p>For <span>$\kappa &gt; 0$</span> the auto-timestep includes the term <span>$2\pi / (|\kappa|\max|\psi|^2)$</span> which limits phase variations from the self-interaction.</p><h2 id="6.-Custom-potential-—-cross-disciplinary-use"><a class="docs-heading-anchor" href="#6.-Custom-potential-—-cross-disciplinary-use">6. Custom potential — cross-disciplinary use</a><a id="6.-Custom-potential-—-cross-disciplinary-use-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Custom-potential-—-cross-disciplinary-use" title="Permalink"></a></h2><p>The pluggable <code>V(x, y, z, ψ)</code> interface lets WaveDM.jl solve any local nonlinear Schrödinger problem. For example, a 1D effective optical lattice:</p><pre><code class="language-julia hljs">using WaveDM
+
+V_optical(x, y, z, ψ) = 1000 * sin(2π * x)^2 + 1000 * sin(2π * y)^2
+
+simulate_waveDM(;
+    model = :MW,
+    IC_vel = (x, y, z) -&gt; exp(-(x^2 + y^2 + z^2) / 0.05^2) * exp(im * 50 * x),
+    baryon_mode = :ignored,
+    V     = V_optical,
+    κ     = 5000.0,                             # strong Kerr nonlinearity
+    Nx = Ny = Nz = 128,
+    Xmax = 1.0,
+    Tmax = 0.01,
+    autoset_timestep = true,
+    gpu = true,
+    title = &quot;OpticalLattice&quot;,
+    outputdir = &quot;results/OpticalLattice&quot;,
+)</code></pre><p>This makes WaveDM.jl directly usable for nonlinear-optics and BEC problems without modifying the source.</p><h2 id="7.-Multi-level-parallel-execution"><a class="docs-heading-anchor" href="#7.-Multi-level-parallel-execution">7. Multi-level parallel execution</a><a id="7.-Multi-level-parallel-execution-1"></a><a class="docs-heading-anchor-permalink" href="#7.-Multi-level-parallel-execution" title="Permalink"></a></h2><h3 id="7.1-Multi-threaded-FFTW-on-a-CPU-node"><a class="docs-heading-anchor" href="#7.1-Multi-threaded-FFTW-on-a-CPU-node">7.1 Multi-threaded FFTW on a CPU node</a><a id="7.1-Multi-threaded-FFTW-on-a-CPU-node-1"></a><a class="docs-heading-anchor-permalink" href="#7.1-Multi-threaded-FFTW-on-a-CPU-node" title="Permalink"></a></h3><pre><code class="language-bash hljs">julia -t 16 my_script.jl</code></pre><pre><code class="language-julia hljs">using FFTW
+using WaveDM
+
+FFTW.set_provider!(&quot;mkl&quot;)                      # or &quot;fftw&quot; — must precede the first FFT
+FFTW.set_num_threads(Threads.nthreads())
+
+simulate_waveDM(; Nx = Ny = Nz = 384, gpu = false, ...)  # no extra keyword needed</code></pre><h3 id="7.2-Distributed-run-across-multiple-cores-/-nodes"><a class="docs-heading-anchor" href="#7.2-Distributed-run-across-multiple-cores-/-nodes">7.2 Distributed run across multiple cores / nodes</a><a id="7.2-Distributed-run-across-multiple-cores-/-nodes-1"></a><a class="docs-heading-anchor-permalink" href="#7.2-Distributed-run-across-multiple-cores-/-nodes" title="Permalink"></a></h3><div class="admonition is-warning" id="Warning-875f40d373e6a633"><header class="admonition-header">Warning<a class="admonition-anchor" href="#Warning-875f40d373e6a633" title="Permalink"></a></header><div class="admonition-body"><p>The distributed FFT Poisson solver is not implemented in the current release. Distributed workers can accelerate initial-condition generation and N-body work, but the full SPE loop must run on a single process.</p></div></div><pre><code class="language-julia hljs">using Distributed
+addprocs(8)
+@everywhere using WaveDM
+
+# Distributed-memory IC generation (SPE loop remains single-process)
+ψ_IC = simulate_waveDM(;
+    Nx = Ny = Nz = 256,
+    Xmax = 5.0,
+    distributed_memory = true,
+    gpu = false,
+)</code></pre><p>For multi-node runs, replace <code>addprocs(8)</code> with a cluster manager, e.g.</p><pre><code class="language-julia hljs">using Distributed
+addprocs([(&quot;node1.example.com&quot;, :auto), (&quot;node2.example.com&quot;, :auto)])
+@everywhere using WaveDM</code></pre><h3 id="7.3-GPU-run"><a class="docs-heading-anchor" href="#7.3-GPU-run">7.3 GPU run</a><a id="7.3-GPU-run-1"></a><a class="docs-heading-anchor-permalink" href="#7.3-GPU-run" title="Permalink"></a></h3><pre><code class="language-julia hljs">using WaveDM
+using CUDA
+@assert CUDA.functional()
+
+simulate_waveDM(;
+    Nx = Ny = Nz = 512,
+    Xmax = 5.0,
+    Tmax = 5.0u&quot;Gyr&quot;,
+    autoset_timestep = true,
+    gpu = true,
+    Realtime = true,
+)</code></pre><h2 id="8.-Re-using-initial-conditions-across-runs"><a class="docs-heading-anchor" href="#8.-Re-using-initial-conditions-across-runs">8. Re-using initial conditions across runs</a><a id="8.-Re-using-initial-conditions-across-runs-1"></a><a class="docs-heading-anchor-permalink" href="#8.-Re-using-initial-conditions-across-runs" title="Permalink"></a></h2><p><code>simulate_waveDM(; IC_vel = path)</code> accepts a JLD2 path that was written by a previous <code>save_IC = true</code> run. This is the recommended way to scan parameters (resolution, <span>$\zeta_{\rm rot}$</span>, etc.) on a fixed initial condition.</p><pre><code class="language-julia hljs"># 1. First run: build and save the IC
+simulate_waveDM(;
+    model = :MW,
+    Xmax = 2.0, Tmax = 0.01, Nt = 1,           # one step is enough if we only want the IC
+    Nx = Ny = Nz = 256,
+    save_IC = true,
+    outputdir = &quot;results/IC_run&quot;,
+)
+# output: results/IC_run/&lt;title&gt;, &lt;suffix&gt; - IC.jld2
+
+# 2. Second run: re-use the saved IC, vary parameters
+simulate_waveDM(;
+    IC_vel = &quot;results/IC_run/&lt;title&gt;, &lt;suffix&gt; - IC.jld2&quot;,
+    baryon_mode = :ignored,
+    Xmax = 2.0, Tmax = 0.5,
+    autoset_timestep = true,
+    rotational_ratio = 0.0,                    # no rotation this time
+    bulk_perturb    = false,                   # disable pooling
+    gpu = true,
+    title = &quot;Scan_rot0&quot;,
+    outputdir = &quot;results/Scan_rot0&quot;,
+)</code></pre><h2 id="9.-Post-processing-—-radial-profile,-virial-energies,-mass-fraction-radii"><a class="docs-heading-anchor" href="#9.-Post-processing-—-radial-profile,-virial-energies,-mass-fraction-radii">9. Post-processing — radial profile, virial energies, mass-fraction radii</a><a id="9.-Post-processing-—-radial-profile,-virial-energies,-mass-fraction-radii-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Post-processing-—-radial-profile,-virial-energies,-mass-fraction-radii" title="Permalink"></a></h2><p><code>simulate_waveDM</code> returns a <code>DataFrame dfProp</code> with the time series of total mass, <span>$R_{10\%}, \ldots, R_{90\%}$</span> mass-fraction radii, and (if <code>plot_virial = true</code>) the kinetic, potential, and quantum energies.</p><pre><code class="language-julia hljs">using CSV, DataFrames, GLMakie
+
+ψ, fig, figMOND, chi2RC, dfProp, dfAcc, avg = simulate_waveDM(;
+    Nx = Ny = Nz = 256, plot_virial = true, gpu = true,
+)
+
+# 9.1 Mass-fraction radii vs time
+fig_r = GLMakie.Figure()
+ax = GLMakie.Axis(fig_r[1, 1]; ylabel = &quot;R (kpc)&quot;, xlabel = &quot;t (Gyr)&quot;)
+for i in 1:9
+    GLMakie.lines!(ax, dfProp.t, dfProp[!, &quot;R$(i*10)_kpc&quot;]; label = &quot;$(i*10)%&quot;)
+end
+GLMakie.axislegend(ax)
+GLMakie.save(&quot;radii_vs_t.png&quot;, fig_r)
+
+# 9.2 Virial energy convergence
+fig_v = GLMakie.Figure()
+ax2 = GLMakie.Axis(fig_v[1, 1]; ylabel = &quot;Energy&quot;, xlabel = &quot;t (Gyr)&quot;)
+GLMakie.lines!(ax2, dfProp.t, dfProp.K_total; label = &quot;K&quot;)
+GLMakie.lines!(ax2, dfProp.t, dfProp.V_total; label = &quot;V&quot;)
+GLMakie.lines!(ax2, dfProp.t, dfProp.Q_total; label = &quot;Q&quot;)
+GLMakie.lines!(ax2, dfProp.t, dfProp.E_total; label = &quot;E = K+V+Q&quot;)
+GLMakie.axislegend(ax2)
+GLMakie.save(&quot;virial.png&quot;, fig_v)</code></pre><p>A halo is <strong>virialized</strong> when the total energy <span>$\mathcal E = \mathcal K + \mathcal V + \mathcal Q$</span> is approximately constant and the radii of fixed mass fractions stop growing. The paper&#39;s Crater II simulation starts at <span>$t=-6$</span> Gyr and reaches virial equilibrium after roughly 4 Gyr of evolution, i.e. near <span>$t\approx-2$</span> Gyr.</p><h2 id="10.-Best-practices"><a class="docs-heading-anchor" href="#10.-Best-practices">10. Best practices</a><a id="10.-Best-practices-1"></a><a class="docs-heading-anchor-permalink" href="#10.-Best-practices" title="Permalink"></a></h2><ol><li><strong>Start small.</strong> Validate with a <span>$64^3$</span> CPU run before launching a <span>$512^3$</span> GPU production run.</li><li><strong>Enable <code>autoset_timestep = true</code>.</strong> It picks <span>$\Delta t$</span> from the CFL criterion with a 10 % safety margin.</li><li><strong>Save initial conditions.</strong> Use <code>save_IC = true</code> and re-load with <code>IC_vel = &quot;...&quot;</code> to scan parameters on a fixed halo.</li><li><strong>Tune <code>absorb_coeff</code>.</strong> Defaults of 10 are good for production. Set <code>absorb_coeff = 0</code> to disable and see the boundary.</li><li><strong>Pick the right <code>baryon_mode</code>.</strong> <code>:mesh</code> is fastest, <code>:particles_static</code> is more flexible, <code>:particles_dynamic</code> is the most realistic but most expensive.</li><li><strong>Pick one backend for the SPE loop.</strong> The distributed FFT Poisson solver is not implemented yet, so a full run must use the serial/threads or GPU backend; distributed workers are useful for IC generation and N-body work.</li><li><strong>Profile the visualization overhead.</strong> If <code>Realtime = true</code> is the bottleneck, switch to <code>unicode_plot = true</code> for headless or <code>Realtime = false</code> for batch runs.</li><li><strong>Check virialization before analyzing.</strong> Use the QSS criteria in <a href="../algorithms/#6-quasi-stationary-equilibrium-qss-diagnostics">Algorithms §6</a> to verify the halo is in quasi-stationary equilibrium before you fit a profile or compare with observations.</li><li><strong>Document your parameters.</strong> Keep a record of <code>Nx</code>, <code>Xmax</code>, <code>Tmax</code>, <code>mₐ</code>, <code>ζ_rot</code>, <code>ζ_pool</code>, <code>absorb_coeff</code>, and <code>baryon_mode</code> for every run.</li></ol><h2 id="Next-steps"><a class="docs-heading-anchor" href="#Next-steps">Next steps</a><a id="Next-steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-steps" title="Permalink"></a></h2><ul><li>The full list of keyword arguments is in <a href="../api/simulation/">Simulation</a>.</li><li>The mathematical background of the KDK solver is in <a href="../algorithms/#Algorithms">Algorithms</a>.</li><li>If you build something useful on top of WaveDM.jl, consider opening a PR — see the <a href="https://github.com/JuliaAstroSim/WaveDM.jl/blob/main/CONTRIBUTING.md">contribution guide</a>.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../api/simulation/">« Simulations</a><a class="docs-footer-nextpage" href="../reference/">References and citations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Monday 26 October 2026 14:10">Monday 26 October 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
