@@ -89,6 +89,8 @@ Filter = t -> t in [
 
 Drives [`generate_initial_conditions`](@ref). Fields: `model`, `baryon_mode`, `Np`, `pids`, `bulk_perturb`, `bulk_size`, `bulk_shift_size`, `bulk_center_size`, `reset_velocity`, `static`, `FDM_mass_ratio`, `FDM_radius_ratio`, `rotational_ratio`, `velocity_ratio`, `rotational_ratio_baryon`, `velocity_ratio_baryon`, `velocity_falling`, `MW_disk_RC`, `GravitySolver`, `SofteningLength`.
 
+The current defaults are `bulk_size = 8` and `SofteningLength = 0.1u"kpc"`; the Crater II runs in the paper used `bulk_size = 4`.
+
 ### `DensityProfileConfig`
 
 The full set of baryonic and halo profile parameters. Fields: `baryon_β`, `baryon_ρ0`, `baryon_r0`, `halo_β`, `halo_ρ0`, `halo_r0`, `halo_α`, `halo_γ`, `halo_Q`, `stellar_TotalMass`, `stellar_ScaleRadius`, `thickness_ratio_stellar`, `gases_TotalMass`, `gases_ScaleRadius`, `thickness_ratio_gases`.

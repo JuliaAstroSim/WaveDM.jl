@@ -5,7 +5,7 @@ This page collects the scientific literature and software packages cited in the 
 ## 1. Wave Dark Matter Theory
 
 - **Hu, W., Barkana, R. & Gruzberg, A.** (2000). *Fuzzy cold dark matter: the wave properties of ultralight particles.* Phys. Rev. Lett. **85**, 1158. — `hu2000fuzzy`. The original proposal of fuzzy / wave CDM as a way to address small-scale CDM challenges.
-- **Hui, L.** (2021). *Wave dark matter.* Annu. Rev. Astron. Astrophys. **59**, 247. — `hui2021wave`. A modern review of wave CDM: de Broglie scale, solitons, granules, observations.
+- **Hui, L.** (2021). *Wave dark matter.* Annu. Rev. Astron. Astrophys. **59**, 247. — `hui2021wavedark`. A modern review of wave CDM: de Broglie scale, solitons, granules, observations.
 - **Hui, L., Ostriker, J. P., Tremaine, S. & Witten, E.** (2017). *Ultralight scalars as cosmological dark matter.* Phys. Rev. D **95**, 043541. — `hui2017ultralight`. Defines the quantum pressure and "quantum energy" used in virial diagnostics.
 - **Chavanis, P.-H.** (2019). *Predictive model of BEC dark matter halos with a solitonic core and a quantum pressure bulge.* Phys. Rev. D **100**, 083022. — `chavanis2019predictive`. Critical-temperature estimate for ultralight bosons.
 - **Kagan, Yu., Muryshev, A. E. & Shlyapnikov, G. V.** (1997). *Evolution of correlation properties and appearance of interference in the course of Bose-Einstein condensation.* Phys. Rev. Lett. **81**, 933. — `kagan1997evolutioncorrelation`. Justifies the classical-field GPE in the highly-degenerate regime.
@@ -28,7 +28,7 @@ This page collects the scientific literature and software packages cited in the 
 - **May, S., Springel, V. & White, S. D. M.** (2023). *The halo structure of fuzzy dark matter.* (in prep.). — `may2023halo`. Velocity resolution criterion.
 - **Li, X., Hui, L. & Yavetz, T.** (2019). *Numerical challenge of the fuzzy dark matter model.* Phys. Rev. D **103**, 023508. — `li2019numerical`. Resolution criteria; de Broglie-wavelength requirement.
 - **Schive, H.-Y., Chiueh, T. & Broadhurst, T.** (2014, 2026 update). *Cosmic structure as the quantum interference of a coherent dark wave.* Nature Physics **10**, 496; updated review preprint 2026. — `schive2014cosmicstructure`, `schive2026fuzzydark`. The reference paper for the SPE + AMR approach and a comprehensive review of methodologies.
-- **James, R. A.** (1977). *The solution of Poisson's equation for isolated source distributions.* J. Comput. Phys. **25**, 71. — `james1977solutionpoissons`. The four-step algorithm used for `boundary = Vacuum()`.
+- **James, R. A.** (1977). *The solution of Poisson's equation for isolated source distributions.* J. Comput. Phys. **25**, 71. — `james1977solutionpoissons`. The four-step algorithm implemented in `PhysicalFFT.jl` for isolated potentials; the current `WaveDM.jl` driver uses an isolated tree solve for `boundary = Vacuum()`.
 - **Dutta Chowdhury, D., van den Bosch, F. C., Robles, V. H., van Dokkum, P., Schive, H.-Y., Chiueh, T. & Broadhurst, T.** (2021). *On the random motion of the soliton in fuzzy dark matter halos.* Astrophys. J. **916**, 27. — `duttachowdhury2021random`. Box-size and resolution discussion for isolated halos.
 
 ## 4. Self-Interaction & Nonlinear Schrödinger
@@ -58,7 +58,7 @@ This page collects the scientific literature and software packages cited in the 
 - **Kunkel, S. et al.** (2025). *Hybrid CPU/GPU and MPI parallelization of the GAMER code.* Astrophys. J. Suppl. Ser. — `kunkel2025hybrid`. The MPI/AMR SPE implementation in GAMER.
 - **Hlozek, R. et al.** (2015). *A search for ultralight axions using the CMB.* Phys. Rev. D **91**, 103512. — `hlozek2015search`. AxionCAMB.
 
-The full list with method, boundary, capabilities is reproduced in Table 1 of the accompanying paper.
+The full list with method, boundary, capabilities is reproduced in Table 1 of the accompanying paper (Meng & Dong 2026).
 
 ## 7. Observational Data & Galaxy Models
 
@@ -110,15 +110,42 @@ The full ecosystem is at <https://github.com/JuliaAstroSim>.
 
 If you use WaveDM.jl in your research, please cite it as:
 
+- **Meng, R. & Dong, X. 2026**, *WaveDM.jl: An Adaptable Simulation Framework for Dynamics of Baryonic and Wave Dark Matter on Galaxy Scales*, Research in Astronomy and Astrophysics — [journal article](http://iopscience.iop.org/article/10.1088/1674-4527/ae9042) · [arXiv:2606.25026](https://arxiv.org/abs/2606.25026) · DOI [10.1088/1674-4527/ae9042](https://doi.org/10.1088/1674-4527/ae9042)
+
 ```bibtex
-@article{MengAndDong2026WaveDMjl,
-    title = {WaveDM.jl: An Adaptable Simulation Framework for Dynamics of Baryonic and Wave Dark Matter on Galaxy Scales},
-   author = {Run-Yu Meng and Xiao-Bo Dong},
-  journal = {arXiv preprint},
-     year = 2026,
-    month = jun,
-      url = {https://arxiv.org/abs/2606.25026v1},
-  urldate = {2026-06-25}
+@article{meng2026wavedmjladaptablea,
+  title = {{{WaveDM}}.Jl: {{An Adaptable Simulation Framework}} for {{Dynamics}} of {{Baryonic}} and {{Wave Dark Matter}} on {{Galaxy Scales}}},
+  shorttitle = {{{WaveDM}}.Jl},
+  author = {Meng, Runyu and Dong, Xiaobo},
+  year = 2026,
+  journal = {Research in Astronomy and Astrophysics},
+  issn = {1674-4527},
+  doi = {10.1088/1674-4527/ae9042},
+  url = {http://iopscience.iop.org/article/10.1088/1674-4527/ae9042},
+  eprint = {2606.25026},
+  archiveprefix = {arXiv},
+  primaryclass = {astro-ph.GA},
+  urldate = {2026-07-26}
+}
+```
+
+Publications built on this code base:
+
+- **Meng, R. & Dong, X. 2026**, *Wave Cold Dark Matter Can Reproduce the Radial Acceleration Relation in X-ray Elliptical Galaxies*, Research in Astronomy and Astrophysics — [journal article](http://iopscience.iop.org/article/10.1088/1674-4527/aeac08) · [arXiv:2610.18969](https://arxiv.org/abs/2610.18969) · DOI [10.1088/1674-4527/aeac08](https://doi.org/10.1088/1674-4527/aeac08)
+
+```bibtex
+@article{meng2026wavecold,
+  title = {Wave {{Cold Dark Matter Can Reproduce}} the {{Radial Acceleration Relation}} in {{X}}-Ray {{Elliptical Galaxies}}},
+  author = {Meng, Runyu and Dong, Xiaobo},
+  year = 2026,
+  journal = {Research in Astronomy and Astrophysics},
+  issn = {1674-4527},
+  doi = {10.1088/1674-4527/aeac08},
+  url = {http://iopscience.iop.org/article/10.1088/1674-4527/aeac08},
+  eprint = {2610.18969},
+  archiveprefix = {arXiv},
+  primaryclass = {astro-ph.GA},
+  urldate = {2026-09-24}
 }
 ```
 

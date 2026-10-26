@@ -1,6 +1,6 @@
 # Examples
 
-This page walks through the end-to-end simulations discussed in §3 of the accompanying paper. Each example is a complete, runnable Julia script. Run from the Julia REPL or `julia --project` with the indicated packages installed.
+This page walks through the end-to-end simulations discussed in §3 of the accompanying paper (Meng & Dong 2026). Each example is a complete, runnable Julia script. Run from the Julia REPL or `julia --project` with the indicated packages installed.
 
 !!! tip "Before you start"
     If you haven't run WaveDM.jl before, skim the [Quickstart](@ref) page first — it shows you how to
@@ -17,6 +17,7 @@ using WaveDM
 
 simulate_waveDM(;
     model = :MW,
+    baryon_mode = :ignored,          # skip baryon sampling for the smoke test
     Xmax = 2.0,
     Tmax = 0.001,
     Nt   = 3,
@@ -40,7 +41,8 @@ using Unitful
 
 simulate_waveDM(;
     model = :MW,
-    IC    = (x, y, z) -> exp(-(x^2 + y^2 + z^2) / 0.1^2),
+    IC_vel = (x, y, z) -> exp(-(x^2 + y^2 + z^2) / 0.1^2),
+    baryon_mode = :ignored,
     V     = (x, y, z, ψ) -> 0.0,
     κ     = 0,
     Nx = Ny = Nz = 128,
@@ -74,12 +76,15 @@ using Unitful
 simulate_waveDM(;
     model       = :dwarf_UFDs,
     Galaxy_id   = 6,                          # Crater II
+    baryon_mode = :ignored,
+    mₐ          = 50 * 1e-22 * 1.783e-36u"kg",  # m₂₂ = 50
     V           = (x, y, z, ψ) -> 0.0,
     Nx          = 384,
     Xmax        = 20u"kpc",
     Tmax        = 6.0u"Gyr",
     autoset_timestep = true,
     absorb_coeff     = 10,                    # moderate absorbing layer
+    bulk_size   = 4,                          # value used in the paper
     gpu         = true,
     Realtime    = true,
     plot_virial = true,                       # monitor virial energies
@@ -89,6 +94,8 @@ simulate_waveDM(;
 ```
 
 The simulation writes an overview figure, an MP4 of the live density slice, and a CSV with the time series of total mass, mass-fraction radii, and virial energies.
+
+For production profile fitting, set `target_profile_model = :dwarf_Zhao` and pass the Crater II `target_profile_ρ0`, `target_profile_rs`, `target_profile_α`, `target_profile_β`, and `target_profile_γ` values from `AstroIC.load_data_UFDs()`. The short script above uses the built-in Crater II initial profile, but the default target profile is the Milky Way one.
 
 ### 2.1 Crater II with the Milky Way tidal field
 
@@ -101,13 +108,18 @@ using Unitful
 simulate_waveDM(;
     model       = :dwarf_UFDs,
     Galaxy_id   = 6,
+    baryon_mode = :ignored,
+    mₐ          = 50 * 1e-22 * 1.783e-36u"kg",
     V           = (x, y, z, ψ) -> 0.0,
     Nx          = 384,
     Xmax        = 20u"kpc",
     Tmax        = 6.0u"Gyr",
     autoset_timestep = true,
     absorb_coeff     = 10,
+    bulk_size   = 4,
     MW_tidal_field = true,                    # MW tidal field
+    df_traj     = df_traj,                    # from the lookback step in §4
+    tidal_lookback_time = 6.0u"Gyr",
     LMC_tidal_field = true,                   # LMC perturbation
     gpu         = true,
     title       = "CraterII_MW_LMC",
@@ -157,7 +169,7 @@ simulate_waveDM(;
     baryon_mode        = :particles_static,
     baryon_particles   = particles,
     GravitySolver      = Tree(),
-    SofteningLength    = 1.0u"kpc",
+    SofteningLength    = 0.1u"kpc",           # code default; ε ~ mean particle spacing
     Nx = Ny = Nz = 256,
     Xmax = 100u"kpc",
     Tmax = 3.0u"Gyr",
@@ -175,7 +187,7 @@ simulate_waveDM(;
 `AstroIC.load_data_MW_satellites()` returns the Battaglia et al. (2022) observational catalogue. The script below integrates the Crater II orbit backward 6 Gyr in a time-dependent MW potential, with the LMC perturbation included. The resulting trajectory can then be fed to the wave-DM simulation as `tidal_initial_pos` / `tidal_initial_vel` / `df_traj`.
 
 ```julia
-using AstroNbodySim, WaveDM
+using AstroNbodySim, AstroIC, WaveDM
 using DataFrames, Unitful, PhysicalParticles
 using StructArrays
 
@@ -221,7 +233,8 @@ using Unitful
 
 simulate_waveDM(;
     model = :MW,
-    IC    = (x, y, z) -> exp(-(x^2 + y^2 + z^2) / 0.1^2),
+    IC_vel = (x, y, z) -> exp(-(x^2 + y^2 + z^2) / 0.1^2),
+    baryon_mode = :ignored,
     V     = (x, y, z, ψ) -> 0.0,
     κ     = 50.0,                               # repulsive self-interaction
     Nx = Ny = Nz = 128,
@@ -247,7 +260,8 @@ V_optical(x, y, z, ψ) = 1000 * sin(2π * x)^2 + 1000 * sin(2π * y)^2
 
 simulate_waveDM(;
     model = :MW,
-    IC    = (x, y, z) -> exp(-(x^2 + y^2 + z^2) / 0.05^2) * exp(im * 50 * x),
+    IC_vel = (x, y, z) -> exp(-(x^2 + y^2 + z^2) / 0.05^2) * exp(im * 50 * x),
+    baryon_mode = :ignored,
     V     = V_optical,
     κ     = 5000.0,                             # strong Kerr nonlinearity
     Nx = Ny = Nz = 128,
@@ -282,17 +296,19 @@ simulate_waveDM(; Nx = Ny = Nz = 384, gpu = false, ...)  # no extra keyword need
 
 ### 7.2 Distributed run across multiple cores / nodes
 
+!!! warning
+    The distributed FFT Poisson solver is not implemented in the current release. Distributed workers can accelerate initial-condition generation and N-body work, but the full SPE loop must run on a single process.
+
 ```julia
 using Distributed
 addprocs(8)
 @everywhere using WaveDM
 
-simulate_waveDM(;
+# Distributed-memory IC generation (SPE loop remains single-process)
+ψ_IC = simulate_waveDM(;
     Nx = Ny = Nz = 256,
     Xmax = 5.0,
-    Tmax = 2.0u"Gyr",
-    autoset_timestep = true,
-    distributed_memory = true,                 # use DArray
+    distributed_memory = true,
     gpu = false,
 )
 ```
@@ -324,7 +340,7 @@ simulate_waveDM(;
 
 ## 8. Re-using initial conditions across runs
 
-`simulate_waveDM(; IC = path)` accepts a JLD2 path that was written by a previous `save_IC = true` run. This is the recommended way to scan parameters (resolution, $\zeta_{\rm rot}$, etc.) on a fixed initial condition.
+`simulate_waveDM(; IC_vel = path)` accepts a JLD2 path that was written by a previous `save_IC = true` run. This is the recommended way to scan parameters (resolution, $\zeta_{\rm rot}$, etc.) on a fixed initial condition.
 
 ```julia
 # 1. First run: build and save the IC
@@ -339,7 +355,8 @@ simulate_waveDM(;
 
 # 2. Second run: re-use the saved IC, vary parameters
 simulate_waveDM(;
-    IC = "results/IC_run/<title>, <suffix> - IC.jld2",
+    IC_vel = "results/IC_run/<title>, <suffix> - IC.jld2",
+    baryon_mode = :ignored,
     Xmax = 2.0, Tmax = 0.5,
     autoset_timestep = true,
     rotational_ratio = 0.0,                    # no rotation this time
@@ -381,16 +398,16 @@ GLMakie.axislegend(ax2)
 GLMakie.save("virial.png", fig_v)
 ```
 
-A halo is **virialized** when the total energy $\mathcal E = \mathcal K + \mathcal V + \mathcal Q$ is approximately constant and the radii of fixed mass fractions stop growing. The Crater II simulation reaches this state at $t \approx 1.5$ Gyr.
+A halo is **virialized** when the total energy $\mathcal E = \mathcal K + \mathcal V + \mathcal Q$ is approximately constant and the radii of fixed mass fractions stop growing. The paper's Crater II simulation starts at $t=-6$ Gyr and reaches virial equilibrium after roughly 4 Gyr of evolution, i.e. near $t\approx-2$ Gyr.
 
 ## 10. Best practices
 
 1. **Start small.** Validate with a $64^3$ CPU run before launching a $512^3$ GPU production run.
 2. **Enable `autoset_timestep = true`.** It picks $\Delta t$ from the CFL criterion with a 10 % safety margin.
-3. **Save initial conditions.** Use `save_IC = true` and re-load with `IC = "..."` to scan parameters on a fixed halo.
+3. **Save initial conditions.** Use `save_IC = true` and re-load with `IC_vel = "..."` to scan parameters on a fixed halo.
 4. **Tune `absorb_coeff`.** Defaults of 10 are good for production. Set `absorb_coeff = 0` to disable and see the boundary.
 5. **Pick the right `baryon_mode`.** `:mesh` is fastest, `:particles_static` is more flexible, `:particles_dynamic` is the most realistic but most expensive.
-6. **Multi-level parallelism is orthogonal.** You can combine `gpu = true` and `distributed_memory = true` for hybrid runs, but in practice most users pick one.
+6. **Pick one backend for the SPE loop.** The distributed FFT Poisson solver is not implemented yet, so a full run must use the serial/threads or GPU backend; distributed workers are useful for IC generation and N-body work.
 7. **Profile the visualization overhead.** If `Realtime = true` is the bottleneck, switch to `unicode_plot = true` for headless or `Realtime = false` for batch runs.
 8. **Check virialization before analyzing.** Use the QSS criteria in [Algorithms §6](algorithms.md#6-quasi-stationary-equilibrium-qss-diagnostics) to verify the halo is in quasi-stationary equilibrium before you fit a profile or compare with observations.
 9. **Document your parameters.** Keep a record of `Nx`, `Xmax`, `Tmax`, `mₐ`, `ζ_rot`, `ζ_pool`, `absorb_coeff`, and `baryon_mode` for every run.

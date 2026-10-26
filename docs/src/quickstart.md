@@ -62,6 +62,8 @@ using Unitful
 simulate_waveDM(;
     model            = :dwarf_UFDs,
     Galaxy_id        = 6,                    # Crater II
+    baryon_mode      = :ignored,             # no baryons in this preset
+    mₐ               = 50 * 1e-22 * 1.783e-36u"kg",  # m₂₂ = 50
     V                = (x, y, z, ψ) -> 0.0,  # no external potential
     Nx               = 128,                  # try 384 for production
     Xmax             = 20u"kpc",             # half-side length
@@ -74,7 +76,7 @@ simulate_waveDM(;
 )
 ```
 
-What this does: builds a wave-CDM Crater II halo (gNFW, β = 1, $r_s = 3$ kpc, Hayashi 2023 defaults), evolves it for 1 Gyr on a 128³ Cartesian grid in a 40 kpc box, writes a snapshot series and a CSV of total mass / mass-fraction radii / virial energies to `results/MyFirstRun/`.
+What this does: builds a wave-CDM Crater II halo (gNFW, β = 1, $r_s = 3$ kpc, Hayashi 2023 defaults), evolves it for 1 Gyr on a 128³ Cartesian grid in a 40 kpc box, and writes a snapshot series plus a CSV of total mass and mass-fraction radii to `results/MyFirstRun/`. Virial energies are added to the CSV when `plot_virial = true`.
 
 ## 4 · `baryon_mode` in one line
 

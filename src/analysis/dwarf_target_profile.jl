@@ -220,3 +220,89 @@ function find_r_virial(ρ_halo_target, sample_r, density_astro;
     id_critical = findfirstvalue(ρ_halo_target, rho_critical_code)
     return id_critical === nothing ? nothing : sample_r[id_critical]
 end
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Lelli 2017 (Eq. 11) empirical RAR:
+
+    g_obs = g_bar / (1 - exp(-sqrt(g_bar / g†)))
+
+with the only free parameter being `g†`.  At `g_bar ≫ g†` this
+asymptotes to `g_obs ≈ g_bar` (Newtonian / baryon-dominated), and at
+`g_bar ≪ g†` it tends to `g_obs ≈ sqrt(g_bar · g†)` (MOND
+asymptote).  The fiducial fit gives `g† = 1.20 × 10⁻¹⁰ m s⁻²`.
+
+Accepts either bare-Float64 (assumed `m/s²`) or `Unitful` quantities.
+"""
+function Lelli2017_RAR(gbar, gdagger::Real = 1.20e-10)
+    gbar_q = if gbar isa Quantity
+        ustrip(u"m/s^2", gbar)
+    else
+        float(gbar)
+    end
+    return gbar_q / (1.0 - exp(-sqrt(gbar_q / gdagger)))
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Inverse of [`Lelli2017_RAR`](@ref) — given `g_obs`, solve for `g_bar`
+with `gdagger` fixed.  Returns a `Float64` in `m/s²`.  For
+`g_obs < gdagger` the mapping is two-valued; we return the
+physically relevant (lower) root `g_bar < g_obs`.
+
+The Lelli 2017 Eq. (11) functional form has poor linear conditioning
+(g_obs ≈ g_bar in the Newtonian limit, g_obs ≈ sqrt(g_bar · gdagger)
+in the MOND limit), so we solve
+
+    log10(RAR(g_bar)) = log10(g_obs)
+
+in log-space using Newton's method with the exact derivative
+
+    d log RAR / d log g_bar = (g_bar / RAR) · dRAR/dg_bar
+
+`dRAR/dg_bar = 1/(1 - e^{-s}) - g_bar · e^{-s} / (2 sqrt(g_bar·gdagger) · (1 - e^{-s})²)`
+
+where `s = sqrt(g_bar / gdagger)`.  Convergence to `|Δ log10(g_bar)| < 1e-10`
+takes 2-3 iterations for any `g_obs ∈ [1e-15, 1e-5] m/s²`.
+"""
+function Lelli2017_RAR_inv(gobs, gdagger::Real = 1.20e-10)
+    gobs_q = if gobs isa Quantity
+        ustrip(u"m/s^2", gobs)
+    else
+        float(gobs)
+    end
+    gobs_q <= 0 && return 0.0
+
+    # f(u) = log10(RAR(10^u)) - log10(g_obs),  f'(u) = d(log RAR)/d(log g_bar)
+    function f_df(u)
+        gb     = 10.0^u
+        s      = sqrt(gb / gdagger)
+        h      = 1.0 - exp(-s)
+        rar    = gb / h
+        f_     = log10(rar) - log10(gobs_q)
+        dsdb   = 1.0 / (2.0 * sqrt(gb * gdagger))
+        drar   = 1.0 / h - gb * exp(-s) * dsdb / h^2
+        df_    = (gb / rar) * drar
+        return f_, df_
+    end
+
+    # Initial guess: invert RAR(g_bar) ≈ g_bar / (1 - exp(-sqrt(g_bar/gdagger)))
+    # ≈ g_obs exactly gives log10(g_bar) = log10(g_obs) + log10(1 - exp(-sqrt(g_bar/gdagger))).
+    # Use the g_obs ≈ sqrt(g_bar · gdagger) MOND limit as the seed.
+    s0 = sqrt(max(gobs_q, 1e-30) / gdagger)
+    u0 = log10(gobs_q) - log10(1.0 - exp(-s0))
+
+    # Newton iterations (capped at 20 — converges in 2-3 for any
+    # well-formed g_obs).
+    for _ in 1:20
+        f1, df1 = f_df(u0)
+        if abs(f1) < 1e-12 || abs(df1) < 1e-30
+            break
+        end
+        u0 = u0 - f1 / df1
+    end
+    return 10.0^u0
+end

@@ -67,6 +67,13 @@ function plot_RC_RAR(dfAcc, r_s;
     elseif model == :SPARC_LTGs
         dfSPARC = load_SPARC_LTGs_data()
         df_SPARC_RC = load_SPARC_LTGs_RC()
+        # `Galaxy_id` is a 1-based row index into `load_SPARC_LTGs_data()`
+        # (default 0 would otherwise raise a bare BoundsError in the next line).
+        1 ≤ Galaxy_id ≤ nrow(dfSPARC) || throw(ArgumentError(
+            "`plot_RC_RAR(...; model = :SPARC_LTGs)` requires a valid 1-based " *
+            "`Galaxy_id` into `load_SPARC_LTGs_data()`; got `Galaxy_id = $(Galaxy_id)` " *
+            "for a table with $(nrow(dfSPARC)) rows."
+        ))
         df_galaxy_RC = filter(:Galaxy => x->x==dfSPARC.Galaxy[Galaxy_id], df_SPARC_RC)
 
         chi2RC = chi2reduced(df_galaxy_RC.Vobs, df_galaxy_RC.e_Vobs, df_galaxy_RC.R, vc_mean, r_mean; DOF = 2)
@@ -76,7 +83,7 @@ function plot_RC_RAR(dfAcc, r_s;
 
             function merit_function_RC_LTGs(params)
                 mass_fix_ratio = params[1]
-                merit_chi2RC = chi2reduced(dfRCstddev.v, dfRCstddev.σ_v, dfRCstddev.r, vc_mean * mass_fix_ratio, r_mean; DOF = 2)
+                merit_chi2RC = chi2reduced(df_galaxy_RC.Vobs, df_galaxy_RC.e_Vobs, df_galaxy_RC.R, vc_mean * mass_fix_ratio, r_mean; DOF = 2)
                 return merit_chi2RC
             end
 
@@ -163,6 +170,15 @@ function plot_RC_RAR(dfAcc, r_s;
     Makie.xlims!(ax, 0, ustrip(u"kpc", r_s))
     Makie.ylims!(ax, 0, maximum(vc_MOND_mean) * 1.2)
 
+    # SPARC LTG: the `r_s` handed in is the NFW scale length (often only a few kpc),
+    # so using it as the x-axis limit would clip the observed curve; the y-axis must
+    # also accommodate the error bars of the observed points.
+    if model == :SPARC_LTGs
+        Makie.xlims!(ax, 0, max(ustrip(u"kpc", r_s), 1.05 * maximum(df_galaxy_RC.R)))
+        Makie.ylims!(ax, 0, 1.1 * max(maximum(vc_MOND_mean),
+                                     maximum(df_galaxy_RC.Vobs + df_galaxy_RC.e_Vobs)))
+    end
+
     plots = []
     labels = []
 
@@ -181,6 +197,12 @@ function plot_RC_RAR(dfAcc, r_s;
 
         # s3 = Makie.scatter!(ax, dfMroz2019.r, dfMroz2019.v, color = :blue, markersize = 5.0) # "Mroz 2019"
         # l2 = Makie.lines!(ax, dfRCstddev.r, dfRCstddev.v) # "stddev"
+    elseif model == :SPARC_LTGs
+        # Lelli et al. 2016 observed rotation curve (df_galaxy_RC is already loaded
+        # by galaxy name in the chi-squared block above)
+        s_obs = Makie.scatter!(ax, df_galaxy_RC.R, df_galaxy_RC.Vobs, color = :black, markersize = 5.0)
+        e_obs = Makie.errorbars!(ax, df_galaxy_RC.R, df_galaxy_RC.Vobs, df_galaxy_RC.e_Vobs, color = :black)
+        push!(plots, [s_obs, e_obs]); push!(labels, "Observation (Lelli et al. 2016)")
     end
 
     s1 = Makie.scatter!(ax, r_mean, vc_mean * mass_fix_ratio, color = :red, markersize = 5.0, marker = :x)

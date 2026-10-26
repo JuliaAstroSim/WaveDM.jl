@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1536" height="1728" viewBox="0 0 1536 1728" font-family="Helvetica, Arial, DejaVu Sans, sans-serif">
+<rect x="0" y="0" width="1536" height="1728" fill="white"/>
+<defs><pattern id="hatch-exclude" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="9" stroke="#8a4b12" stroke-width="1.3" stroke-opacity="0.45"/></pattern><pattern id="hatch-band" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#3d6b1f" stroke-width="1.2" stroke-opacity="0.55"/></pattern></defs>
+<text x="768" y="48" text-anchor="middle" font-size="34" font-weight="bold">Observational constraints on the wave-CDM particle mass <tspan font-style="italic">m</tspan><tspan baseline-shift="sub" font-size="23">a</tspan></text>
+<rect x="250" y="61.8" width="1216" height="1089.7" fill="#f2f8ec"/>
+<rect x="228.0" y="64.5" width="12" height="1089.7" fill="#3d6b1f" opacity="0.85"/>
+<rect x="250" y="1154.9" width="1216" height="409.7" fill="#fdf3ea"/>
+<rect x="228.0" y="1157.6" width="12" height="409.7" fill="#8a4b12" opacity="0.85"/>
+<line x1="250.0" y1="72" x2="250.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="250.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-26</tspan></text>
+<line x1="402.0" y1="72" x2="402.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="402.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-25</tspan></text>
+<line x1="554.0" y1="72" x2="554.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="554.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-24</tspan></text>
+<line x1="706.0" y1="72" x2="706.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="706.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-23</tspan></text>
+<line x1="858.0" y1="72" x2="858.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="858.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-22</tspan></text>
+<line x1="1010.0" y1="72" x2="1010.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="1010.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-21</tspan></text>
+<line x1="1162.0" y1="72" x2="1162.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="1162.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-20</tspan></text>
+<line x1="1314.0" y1="72" x2="1314.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="1314.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-19</tspan></text>
+<line x1="1466.0" y1="72" x2="1466.0" y2="1578.2" stroke="rgba(0,0,0,0.13)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="1466.0" y="1612.2" text-anchor="middle" font-size="24">10<tspan baseline-shift="super" font-size="18">-18</tspan></text>
+<text x="858" y="1654.2" text-anchor="middle" font-size="27">log<tspan baseline-shift="sub" font-size="19">10</tspan>(m<tspan baseline-shift="sub" font-size="19">a</tspan> / eV)</text>
+<text x="260" y="85.0" font-size="24" font-weight="bold" fill="#3d6b1f">Include bounds — allowed / favoured regions</text>
+<line x1="250" y1="117.9" x2="1466" y2="117.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="124.4" text-anchor="end" font-size="21.5">Arbey et al. 2001</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.64.123528" target="_blank"><title>arbey2001quintessential (2001) | Quintessential Halos around Galaxies | Spiral galaxy — static solution of KGE, excited states | 0.4 ~ 1.6 × 10-23 eV</title><rect x="645.5" y="104.3" width="91.5" height="27.2" fill="#a9d18e" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<text x="744.6" y="122.7" font-size="21.5" fill="#1b1b1b">Spiral galaxy<tspan font-style="italic">   static solution of KGE, excited states</tspan></text>
+<line x1="250" y1="151.9" x2="1466" y2="151.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="158.4" text-anchor="end" font-size="21.5">Silverman et al. 2002</text>
+<rect x="554.0" y="138.3" width="152.0" height="27.2" fill="#a9d18e" stroke="#3d6b1f" stroke-width="0.8"/><title>silverman2002dark (2002) | Dark Matter as a Cosmic Bose-Einstein Condensate and Possible Superfluid | M31, M33 RC — static ansatz solution of GPE | 10-24 ~ 10-23 eV</title>
+<text x="713.6" y="156.7" font-size="21.5" fill="#1b1b1b">M31, M33 RC<tspan font-style="italic">   static ansatz solution of GPE</tspan></text>
+<line x1="250" y1="185.9" x2="1466" y2="185.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="192.4" text-anchor="end" font-size="21.5">Maleki et al. 2020a</text>
+<rect x="964.2" y="172.3" width="165.1" height="27.2" fill="#9dce8d" stroke="#3d6b1f" stroke-width="0.8"/><title>maleki2020constraint (2020) | Constraint on the Mass of Fuzzy Dark Matter from the Rotation Curve of the Milky Way | MW RC — soliton + NFW | m = 2.5-2.0+3.6 × 10-21 eV</title>
+<text x="1137.0" y="190.7" font-size="21.5" fill="#1b1b1b">MW RC<tspan font-style="italic">   soliton + NFW</tspan></text>
+<line x1="250" y1="219.9" x2="1466" y2="219.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="226.4" text-anchor="end" font-size="21.5">Maleki et al. 2020b</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.101.023508" target="_blank"><title>maleki2020investigation (2020) | Investigation of Two Colliding Solitonic Cores in Fuzzy Dark Matter Models | NGC 6240 solitonic core collision — superposition of two soliton | m &gt; 7 × 10-23eV</title><rect x="834.5" y="206.3" width="631.5" height="27.2" fill="#a9d18e" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,211.7 1453.1,228.1 1466.0,219.9" fill="#a9d18e" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="842.1" y="224.7" font-size="18.5" fill="#1b1b1b">NGC 6240 solitonic core collision<tspan font-style="italic">   superposition of two soliton</tspan></text>
+<line x1="250" y1="253.9" x2="1466" y2="253.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="260.4" text-anchor="end" font-size="21.5">Amorisco et al. 2018</text>
+<a xlink:href="https://arxiv.org/abs/1808.00464" target="_blank"><title>amorisco2018first (2018) | First Constraints on Fuzzy Dark Matter from the Dynamics of Stellar Streams in the Milky W | MW stellar streams — stream morphology (tidal disruption) | m &gt; 1.5 × 10-22eV</title><rect x="884.8" y="240.3" width="581.2" height="27.2" fill="#9dce8d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,245.7 1453.1,262.1 1466.0,253.9" fill="#9dce8d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="877.2" y="258.7" font-size="20.0" fill="#1b1b1b" text-anchor="end">MW stellar streams<tspan font-style="italic">   stream morphology (tidal disruption)</tspan></text>
+<line x1="250" y1="287.9" x2="1466" y2="287.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="294.4" text-anchor="end" font-size="21.5">Dentler et al. 2021</text>
+<a xlink:href="https://arxiv.org/abs/2111.01199" target="_blank"><title>dentler2021fuzzy (2021) | Fuzzy Dark Matter and the Dark Energy Survey Year 1 Data | weak lensing — cosmic-shear P(k) | m ≥ 1 × 10-23eV</title><rect x="706.0" y="274.3" width="760.0" height="27.2" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,279.7 1453.1,296.1 1466.0,287.9" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="713.6" y="292.7" font-size="21.5" fill="#1b1b1b">weak lensing<tspan font-style="italic">   cosmic-shear P(k)</tspan></text>
+<line x1="250" y1="321.9" x2="1466" y2="321.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="328.4" text-anchor="end" font-size="21.5">Porayko et al. 2018</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.98.102002" target="_blank"><title>porayko2018parkes (2018) | Parkes Pulsar Timing Array Constraints on Ultralight Scalar-Field Dark Matter | Pulsar timing array (PPTA) — timing residuals, stat. search | constrain m≤10-23eV: ρ&lt;6 GeV/cm3</title><rect x="250.0" y="308.3" width="456.0" height="27.2" fill="#b6d09a" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="262.9,313.7 262.9,330.1 250.0,321.9" fill="#b6d09a" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="713.6" y="326.7" font-size="21.5" fill="#1b1b1b">Pulsar timing array (PPTA)<tspan font-style="italic">   timing residuals, stat. search</tspan></text>
+<line x1="250" y1="355.9" x2="1466" y2="355.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="362.4" text-anchor="end" font-size="21.5">Li et al. 2014</text>
+<rect x="1067.8" y="342.3" width="398.2" height="27.2" fill="#cdd88f" stroke="#3d6b1f" stroke-width="0.8"/><title>li2014cosmological (2014) | Cosmological Constraints on Bose-Einstein-condensed Scalar Field Dark Matter | CMB, BBN — KDE numerics | m ≥ 2.4×10-21eV/c2</title>
+<polygon points="1453.1,347.7 1453.1,364.1 1466.0,355.9" fill="#cdd88f" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1075.4" y="360.7" font-size="21.5" fill="#1b1b1b">CMB, BBN<tspan font-style="italic">   KDE numerics</tspan></text>
+<line x1="250" y1="389.9" x2="1466" y2="389.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="396.4" text-anchor="end" font-size="21.5">Hlozek et al. 2015</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.91.103512" target="_blank"><title>hlozek2015search (2015) | A Search for Ultralight Axions Using Precision Cosmological Data | CMB, LSS (WiggleZ) — linear-perturbation MCMC | constrain 10-32 ≤ m ≤ 10-25.5eV: Ωa/Ωd≤0.05</title><rect x="250.0" y="376.3" width="76.0" height="27.2" fill="#cdd88f" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="262.9,381.7 262.9,398.1 250.0,389.9" fill="#cdd88f" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="333.6" y="394.7" font-size="21.5" fill="#1b1b1b">CMB, LSS (WiggleZ)<tspan font-style="italic">   linear-perturbation MCMC</tspan></text>
+<line x1="250" y1="423.9" x2="1466" y2="423.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="430.4" text-anchor="end" font-size="21.5">Iršič et al. 2017</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevLett.119.031302" target="_blank"><title>irsic2017first (2017) | First Constraints on Fuzzy Dark Matter from Lyman-textbackslash alpha Forest Data and Hydr | Lyα forest (XQ-100, HIRES/MIKE) — Lyα P(k) | m&gt;2×10-21eV</title><rect x="1055.8" y="410.3" width="410.2" height="27.2" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,415.7 1453.1,432.1 1466.0,423.9" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1048.2" y="428.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Lyα forest (XQ-100, HIRES/MIKE)<tspan font-style="italic">   Lyα P(k)</tspan></text>
+<line x1="250" y1="457.9" x2="1466" y2="457.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="464.4" text-anchor="end" font-size="21.5">Kobayashi et al. 2017</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.96.123514" target="_blank"><title>kobayashi2017lyman (2017) | Lyman-textbackslash ensuremathtextbracelefttextbackslash alphatextbraceright Constraints o | Lyα (HIRES/MIKE, XQ-100) — Lyα forest (MCMC) | m≥10-21eV (for scalar DM &gt;30% of total DM)</title><rect x="1010.0" y="444.3" width="456.0" height="27.2" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,449.7 1453.1,466.1 1466.0,457.9" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1002.4" y="462.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Lyα (HIRES/MIKE, XQ-100)<tspan font-style="italic">   Lyα forest (MCMC)</tspan></text>
+<line x1="250" y1="491.9" x2="1466" y2="491.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="498.4" text-anchor="end" font-size="21.5">Lidz et al. 2018</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.98.023011" target="_blank"><title>lidz2018implications (2018) | The Implications of a Pre-reionization 21 Cm Absorption Signal for Fuzzy Dark Matter | 21cm (EDGES, z~15-20) — 21cm coupling timing, HMF | m ≥ 5 × 10-21eV</title><rect x="1116.2" y="478.3" width="349.8" height="27.2" fill="#96cd9d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,483.7 1453.1,500.1 1466.0,491.9" fill="#96cd9d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1108.6" y="496.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">21cm (EDGES, z~15-20)<tspan font-style="italic">   21cm coupling timing, HMF</tspan></text>
+<line x1="250" y1="525.9" x2="1466" y2="525.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="532.4" text-anchor="end" font-size="21.5">Schneider 2018</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.98.063021" target="_blank"><title>schneider2018constraining (2018) | Constraining Noncold Dark Matter Models with the Global 21-Cm Signal | 21cm (EDGES, z~15.5-19.5) — semi-analytic | m&gt;8×10-21eV</title><rect x="1147.3" y="512.3" width="318.7" height="27.2" fill="#96cd9d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,517.7 1453.1,534.1 1466.0,525.9" fill="#96cd9d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1139.7" y="530.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">21cm (EDGES, z~15.5-19.5)<tspan font-style="italic">   semi-analytic</tspan></text>
+<line x1="250" y1="559.9" x2="1466" y2="559.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="566.4" text-anchor="end" font-size="21.5">Nebrin et al. 2019</text>
+<a xlink:href="https://doi.org/10.1088/1475-7516/2019/04/051" target="_blank"><title>nebrin2019fuzzy (2019) | Fuzzy Dark Matter at Cosmic Dawn: New 21-Cm Constraints | 21cm (EDGES HB, Cosmic Dawn) — 21cm absorption width, anal. | m ≥ 6 × 10-22eV</title><rect x="976.3" y="546.3" width="489.7" height="27.2" fill="#96cd9d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,551.7 1453.1,568.1 1466.0,559.9" fill="#96cd9d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="968.7" y="564.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">21cm (EDGES HB, Cosmic Dawn)<tspan font-style="italic">   21cm absorption width, anal.</tspan></text>
+<line x1="250" y1="593.9" x2="1466" y2="593.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="600.4" text-anchor="end" font-size="21.5">Nori et al. 2019</text>
+<a xlink:href="https://doi.org/10.1093/mnras/sty2888" target="_blank"><title>nori2019lyman (2019) | Lyman α Forest and Non-Linear Structure Characterization in Fuzzy Dark Matter Cosmologies | Lyα forest — Lyα P(k), AX-GADGET sim. | m&gt;2.11×10-21,eV</title><rect x="1059.3" y="580.3" width="406.7" height="27.2" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,585.7 1453.1,602.1 1466.0,593.9" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1051.7" y="598.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Lyα forest<tspan font-style="italic">   Lyα P(k), AX-GADGET sim.</tspan></text>
+<line x1="250" y1="627.9" x2="1466" y2="627.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="634.4" text-anchor="end" font-size="21.5">Rogers et al. 2021</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevLett.126.071302" target="_blank"><title>rogers2021strong (2021) | Strong Bound on Canonical Ultralight Axion Dark Matter from the Lyman-Alpha Forest | Lyα forest (HIRES/MIKE, XQ-100) — Lyα P(k), emulator + MCMC | m&gt;2×10-20eV</title><rect x="1207.8" y="614.3" width="258.2" height="27.2" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,619.7 1453.1,636.1 1466.0,627.9" fill="#bfd98d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1200.2" y="632.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Lyα forest (HIRES/MIKE, XQ-100)<tspan font-style="italic">   Lyα P(k), emulator + MCMC</tspan></text>
+<line x1="250" y1="661.9" x2="1466" y2="661.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="668.4" text-anchor="end" font-size="21.5">Zimmermann et al. 2025</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevLett.134.151001" target="_blank"><title>zimmermann2025dwarf (2025) | Dwarf Galaxies Imply Dark Matter Is Heavier than 2.2e-21 eV | Leo II stellar kin. — static eigenstate expansions | m&gt;2.2×10-21eV</title><rect x="1062.0" y="648.3" width="404.0" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,653.7 1453.1,670.1 1466.0,661.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1054.4" y="666.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Leo II stellar kin.<tspan font-style="italic">   static eigenstate expansions</tspan></text>
+<line x1="250" y1="695.9" x2="1466" y2="695.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="702.4" text-anchor="end" font-size="21.5">Lancaster et al. 2020</text>
+<a xlink:href="https://doi.org/10.1088/1475-7516/2020/01/001" target="_blank"><title>lancaster2020dynamical (2020) | Dynamical Friction in a Fuzzy Dark Matter Universe | Fornax dSph GC timing — dynamical friction | m≤ 10-21,eV</title><rect x="250.0" y="682.3" width="760.0" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="262.9,687.7 262.9,704.1 250.0,695.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="266.7" y="700.7" font-size="21.5" fill="#1b1b1b">Fornax dSph GC timing<tspan font-style="italic">   dynamical friction</tspan></text>
+<line x1="250" y1="729.9" x2="1466" y2="729.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="736.4" text-anchor="end" font-size="21.5">Schutz 2020</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.101.123026" target="_blank"><title>schutz2020subhalo (2020) | Subhalo Mass Function and Ultralight Bosonic Dark Matter | strong lens + streams — SHMF | m≥2.1×10-21eV</title><rect x="1059.0" y="716.3" width="407.0" height="27.2" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,721.7 1453.1,738.1 1466.0,729.9" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1066.6" y="734.7" font-size="21.5" fill="#1b1b1b">strong lens + streams<tspan font-style="italic">   SHMF</tspan></text>
+<line x1="250" y1="763.9" x2="1466" y2="763.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="770.4" text-anchor="end" font-size="21.5">Nadler et al. 2021</text>
+<rect x="1080.3" y="750.3" width="385.7" height="27.2" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/><title>nadler2021constraints (2021) | Constraints on Dark Matter Properties from Observations of Milky Way Satellite Galaxies | MW satellites — SHMF | m &gt; 2.9× 10-21,eV</title>
+<polygon points="1453.1,755.7 1453.1,772.1 1466.0,763.9" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1087.9" y="768.7" font-size="21.5" fill="#1b1b1b">MW satellites<tspan font-style="italic">   SHMF</tspan></text>
+<line x1="250" y1="797.9" x2="1466" y2="797.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="804.4" text-anchor="end" font-size="21.5">Nadler et al. 2024</text>
+<a xlink:href="https://doi.org/10.48550/arXiv.2410.03635" target="_blank"><title>nadler2024cozmic (2024) | COZMIC. I. Cosmological Zoom-in Simulations with Initial Conditions beyond CDM | COZMIC I — SHMF, zoom-in N-body | m &gt;1.4×10-20,eV</title><rect x="1184.2" y="784.3" width="281.8" height="27.2" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,789.7 1453.1,806.1 1466.0,797.9" fill="#c3d79b" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1176.6" y="802.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">COZMIC I<tspan font-style="italic">   SHMF, zoom-in N-body</tspan></text>
+<line x1="250" y1="831.9" x2="1466" y2="831.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="838.4" text-anchor="end" font-size="21.5">Church et al. 2019</text>
+<a xlink:href="https://doi.org/10.1093/mnras/stz534" target="_blank"><title>church2019heating (2019) | Heating of Milky Way Disc Stars by Dark Matter Fluctuations in Cold Dark Matter and Fuzzy  | MW disk-star kin. — disk heating, granule fluct. | m &gt; 0.6×10-22eV</title><rect x="824.3" y="818.3" width="641.7" height="27.2" fill="#9dce8d" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,823.7 1453.1,840.1 1466.0,831.9" fill="#9dce8d" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="831.9" y="836.7" font-size="21.5" fill="#1b1b1b">MW disk-star kin.<tspan font-style="italic">   disk heating, granule fluct.</tspan></text>
+<line x1="250" y1="865.9" x2="1466" y2="865.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="872.4" text-anchor="end" font-size="21.5">Marsh et al. 2019</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevLett.123.051103" target="_blank"><title>marsh2019strong (2019) | Strong Constraints on Fuzzy Dark Matter from Ultrafaint Dwarf Galaxy Eridanus II | Eri II + MW SHMF — SC heating, granule fluct. | m≥0.6 → 1×10-19eV; ma≥0.8×10-21eV</title><rect x="1280.3" y="852.3" width="185.7" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<rect x="1280.3" y="852.3" width="33.7" height="27.2" fill="white" fill-opacity="0.85" stroke="#3d6b1f" stroke-width="0.9" stroke-dasharray="3 2"/><rect x="1280.3" y="852.3" width="33.7" height="27.2" fill="url(#hatch-band)" stroke="none"/>
+<polygon points="1453.1,857.7 1453.1,874.1 1466.0,865.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<a xlink:href="https://doi.org/10.1103/PhysRevLett.123.051103" target="_blank"><title>marsh2019strong (2019) | Strong Constraints on Fuzzy Dark Matter from Ultrafaint Dwarf Galaxy Eridanus II | Eri II + MW SHMF — SC heating, granule fluct. | m≥0.6 → 1×10-19eV; ma≥0.8×10-21eV</title><rect x="995.3" y="852.3" width="470.7" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,857.7 1453.1,874.1 1466.0,865.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="987.7" y="870.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Eri II + MW SHMF<tspan font-style="italic">   SC heating, granule fluct.</tspan></text>
+<line x1="250" y1="899.9" x2="1466" y2="899.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="906.4" text-anchor="end" font-size="21.5">Dalal et al. 2022</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.106.063517" target="_blank"><title>dalal2022excluding (2022) | Excluding Fuzzy Dark Matter with Sizes and Stellar Kinematics of Ultrafaint Dwarf Galaxies | Segue I &amp; II UFD — dynamical heating, granule fluct. | m&gt;3×10-19,eV</title><rect x="1386.5" y="886.3" width="79.5" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,891.7 1453.1,908.1 1466.0,899.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1378.9" y="904.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Segue I &amp; II UFD<tspan font-style="italic">   dynamical heating, granule fluct.</tspan></text>
+<line x1="250" y1="933.9" x2="1466" y2="933.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="940.4" text-anchor="end" font-size="21.5">Teodori et al. 2025</text>
+<a xlink:href="https://doi.org/10.48550/arXiv.2501.07631" target="_blank"><title>teodori2025ultralight (2025) | Ultra-Light Dark Matter Simulations and Stellar Dynamics: Tension in Dwarf Galaxies for m  | Fornax/Carina/Leo II — stellar dynamics, sim. | m ≥ 5×10-21eV</title><rect x="1116.2" y="920.3" width="349.8" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,925.7 1453.1,942.1 1466.0,933.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1108.6" y="938.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Fornax/Carina/Leo II<tspan font-style="italic">   stellar dynamics, sim.</tspan></text>
+<line x1="250" y1="967.9" x2="1466" y2="967.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="974.4" text-anchor="end" font-size="21.5">Marsh et al. 2015</text>
+<rect x="250.0" y="954.3" width="614.3" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/><title>marsh2015axion (2015) | Axion Dark Matter, Solitons and the Cusp-Core Problem | Fornax, Sculptor — (ground state) soliton + NFW | m &lt; 1.1×10-22eV</title>
+<polygon points="262.9,959.7 262.9,976.1 250.0,967.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="266.7" y="972.7" font-size="21.5" fill="#1b1b1b">Fornax, Sculptor<tspan font-style="italic">   (ground state) soliton + NFW</tspan></text>
+<line x1="250" y1="1001.9" x2="1466" y2="1001.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1008.4" text-anchor="end" font-size="21.5">Chen et al. 2017</text>
+<rect x="851.0" y="988.3" width="55.9" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/><title>chen2017jeans (2017) | Jeans Analysis for Dwarf Spheroidal Galaxies in Wave Dark Matter | 8 classical dSphs stellar kin. — Jeans analysis, soliton + NFW | 0.9 × 10-22 ≤ m ≤ 2.1 × 10-22eV</title>
+<text x="843.4" y="1006.7" font-size="18.5" fill="#1b1b1b" text-anchor="end">8 classical dSphs stellar kin.<tspan font-style="italic">   Jeans analysis, soliton + NFW</tspan></text>
+<line x1="250" y1="1035.9" x2="1466" y2="1035.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1042.4" text-anchor="end" font-size="21.5">González-Morales et al. 2017</text>
+<rect x="250.0" y="1022.3" width="547.5" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/><title>gonzalez-morales2017unbiased (2017) | Unbiased Constraints on Ultralight Axion Mass from Dwarf Spheroidal Galaxies | Fornax, Sculptor — Jeans analysis, soliton + NFW | m &lt; 0.4×10-22eV</title>
+<polygon points="262.9,1027.7 262.9,1044.1 250.0,1035.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="805.1" y="1040.7" font-size="21.5" fill="#1b1b1b">Fornax, Sculptor<tspan font-style="italic">   Jeans analysis, soliton + NFW</tspan></text>
+<line x1="250" y1="1069.9" x2="1466" y2="1069.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1076.4" text-anchor="end" font-size="21.5">Hayashi et al. 2021</text>
+<a xlink:href="https://doi.org/10.3847/2041-8213/abf501" target="_blank"><title>hayashi2021narrowing (2021) | Narrowing the Mass Range of Fuzzy Dark Matter with Ultrafaint Dwarfs | Segue I — Jeans analysis, soliton + NFW | m =1.1-0.7+8.3×10-19eV</title><rect x="1253.5" y="1056.3" width="208.4" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<text x="1245.9" y="1074.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">Segue I<tspan font-style="italic">   Jeans analysis, soliton + NFW</tspan></text>
+<line x1="250" y1="1103.9" x2="1466" y2="1103.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1110.4" text-anchor="end" font-size="21.5">Benito et al. 2025</text>
+<a xlink:href="https://doi.org/10.48550/arXiv.2502.12030" target="_blank"><title>benito2025fuzzy (2025) | Fuzzy Dark Matter Fails to Explain the Dark Matter Cores | 27 UFDs, core radius-stellar mass scaling — SH relation | ma &gt; 2.2×10-21eV (2σ C.L.)</title><rect x="1062.0" y="1090.3" width="404.0" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<polygon points="1453.1,1095.7 1453.1,1112.1 1466.0,1103.9" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="1054.4" y="1108.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">27 UFDs, core radius-stellar mass scaling<tspan font-style="italic">   SH relation</tspan></text>
+<line x1="250" y1="1137.9" x2="1466" y2="1137.9" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1144.4" text-anchor="end" font-size="21.5">Wardana et al. 2026</text>
+<a xlink:href="https://doi.org/10.3847/1538-4357/ae89ae" target="_blank"><title>wardana2026fuzzydark (2026) | Fuzzy Dark Matter and the Impact of Core-Halo Diversity on Its Particle Mass Constraints | 8 MW dSphs — SH relation, soliton + NFW | 10-19.16 ≤ m ≤ 10-20.36eV; 10-21.54 ≤ m ≤ 10-22.20eV</title><rect x="1107.3" y="1124.3" width="182.4" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<a xlink:href="https://doi.org/10.3847/1538-4357/ae89ae" target="_blank"><title>wardana2026fuzzydark (2026) | Fuzzy Dark Matter and the Impact of Core-Halo Diversity on Its Particle Mass Constraints | 8 MW dSphs — SH relation, soliton + NFW | 10-19.16 ≤ m ≤ 10-20.36eV; 10-21.54 ≤ m ≤ 10-22.20eV</title><rect x="827.6" y="1124.3" width="100.3" height="27.2" fill="#a9d6a0" stroke="#3d6b1f" stroke-width="0.8"/></a>
+<text x="820.0" y="1142.7" font-size="21.5" fill="#1b1b1b" text-anchor="end">8 MW dSphs<tspan font-style="italic">   SH relation, soliton + NFW</tspan></text>
+<text x="260" y="1178.1" font-size="24" font-weight="bold" fill="#8a4b12">Exclude bounds — ruled-out regions</text>
+<line x1="250" y1="1211.0" x2="1466" y2="1211.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1217.5" text-anchor="end" font-size="21.5">Bar et al. 2019a</text>
+<a xlink:href="https://doi.org/10.1088/1475-7516/2019/07/045" target="_blank"><title>bar2019looking (2019) | Looking for Ultralight Dark Matter near Supermassive Black Holes | M87*, Sgr A* — SH relation | exclude m≤ 4×10-22eV, 2×10-20eV!≤!m!≤!8×10-19eV</title><rect x="250.0" y="1197.4" width="699.5" height="27.2" fill="#f2a95f" stroke="#8a4b12" stroke-width="0.8"/><rect x="250.0" y="1197.4" width="699.5" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<polygon points="262.9,1202.8 262.9,1219.2 250.0,1211.0" fill="#f2a95f" stroke="#8a4b12" stroke-width="0.8"/>
+<a xlink:href="https://doi.org/10.1088/1475-7516/2019/07/045" target="_blank"><title>bar2019looking (2019) | Looking for Ultralight Dark Matter near Supermassive Black Holes | M87*, Sgr A* — SH relation | exclude m≤ 4×10-22eV, 2×10-20eV!≤!m!≤!8×10-19eV</title><rect x="1207.8" y="1197.4" width="243.5" height="27.2" fill="#f2a95f" stroke="#8a4b12" stroke-width="0.8"/><rect x="1207.8" y="1197.4" width="243.5" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<rect x="263.7" y="1196.0" width="302.0" height="29.9" fill="white" fill-opacity="0.75"/>
+<text x="266.7" y="1215.8" font-size="21.5" fill="#1b1b1b">M87*, Sgr A*<tspan font-style="italic">   SH relation</tspan></text>
+<line x1="250" y1="1245.0" x2="1466" y2="1245.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1251.5" text-anchor="end" font-size="21.5">Davies et al. 2020</text>
+<rect x="839.8" y="1231.4" width="9.1" height="27.2" fill="#f2a95f" stroke="#8a4b12" stroke-width="0.8"/><rect x="839.8" y="1231.4" width="9.1" height="27.2" fill="url(#hatch-exclude)" stroke="none"/><title>davies2020fuzzy (2020) | Fuzzy Dark Matter Soliton Cores around Supermassive Black Holes | M87, MW — SH relation | exclude 10-22.12 eV≤ m ≤ 10-22.06 eV</title>
+<text x="856.5" y="1249.8" font-size="21.5" fill="#1b1b1b">M87, MW<tspan font-style="italic">   SH relation</tspan></text>
+<line x1="250" y1="1279.0" x2="1466" y2="1279.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1285.5" text-anchor="end" font-size="21.5">Powell et al. 2023</text>
+<a xlink:href="https://doi.org/10.1093/mnrasl/slad074" target="_blank"><title>powell2023lensed (2023) | A Lensed Radio Jet at Milli-Arcsecond Resolution - II. Constraints on Fuzzy Dark Matter fr | Strong lens (MG J0751+2716) — granule perturbation | exclude m ≤ 4.4 × 10-21eV</title><rect x="250.0" y="1265.4" width="857.8" height="27.2" fill="#f7c58a" stroke="#8a4b12" stroke-width="0.8"/><rect x="250.0" y="1265.4" width="857.8" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<polygon points="262.9,1270.8 262.9,1287.2 250.0,1279.0" fill="#f7c58a" stroke="#8a4b12" stroke-width="0.8"/>
+<rect x="263.7" y="1264.0" width="572.6" height="29.9" fill="white" fill-opacity="0.75"/>
+<text x="266.7" y="1283.8" font-size="21.5" fill="#1b1b1b">Strong lens (MG J0751+2716)<tspan font-style="italic">   granule perturbation</tspan></text>
+<line x1="250" y1="1313.0" x2="1466" y2="1313.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1319.5" text-anchor="end" font-size="21.5">Laroche et al. 2022</text>
+<rect x="250.0" y="1299.4" width="684.0" height="27.2" fill="#f7c58a" stroke="#8a4b12" stroke-width="0.8"/><rect x="250.0" y="1299.4" width="684.0" height="27.2" fill="url(#hatch-exclude)" stroke="none"/><title>laroche2022quantumfluctuations (2022) | Quantum Fluctuations Masquerade as Haloes: Bounds on Ultra-Light Dark Matter from Quadrupl | strong lenses — HMF, c-M relation, etc. | exclude m&lt;10-21.5,eV</title>
+<polygon points="262.9,1304.8 262.9,1321.2 250.0,1313.0" fill="#f7c58a" stroke="#8a4b12" stroke-width="0.8"/>
+<rect x="263.7" y="1298.0" width="434.0" height="29.9" fill="white" fill-opacity="0.75"/>
+<text x="266.7" y="1317.8" font-size="21.5" fill="#1b1b1b">strong lenses<tspan font-style="italic">   HMF, c-M relation, etc.</tspan></text>
+<line x1="250" y1="1347.0" x2="1466" y2="1347.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1353.5" text-anchor="end" font-size="21.5">Davoudiasl et al. 2019</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevLett.123.021102" target="_blank"><title>davoudiasl2019ultra (2019) | Ultra Light Boson Dark Matter and Event Horizon Telescope Observations of M87* | M87* (EHT) — BH superradiance | exclude 2.9×10-21eV&lt;m&lt;4.6×10-21eV</title><rect x="1080.3" y="1333.4" width="30.5" height="27.2" fill="#f2a95f" stroke="#8a4b12" stroke-width="0.8"/><rect x="1080.3" y="1333.4" width="30.5" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<text x="1072.7" y="1351.8" font-size="21.5" fill="#1b1b1b" text-anchor="end">M87* (EHT)<tspan font-style="italic">   BH superradiance</tspan></text>
+<line x1="250" y1="1381.0" x2="1466" y2="1381.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1387.5" text-anchor="end" font-size="21.5">Stott 2018</text>
+<rect x="1290.5" y="1367.4" width="175.5" height="27.2" fill="#f2a95f" stroke="#8a4b12" stroke-width="0.8"/><rect x="1290.5" y="1367.4" width="175.5" height="27.2" fill="url(#hatch-exclude)" stroke="none"/><title>stott2018black (2018) | Black Hole Spin Constraints on the Mass Spectrum and Number of Axionlike Fields | BH spin catalog (stellar + SMBH) — BH superradiance | exclude 7×10-14-2×10-11eV &amp; 7×10-20-1×10-16eV</title>
+<polygon points="1453.1,1372.8 1453.1,1389.2 1466.0,1381.0" fill="#f2a95f" stroke="#8a4b12" stroke-width="0.8"/>
+<text x="1282.9" y="1385.8" font-size="21.5" fill="#1b1b1b" text-anchor="end">BH spin catalog (stellar + SMBH)<tspan font-style="italic">   BH superradiance</tspan></text>
+<line x1="250" y1="1415.0" x2="1466" y2="1415.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1421.5" text-anchor="end" font-size="21.5">Armengaud et al. 2017</text>
+<a xlink:href="https://doi.org/10.1093/mnras/stx1870" target="_blank"><title>armengaud2017constraining (2017) | Constraining the Mass of Light Bosonic Dark Matter Using SDSS Lyman-α Forest | Lyα forest (SDSS/BOSS) — Lyα P(k) | exclude 10-22eV&lt;m&lt;2.9×10-21eV</title><rect x="858.0" y="1401.4" width="222.3" height="27.2" fill="#f5c07c" stroke="#8a4b12" stroke-width="0.8"/><rect x="858.0" y="1401.4" width="222.3" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<text x="850.4" y="1419.8" font-size="21.5" fill="#1b1b1b" text-anchor="end">Lyα forest (SDSS/BOSS)<tspan font-style="italic">   Lyα P(k)</tspan></text>
+<line x1="250" y1="1449.0" x2="1466" y2="1449.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1455.5" text-anchor="end" font-size="21.5">Bar et al. 2018</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.98.083027" target="_blank"><title>bar2018galactic (2018) | Galactic Rotation Curves versus Ultralight Dark Matter: Implications of the Soliton-Host H | SPARC RCs — SH relation, static ground state | exclude 10-22 eV≤ m ≤ 10-21 eV</title><rect x="858.0" y="1435.4" width="152.0" height="27.2" fill="#f6b26b" stroke="#8a4b12" stroke-width="0.8"/><rect x="858.0" y="1435.4" width="152.0" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<text x="850.4" y="1453.8" font-size="21.5" fill="#1b1b1b" text-anchor="end">SPARC RCs<tspan font-style="italic">   SH relation, static ground state</tspan></text>
+<line x1="250" y1="1483.0" x2="1466" y2="1483.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1489.5" text-anchor="end" font-size="21.5">Bar et al. 2019b</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.99.103020" target="_blank"><title>bar2019ultralight (2019) | Ultralight Dark Matter in Disk Galaxies | SPARC LSBs + MW — SH relation, static ground state | exclude m ≤ 10-21 eV</title><rect x="250.0" y="1469.4" width="760.0" height="27.2" fill="#f4ac66" stroke="#8a4b12" stroke-width="0.8"/><rect x="250.0" y="1469.4" width="760.0" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<polygon points="262.9,1474.8 262.9,1491.2 250.0,1483.0" fill="#f4ac66" stroke="#8a4b12" stroke-width="0.8"/>
+<rect x="263.7" y="1468.0" width="578.9" height="29.9" fill="white" fill-opacity="0.75"/>
+<text x="266.7" y="1487.8" font-size="21.5" fill="#1b1b1b">SPARC LSBs + MW<tspan font-style="italic">   SH relation, static ground state</tspan></text>
+<line x1="250" y1="1517.0" x2="1466" y2="1517.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1523.5" text-anchor="end" font-size="21.5">Safarzadeh et al. 2020</text>
+<a xlink:href="https://doi.org/10.3847/1538-4357/ab7db2" target="_blank"><title>safarzadeh2020ultralight (2020) | Ultra-Light Dark Matter Is Incompatible with the Milky Way's Dwarf Satellites | MW dSphs &amp; UFDs — SH relation | exclude m ≤ 6 × 10-22eV</title><rect x="250.0" y="1503.4" width="726.3" height="27.2" fill="#f1bb72" stroke="#8a4b12" stroke-width="0.8"/><rect x="250.0" y="1503.4" width="726.3" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<polygon points="262.9,1508.8 262.9,1525.2 250.0,1517.0" fill="#f1bb72" stroke="#8a4b12" stroke-width="0.8"/>
+<rect x="263.7" y="1502.0" width="353.5" height="29.9" fill="white" fill-opacity="0.75"/>
+<text x="266.7" y="1521.8" font-size="21.5" fill="#1b1b1b">MW dSphs &amp; UFDs<tspan font-style="italic">   SH relation</tspan></text>
+<line x1="250" y1="1551.0" x2="1466" y2="1551.0" stroke="rgba(0,0,0,0.16)" stroke-width="1" stroke-dasharray="5 5"/>
+<text x="220" y="1557.5" text-anchor="end" font-size="21.5">Bar et al. 2022</text>
+<a xlink:href="https://doi.org/10.1103/PhysRevD.105.083015" target="_blank"><title>bar2022galactic (2022) | Galactic Rotation Curves versus Ultralight Dark Matter: A Systematic Comparison with SPARC | SPARC RCs — SH relation vs RC | exclude 10-24 ≤ m ≤ 10-20 eV</title><rect x="554.0" y="1537.4" width="608.0" height="27.2" fill="#f6b26b" stroke="#8a4b12" stroke-width="0.8"/><rect x="554.0" y="1537.4" width="608.0" height="27.2" fill="url(#hatch-exclude)" stroke="none"/></a>
+<rect x="558.6" y="1536.0" width="353.0" height="29.9" fill="white" fill-opacity="0.75"/>
+<text x="561.6" y="1555.8" font-size="21.5" fill="#1b1b1b">SPARC RCs<tspan font-style="italic">   SH relation vs RC</tspan></text>
+<rect x="250" y="1686" width="34" height="17" fill="#a9d18e" stroke="#3d6b1f" stroke-width="0.8"/>
+<text x="292" y="1701" font-size="20">Include</text>
+<rect x="391" y="1686" width="34" height="17" fill="#f6b26b" stroke="#8a4b12" stroke-width="0.8"/>
+<rect x="391" y="1686" width="34" height="17" fill="url(#hatch-exclude)" stroke="none"/>
+<text x="433" y="1701" font-size="20">Exclude</text>
+<polygon points="544,1686 544,1703 562,1695" fill="#666666"/>
+<text x="570" y="1701" font-size="20">Open end</text>
+</svg>

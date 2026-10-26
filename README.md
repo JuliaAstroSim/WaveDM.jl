@@ -22,7 +22,7 @@ Its design philosophy centers on **adaptability** — making galaxy-scale simula
 | Milky Way (Zhu 2023 mass model)   | `:MW`                                 | Realistic host potential, with or without live baryons     |
 | Early-type galaxy                 | `:Elliptical`                         | gNFW halo + Jaffe stellar profile                          |
 | Galaxy cluster                    | `:cluster_NFW`, `:cluster_Burkert`    | NFW or Burkert halo + β-model ICM                          |
-| Custom Schrödinger problem        | any model + `IC`, `V`                 | NLO, BEC, optical lattices (see Examples §6 of code paper) |
+| Custom Schrödinger problem        | any model + `IC_vel`, `V`             | NLO, BEC, optical lattices (see Examples §6 of code paper) |
 
 **Beginner-friendly introspectors:**
 
@@ -44,7 +44,7 @@ WaveDM.ufd_index(df, Galaxy_id)          # → row index (uniform error message)
 
 - **Coupled wave + N-body evolution** of wave dark matter halos and baryonic components (mesh / static / dynamic particles) on the same grid.
 - **Time-dependent tidal fields** from the Milky Way and external perturbers such as the LMC, with backward-in-time satellite trajectories.
-- **Multi-level parallel execution**: shared-memory multi-threading, distributed-memory (Julia `Distributed.jl`), and GPU acceleration (`CUDA.jl`) — the same script runs from a laptop to a multi-node HPC cluster.
+- **Multi-level parallel execution**: shared-memory multi-threading, distributed-memory (Julia `Distributed.jl`), and GPU acceleration (`CUDA.jl`) — the same script runs on CPU, multi-threaded, and GPU configurations; distributed workers accelerate IC generation and N-body work, while the full SPE loop runs on one process in this release.
 - **Galaxy-simulation toolbox**: gNFW / NFW / Zhao initial-condition generators, Milky-Way mass model (Zhu 2023), MW satellite trajectory lookback (Battaglia 2022), MW/LMC tidal fields, virial and QSS diagnostics, real-time visualization.
 - **Cross-disciplinary GNLSE interface** — astrophysics, nonlinear optics and cold-atom physics share the same solver through a pluggable potential $V(\mathbf r, t, \psi)$.
 
@@ -84,6 +84,8 @@ using Unitful
 simulate_waveDM(;
     model           = :dwarf_UFDs,
     Galaxy_id       = 6,                  # Crater II — try other ids via list_galaxies()
+    baryon_mode     = :ignored,            # this preset has no baryonic model
+    mₐ              = 50 * 1e-22 * 1.783e-36u"kg",  # m₂₂ = 50
     V               = (x, y, z, ψ) -> 0.0,
     Nx              = 128,                # 128³ is a smoke test; use 384³ for production runs
     Xmax            = 20u"kpc",
@@ -103,12 +105,16 @@ Add the time-dependent MW tidal field, optionally perturbed by the LMC:
 simulate_waveDM(;
     model            = :dwarf_UFDs,
     Galaxy_id        = 6,
+    baryon_mode      = :ignored,
+    mₐ               = 50 * 1e-22 * 1.783e-36u"kg",
     V                = (x, y, z, ψ) -> 0.0,
     Nx               = 384,
     Xmax             = 20u"kpc",
     Tmax             = 6.0u"Gyr",
     autoset_timestep = true,
     MW_tidal_field   = true,              # time-dependent MW tidal field
+    df_traj          = df_traj,           # from the lookback step (see docs Examples §4)
+    tidal_lookback_time = 6.0u"Gyr",
     LMC_tidal_field  = true,              # include the LMC perturbation
     gpu              = true,
     title            = "CraterII_MW_LMC",
@@ -126,7 +132,13 @@ A halo that has reached **virialization** in the periodic-domain sense (no MW fi
   <img src="https://raw.githubusercontent.com/JuliaAstroSim/WaveDM.jl/main/docs/src/assets/WaveDM_architecture.png" alt="WaveDM.jl architecture" width="100%">
 </picture>
 
-*Figure: Architecture of WaveDM.jl (taken from the accompanying paper).*
+*Figure: Architecture of WaveDM.jl (taken from the accompanying paper, Meng & Dong 2026).*
+
+## Observational constraints on the ultralight dark-matter mass
+
+![Axion mass constraints](docs/src/assets/ma_constraints.png)
+
+The plot above summarises 42 observational and theoretical bounds on the wave-CDM particle mass $m_a$ from the literature. The rows follow the order of the source table and are split into **include bounds** (green — allowed / favoured regions) and **exclude bounds** (orange, hatched — ruled-out regions); the shade of each bar encodes its dataset family (rotation curves, dwarf galaxies, Lyα forest, 21 cm, CMB, lensing, black holes, …). Every paper occupies exactly one row, labelled `FirstAuthor et al. Year` (with `a`/`b` suffixes when two different papers share a label); a work that quotes two intervals — Bar et al. 2019, Marsh et al. 2019 — draws two bars on its row. The `data — method` annotation next to each bar uses standard abbreviations (`RC` = rotation curve, `SH relation` = soliton–halo relation, `SHMF` = subhalo mass function, `Lyα P(k)` = Lyα flux power spectrum), an arrowhead marks a bound that continues past the plotted mass range, and a hatched cap marks a bound whose quoted value is itself a range. The vector PDF — [`ma_constraints.pdf`](docs/src/assets/ma_constraints.pdf) — is searchable and copy-able for reuse in papers. The interactive HTML version (hover for citekey/title/DOI) is on the [documentation home page](https://juliaastrosim.github.io/WaveDM.jl/dev/). Raw constraint table: [`docs/constraints/ma_constraints.tex`](https://github.com/JuliaAstroSim/WaveDM.jl/blob/main/docs/constraints/ma_constraints.tex); regeneration recipe: [`docs/constraints/README.md`](https://github.com/JuliaAstroSim/WaveDM.jl/blob/main/docs/constraints/README.md).
 
 WaveDM.jl integrates four core components on top of the shared [JuliaAstroSim](https://github.com/JuliaAstroSim) infrastructure:
 
@@ -147,14 +159,16 @@ The SPE solver evolves the bosonic field $\psi$ on a uniform Cartesian grid, whi
 
 ### 2. Multi-level parallel execution
 
-Shared-memory multi-threading, distributed-memory parallelism via Julia's native `Distributed.jl`, and GPU acceleration via `CUDA.jl` are all exposed through simple keyword arguments (`julia -t N`, `distributed_memory=true`, `gpu=true`). The same script runs unchanged from a laptop to a multi-node cluster. MPI support is planned for a future release.
+Shared-memory multi-threading, distributed-memory parallelism via Julia's native `Distributed.jl`, and GPU acceleration via `CUDA.jl` are all exposed through simple keyword arguments (`julia -t N`, `distributed_memory=true`, `gpu=true`). The same script runs unchanged on CPU, multi-threaded, and GPU configurations. Distributed workers currently accelerate IC generation and N-body work; the distributed FFT Poisson solver is not implemented, so the full SPE loop runs on one process. MPI support is planned for a future release.
 
 ```julia
 using Distributed
 addprocs(4)
 @everywhere using WaveDM
 
-simulate_waveDM(; Nx = Ny = Nz = 256, distributed_memory = true, gpu = false, ...)
+# Distributed-memory IC generation; the SPE loop itself remains single-process.
+simulate_waveDM(; Nx = Ny = Nz = 256, distributed_memory = true, gpu = false,
+                   IC_only = true, ...)
 ```
 
 ### 3. Galaxy-simulation toolbox
@@ -203,6 +217,8 @@ using Unitful
 simulate_waveDM(;
     model           = :dwarf_UFDs,
     Galaxy_id       = 6,                  # Crater II
+    baryon_mode     = :ignored,
+    mₐ              = 50 * 1e-22 * 1.783e-36u"kg",
     V               = (x, y, z, ψ) -> 0.0,
     Nx              = 384,
     Xmax            = 20u"kpc",
@@ -247,7 +263,7 @@ simulate_waveDM(;
     baryon_mode        = :particles_static,
     baryon_particles   = [particles_stellar_thin; particles_gas_HI],
     GravitySolver      = Tree(),
-    SofteningLength    = 1.0u"kpc",
+    SofteningLength    = 0.1u"kpc",          # code default; ε ~ mean particle spacing
     Nx = Ny = Nz = 256,
     Xmax               = 100u"kpc",
     Tmax               = 3.0u"Gyr",
@@ -278,28 +294,57 @@ The full documentation is available at **[juliaastrosim.github.io/WaveDM.jl](htt
 - **Grid size**: powers of two (64, 128, 256, …) maximize FFT performance.
 - **GPU**: most useful for grids $\gtrsim 256^3$; at large $N \gtrsim 512$, GPU memory can become the bottleneck.
 - **Multi-threading**: launch with `julia -t N` and enable `FFTW.set_num_threads(N)` for FFT-bound work.
-- **Distributed**: `addprocs(N)` then `distributed_memory = true`; uses `Distributed.jl` with TCP/IP transport (no MPI dependency).
+- **Distributed**: `addprocs(N)` then `distributed_memory = true`; uses `Distributed.jl` with TCP/IP transport (no MPI dependency). The distributed FFT Poisson solver is not implemented yet, so the full SPE loop must run on one process.
 - **Visualization**: increase `StepsBetweenSnapshots` to reduce plotting overhead in long runs.
 
-Detailed benchmarks on a 40-core + NVIDIA Tesla P100 node are reported in the accompanying paper.
+Detailed benchmarks on a 40-core + NVIDIA Tesla P100 node are reported in the accompanying paper (Meng & Dong 2026).
 
 ---
 
 ## Citation
 
-If you use WaveDM.jl in your research, please cite:
+If you use WaveDM.jl in your research, please cite the accompanying paper:
+
+- **Meng, R. & Dong, X. 2026**, *WaveDM.jl: An Adaptable Simulation Framework for Dynamics of Baryonic and Wave Dark Matter on Galaxy Scales*, Research in Astronomy and Astrophysics — [journal article](http://iopscience.iop.org/article/10.1088/1674-4527/ae9042) · [arXiv:2606.25026](https://arxiv.org/abs/2606.25026) · DOI [10.1088/1674-4527/ae9042](https://doi.org/10.1088/1674-4527/ae9042)
 
 ```bibtex
-@article{MengAndDong2026WaveDMjl,
-    title = {WaveDM.jl: An Adaptable Simulation Framework for Dynamics of Baryonic and Wave Dark Matter on Galaxy Scales},
-   author = {Run-Yu Meng and Xiao-Bo Dong},
-  journal = {arXiv preprint},
-     year = 2026,
-    month = jun,
-      url = {https://arxiv.org/abs/2606.25026v1},
-  urldate = {2026-06-25}
+@article{meng2026wavedmjladaptablea,
+  title = {{{WaveDM}}.Jl: {{An Adaptable Simulation Framework}} for {{Dynamics}} of {{Baryonic}} and {{Wave Dark Matter}} on {{Galaxy Scales}}},
+  shorttitle = {{{WaveDM}}.Jl},
+  author = {Meng, Runyu and Dong, Xiaobo},
+  year = 2026,
+  journal = {Research in Astronomy and Astrophysics},
+  issn = {1674-4527},
+  doi = {10.1088/1674-4527/ae9042},
+  url = {http://iopscience.iop.org/article/10.1088/1674-4527/ae9042},
+  eprint = {2606.25026},
+  archiveprefix = {arXiv},
+  primaryclass = {astro-ph.GA},
+  urldate = {2026-07-26}
 }
 ```
+
+Publications built on this code base:
+
+- **Meng, R. & Dong, X. 2026**, *Wave Cold Dark Matter Can Reproduce the Radial Acceleration Relation in X-ray Elliptical Galaxies*, Research in Astronomy and Astrophysics — [journal article](http://iopscience.iop.org/article/10.1088/1674-4527/aeac08) · [arXiv:2610.18969](https://arxiv.org/abs/2610.18969) · DOI [10.1088/1674-4527/aeac08](https://doi.org/10.1088/1674-4527/aeac08)
+
+```bibtex
+@article{meng2026wavecold,
+  title = {Wave {{Cold Dark Matter Can Reproduce}} the {{Radial Acceleration Relation}} in {{X}}-Ray {{Elliptical Galaxies}}},
+  author = {Meng, Runyu and Dong, Xiaobo},
+  year = 2026,
+  journal = {Research in Astronomy and Astrophysics},
+  issn = {1674-4527},
+  doi = {10.1088/1674-4527/aeac08},
+  url = {http://iopscience.iop.org/article/10.1088/1674-4527/aeac08},
+  eprint = {2610.18969},
+  archiveprefix = {arXiv},
+  primaryclass = {astro-ph.GA},
+  urldate = {2026-09-24}
+}
+```
+
+The same entries are also collected in [`CITATION.bib`](CITATION.bib).
 
 ---
 

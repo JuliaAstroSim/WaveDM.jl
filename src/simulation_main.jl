@@ -67,7 +67,7 @@ function SPE3D_waveDM(;
     title = "WaveDM",
     boundary = Periodic(),
     # SofteningLength_ratio = 0.5, # relative to Δx
-    SofteningLength = 1.0u"kpc",
+    SofteningLength = 0.1u"kpc",
     gpu = true,
     plotOptical = false,
     plotWaveDM = false,
@@ -147,13 +147,14 @@ function SPE3D_waveDM(;
     ## wavefunction phase on CPU at each recorded snapshot.
     flag_stream_KEbins = false,
     KEbin_r_max = 0.8u"kpc",
-    ## 低速区间细分（0-10/10-20/20-30 km/s），便于检查更精细的质量占比/质量演化
+    ## Finer bins at the low-velocity end (0-10/10-20/20-30 km/s) to resolve the
+    ## mass fraction and its evolution more closely.
     KEbin_v_edges = [0.0, 10.0, 20.0, 30.0, 60.0, 90.0],  # km/s
     KEbin_mass_min = 0.3u"kpc",               # β*(t) & annulus mass-fraction window
     KEbin_mass_max = 0.8u"kpc",
-    ## <v_r> diagnostic：各壳层（默认 0.3/0.5/0.8 kpc，±Δ[1]）内 r 方向平均速度
-    ## （km/s），随 flag_stream_KEbins 一起输出到 Prop.csv 的
-    ## `vr_mean_shell_<r>` 列（如 vr_mean_shell_0.3 / _0.5 / _0.8）
+    ## <v_r> diagnostic: mean radial velocity (km/s) inside each shell
+    ## (default 0.3/0.5/0.8 kpc, ±Δ[1]); emitted alongside flag_stream_KEbins as
+    ## the `vr_mean_shell_<r>` columns of Prop.csv (e.g. vr_mean_shell_0.3 / _0.5 / _0.8)
     KEbin_vr_shells_kpc = [0.3, 0.5, 0.8] .* u"kpc",
     target_velocity_dispersion = [],
     target_velocity_dispersion_r = [],
@@ -589,7 +590,7 @@ function SPE3D_waveDM(;
     ArrayKEfrac = Float64[]
     ArrayMKE = Float64[]
     ArrayMShell = Float64[]
-    ArrayVRMeanShell = Float64[]   # 0.8 kpc 球壳内 <v_r>（km/s），逐快照
+    ArrayVRMeanShell = Float64[]   # <v_r> (km/s) inside the 0.8 kpc shell, per snapshot
 
     if flag_stream_Prop_csv
         prop_csv_path = joinpath(outputdir, "$(title), $(suffix) - Prop.csv")
@@ -675,11 +676,37 @@ function SPE3D_waveDM(;
         end
 
         if extract_mode == :RC
-            @info "extracting snapshot that best-fitting the CO rotation curves"
-            if Galaxy_id < 1 || Galaxy_id > 6
-                error("Keyword Galaxy_id has to be integers ∈[1,6]")
+            # The observed rotation curve comes from a different catalog per `model`;
+            # `Galaxy_id` indexes the corresponding catalog in both cases.
+            #   :dwarf      -> Cooke et al. 2022 massive dwarfs (6 galaxies, CO RCs)
+            #   :SPARC_LTGs -> Lelli et al. 2016 SPARC late-type galaxies
+            # (Previously the Cooke-only `Galaxy_id in [1,6]` check sat on the shared
+            # path, so every SPARC LTG run with extract_mode = :RC aborted.)
+            if model == :dwarf
+                @info "extracting snapshot that best fits the CO rotation curves (Cooke et al. 2022)"
+                if Galaxy_id < 1 || Galaxy_id > 6
+                    error("Keyword Galaxy_id has to be an integer in [1,6] for model = :dwarf (Cooke et al. 2022 catalog)")
+                end
+                df_CO_RC = load_massive_dwarf_CO_RC(GalaxyName)
+            elseif model == :SPARC_LTGs
+                @info "extracting snapshot that best fits the observed rotation curve (Lelli et al. 2016, SPARC)"
+                _df_sparc_LTGs = load_SPARC_LTGs_data()
+                if Galaxy_id < 1 || Galaxy_id > nrow(_df_sparc_LTGs)
+                    error("Keyword Galaxy_id has to be an integer in [1, $(nrow(_df_sparc_LTGs))] for model = :SPARC_LTGs (SPARC LTG catalog, Lelli et al. 2016)")
+                end
+                _galaxy_name = _df_sparc_LTGs.Galaxy[Galaxy_id]
+                _df_rc_obs = filter(:Galaxy => x -> x == _galaxy_name, load_SPARC_LTGs_RC())
+                isempty(_df_rc_obs) && error(
+                    "no observed rotation curve for \"$(_galaxy_name)\" in load_SPARC_LTGs_RC()"
+                )
+                # compute_rc_fit_error expects the column names r / vel / vel_e
+                df_CO_RC = DataFrame(r = _df_rc_obs.R, vel = _df_rc_obs.Vobs, vel_e = _df_rc_obs.e_Vobs)
+            else
+                error(
+                    "extract_mode = :RC only supports model = :dwarf (Cooke et al. 2022) " *
+                    "and model = :SPARC_LTGs (Lelli et al. 2016); got model = :$(model)"
+                )
             end
-            df_CO_RC = load_massive_dwarf_CO_RC(GalaxyName)
         elseif extract_mode == :profile
             @info "extracting snapshot that best-fitting the density profile"
         end
@@ -1459,7 +1486,7 @@ function simulate_waveDM(;
     baryon_fraction_limit = 1,
     GravitySolver = Tree(),
     boundary = Periodic(),
-    SofteningLength = 1.0u"kpc",
+    SofteningLength = 0.1u"kpc",
     baryon_mode = :mesh,
     gpu = false,
 

@@ -12,7 +12,7 @@ CurrentModule = WaveDM
 WaveDM.simulate_waveDM
 ```
 
-The high-level entry point. It builds the initial conditions (using `AstroIC.jl`), creates a `SimulationGrid`, calls `SPE3D_waveDM` to evolve the SPE, then handles visualization and post-processing. All of the keyword arguments listed below can be supplied directly to `simulate_waveDM`.
+The high-level entry point. It builds the initial conditions (using `AstroIC.jl`), creates a `SimulationGrid`, calls `SPE3D_waveDM` to evolve the SPE, then handles visualization and post-processing. Most of the keyword arguments listed below can be supplied directly to `simulate_waveDM`; the low-level-only ones are marked in the tables.
 
 ### `SPE3D_waveDM`
 
@@ -21,6 +21,9 @@ WaveDM.SPE3D_waveDM
 ```
 
 The lower-level entry point. It expects you to provide the initial wavefunction `IC` and (optionally) the baryonic density/potential/forces yourself. Use `simulate_waveDM` unless you are integrating WaveDM.jl into a larger pipeline.
+
+!!! note
+    Defaults in the tables below refer to **`simulate_waveDM`**. The low-level `SPE3D_waveDM` has different defaults: `Xmax = 5`, `Nx = 64`, `Tmax = 1`, `Nt = 32`, `absorb_coeff = 0`, `gpu = true`, and `IC = (x,y,z) -> exp(-x²-y²-z²)`. Additional low-level keywords are forwarded to `SPE3D_waveDM`; `IC` itself is not a high-level keyword (use `IC_vel`).
 
 ## Simulation Workflow
 
@@ -36,9 +39,9 @@ flowchart LR
 ```
 
 1. **Grid setup** — uniform Cartesian grid (`Nx × Ny × Nz`, side lengths `2*Xmax` etc.).
-2. **Initial conditions** — `IC` (initial wavefunction) and `V` (external potential) are evaluated on the grid.
+2. **Initial conditions** — the initial wavefunction (`IC_vel` at the high level, `IC` at the low level) and `V` (external potential) are evaluated on the grid.
 3. **Baryon setup** — depending on `baryon_mode`, baryons are placed on the mesh, sampled as static N-body particles, or co-evolved as dynamic N-body particles.
-4. **IC potential** — the gravitational potential $\Phi_{\rm total}$ at $t = 0$ is computed (FFT for periodic, James 1977 for vacuum).
+4. **IC potential** — the gravitational potential $\Phi_{\rm total}$ at $t = 0$ is computed (FFT for periodic; an isolated tree solve for vacuum in the current driver).
 5. **Visualization init** — observables for `Realtime` and the per-snapshot update are wired up.
 6. **KDK main loop** — `apply_kick_step!` → `apply_drift_step!` for `Nt` steps.
 7. **Outputs** — per-step and final files (CSV for properties, JLD2 for $\psi$/$\Phi$, PNG/MP4 for visualization).
@@ -49,20 +52,22 @@ flowchart LR
 
 | Keyword | Default | Description |
 | --- | --- | --- |
-| `Xmax`, `Ymax`, `Zmax` | `5`, `Xmax`, `Xmax` | Half-side length of the box in dimensionless units (full side `L = 2*Xmax`) |
-| `Nx`, `Ny`, `Nz` | `64`, `Nx`, `Nx` | Grid points per axis; powers of two are fastest |
-| `Tmax` | `1` | Total simulation time in dimensionless units (or `u"Gyr"` if `Unitful` is loaded) |
-| `Nt` | `32` | Number of time steps (overridden when `autoset_timestep = true`) |
+| `Xmax`, `Ymax`, `Zmax` | `2.0`, `Xmax`, `Xmax` | Half-side length of the box in dimensionless units (full side `L = 2*Xmax`); low-level default is `5` |
+| `Nx`, `Ny`, `Nz` | `256`, `Nx`, `Nx` | Grid points per axis; powers of two are fastest; low-level default is `64` |
+| `Tmax` | `0.1` | Total simulation time in dimensionless units (or `u"Gyr"` if `Unitful` is loaded); low-level default is `1` |
+| `Nt` | `5000` | Number of time steps (overridden when `autoset_timestep = true`); low-level default is `32` |
+| `bulk_perturb`, `bulk_size` | `true`, `8` | Pooling of the initial velocity field; the paper's Crater II runs use `bulk_size = 4` |
 
 ### Initial conditions
 
 | Keyword | Default | Description |
 | --- | --- | --- |
-| `IC` | Gaussian $(x,y,z)\mapsto e^{-x^2-y^2-z^2}$ | Initial wavefunction — a function of $(x,y,z)$ returning a complex number |
+| `IC_vel` | `nothing` | High-level initial wavefunction: `nothing` generates it from `model`; a `String` loads a JLD2 written by `save_IC = true`; an array is used directly |
+| `IC` | Gaussian $(x,y,z)\mapsto e^{-x^2-y^2-z^2}$ | Low-level (`SPE3D_waveDM`) initial wavefunction — a function of $(x,y,z)$ returning a complex number |
 | `V` | `(x,y,z,ψ)->0` | External / self-interaction potential $V(\mathbf r, t, \psi)$ |
 | `κ` | `0` | Self-interaction strength. `0` (free), `> 0` (repulsive), `< 0` (attractive) |
-| `baryon` | `0` | Static baryon density (used only by `baryon_mode = :mesh`) |
-| `mₐ` | `0.2×10⁻²² eV/c²` | Boson mass in physical units (drives the dimensionless scale) |
+| `baryon` | `0` | Static baryon density (low-level; used only by `baryon_mode = :mesh`) |
+| `mₐ` | `0.2×10⁻²² eV/c²` | Boson mass in physical units (drives the dimensionless scale). The paper's Crater II runs use `mₐ = 50 * 1e-22 * 1.783e-36u"kg"` |
 | `Ωₘ₀` | `0.31` | Present-day matter density parameter |
 | `MW_disk_RC` | `false` | For `model = :MW`: drive the velocity field from the MW rotation curve |
 | `baryon_fraction_limit` | `1` | Upper bound on the baryon-to-total mass ratio used when generating `model = :dwarf` ICs |
@@ -71,15 +76,15 @@ flowchart LR
 
 | Keyword | Default | Description |
 | --- | --- | --- |
-| `baryon_mode` | `:mesh` | One of `:ignored`, `:mesh`, `:particles_static`, `:particles_dynamic` |
+| `baryon_mode` | `:mesh` | One of `:ignored`, `:mesh`, `:particles_static`, `:particles_dynamic`. Presets with no baryonic model (e.g. `:dwarf_UFDs`, `:dwarf_NFW`, `:dwarf_Zhao`) only accept `:ignored`. The paper quotes `:ignored` as the default; the current code default is `:mesh` |
 | `baryon_potential` | `nothing` | Pre-computed $\Phi_{\rm baryon}$; skip the Poisson solve |
 | `baryon_particles` | `nothing` | `StructArray` of N-body particles (`Star` / `Gas`) for static or dynamic modes |
-| `SofteningLength` | `1.0u"kpc"` | Gravitational softening length for the N-body force |
+| `SofteningLength` | `0.1u"kpc"` | Gravitational softening length for the N-body force, of order the mean interparticle spacing $d=(V/N)^{1/3}$. The paper quotes ~1 kpc; the current code uses 0.1 kpc |
 | `GravitySolver` | `Tree()` | `Tree()` ($\mathcal O(N\log N)$, Gadget-2) or `DirectSum()` ($\mathcal O(N^2)$) |
 
 `baryon_mode` values:
 
-- `:ignored` — no baryons. Default if you are simulating a dark-matter-only halo.
+- `:ignored` — no baryons. Use this explicitly for dark-matter-only halos and for presets that do not model baryons; the package default is `:mesh`.
 - `:mesh` — baryons live on the same FFT grid; potential computed by the same FFT Poisson solver as the DM. Best for spatially extended baryons (e.g. dSph, ETG).
 - `:particles_static` — baryons are sampled once as N-body particles and held fixed; their gravitational potential is added to $\Phi_{\rm total}$ at every step.
 - `:particles_dynamic` — baryons are co-evolved with the DM; their potential is re-computed at every step and the DM acceleration is interpolated back to the particles. Most expensive, most realistic.
@@ -97,6 +102,7 @@ flowchart LR
 | `export_MW_pot` | `false` | If `true`, save the MW tidal-field interpolation grid to a JLD2 file |
 | `tidal_BG_sim` | `nothing` | Pre-built MW background N-body `Simulation` (bypasses `MW_pot`) |
 | `tidal_lookback_time` | `0.0u"Gyr"` | How far back in time the tidal field is applied |
+| `df_traj` | empty `DataFrame` | Trajectory table (columns `time`, `x`, `y`, `z`) from the lookback step. **Must be supplied** when `MW_tidal_field = true` |
 | `tidal_initial_pos`, `tidal_initial_vel` | Crater II defaults | Initial Galactocentric position / velocity of the satellite |
 | `particles_LMC` | `nothing` | `StructArray` of LMC particles (alternative to analytic Plummer) |
 
@@ -104,8 +110,8 @@ flowchart LR
 
 | Keyword | Default | Description |
 | --- | --- | --- |
-| `boundary` | `Periodic()` | `Periodic()` (FFT-based) or `Vacuum()` (James 1977, $\mathcal O(N^4)$) |
-| `absorb_coeff` | `0` | Absorbing-layer coefficient $\alpha$; `0` disables the absorber |
+| `boundary` | `Periodic()` | `Periodic()` (FFT-based) or `Vacuum()` (isolated; see [Algorithms §4.2](../algorithms.md#42-vacuum-isolated)) |
+| `absorb_coeff` | `10` | Absorbing-layer coefficient $\alpha$; `0` disables the absorber. The low-level default is `0` |
 
 ### Timestep
 
@@ -118,8 +124,8 @@ flowchart LR
 
 | Keyword | Default | Description |
 | --- | --- | --- |
-| `gpu` | `true` | Use `CUDA.jl` for FFT and element-wise work |
-| `distributed_memory` | `false` | Use `Distributed.jl` `DArray` for grid arrays |
+| `gpu` | `false` | Use `CUDA.jl` for FFT and element-wise work. The low-level default is `true` |
+| `distributed_memory` | `false` | Use `Distributed.jl` `DArray` for grid arrays. The distributed FFT Poisson solver is not implemented in the current release, so the full SSFM loop still requires a single process |
 | `pids` | `workers()` | Worker process IDs for distributed runs |
 | `KDK_flag` | `true` | If `true`, use the second-order kick–drift–kick scheme |
 
@@ -145,8 +151,8 @@ flowchart LR
 
 | Keyword | Default | Description |
 | --- | --- | --- |
-| `title` | `"WaveDM"` | Run title (used in output filenames) |
-| `outputdir` | `joinpath(@__DIR__, "output")` | Where CSV / JLD2 / PNG / MP4 files are written |
+| `title` | `"WaveDM_MOND_MW"` | Run title (used in output filenames); the low-level default is `"WaveDM"` |
+| `outputdir` | `joinpath(@__DIR__, "output/MOND")` | Where CSV / JLD2 / PNG / MP4 files are written; the low-level default is `joinpath(@__DIR__, "output")` |
 | `save_IC` | `true` | Save the initial conditions to disk |
 | `save_phi` | `true` | Save the final $\Phi$ and $\psi$ to JLD2 |
 | `export_particles` | `false` | If `true`, return the sampled baryon particles (no SPE run) |
@@ -161,6 +167,7 @@ using WaveDM
 
 simulate_waveDM(;
     model = :MW,
+    baryon_mode = :ignored,
     Xmax = 2.0,
     Tmax = 0.001,
     Nt   = 3,
@@ -202,12 +209,15 @@ using Unitful
 simulate_waveDM(;
     model       = :dwarf_UFDs,
     Galaxy_id   = 6,                 # Crater II
+    baryon_mode = :ignored,          # Crater II is DM-dominated
+    mₐ          = 50 * 1e-22 * 1.783e-36u"kg",  # m₂₂ = 50
     V           = (x, y, z, ψ) -> 0.0,
     Nx          = 384,
     Xmax        = 20u"kpc",
     Tmax        = 6.0u"Gyr",
     autoset_timestep = true,
     absorb_coeff = 10,
+    bulk_size   = 4,                 # value used in the paper
     gpu         = true,
     Realtime    = true,
     title       = "CraterII",
@@ -223,6 +233,8 @@ using Unitful
 simulate_waveDM(;
     model       = :dwarf_UFDs,
     Galaxy_id   = 6,
+    baryon_mode = :ignored,
+    mₐ          = 50 * 1e-22 * 1.783e-36u"kg",
     V           = (x, y, z, ψ) -> 0.0,
     Nx          = 384,
     Xmax        = 20u"kpc",
@@ -230,6 +242,8 @@ simulate_waveDM(;
     autoset_timestep = true,
     absorb_coeff = 10,
     MW_tidal_field = true,
+    df_traj     = df_traj,          # from the lookback step (see Examples §4)
+    tidal_lookback_time = 6.0u"Gyr",
     LMC_tidal_field = true,         # include LMC perturbation
     gpu         = true,
     title       = "CraterII_MW_LMC",
@@ -240,6 +254,7 @@ simulate_waveDM(;
 
 ```julia
 using WaveDM
+using AstroIC
 using PhysicalParticles, Unitful
 
 baryons = generate(AstroIC.ExponentialDisk(; ...))  # see AstroIC.jl
@@ -252,12 +267,15 @@ simulate_waveDM(;
     baryon_mode       = :particles_dynamic,
     baryon_particles  = baryons,
     GravitySolver     = Tree(),
-    SofteningLength   = 1.0u"kpc",
+    SofteningLength   = 0.1u"kpc",           # code default
     gpu = true,
 )
 ```
 
 ### 6. Distributed run
+
+!!! warning
+    The distributed FFT Poisson solver is **not implemented** in the current release: `parallel_poisson` raises an error for `kind = :distributed`. Distributed workers currently accelerate initial-condition generation and N-body work, but a full SPE run must use the serial/threads or GPU backend.
 
 ```julia
 using Distributed
@@ -301,13 +319,14 @@ The simulation writes several file types into `outputdir`:
 - `$(title), $(suffix) - Prop best fit.jld2` — best-fit snapshot (if `extract_dwarf_granule = true`)
 - `$(title), $(suffix) - acc.csv` / `acc best fit.csv` — radial acceleration data
 - `$(title), $(suffix) - best_fit_time.csv` — best-fit simulation time
-- `timestep_*.jld2` — per-snapshot ψ / Φ (if `average_snapshots = true`)
+- `$(title), $(suffix) - timestep_*.jld2` — per-snapshot ψ / Φ (if `average_snapshots = true`)
 
 The `suffix` is a human-readable summary of the run, e.g. `Nx(384), Xmax(20.00), Nt(377), Tmax(6.00), DM_m(1.00)`.
 
 ## Performance Considerations
 
-- **GPU vs CPU.** `gpu = true` is most useful for grids $\gtrsim 256^3$. For tiny problems the kernel-launch overhead dominates and CPU is faster.
+- **GPU vs CPU.** `gpu = true` is most useful for grids $\gtrsim 256^3$. For tiny problems the kernel-launch overhead dominates and CPU is faster. On a 12 GB device, $N \gtrsim 512$ becomes memory-limited.
+- **Distributed memory.** The distributed FFT Poisson solver is not implemented yet; use distributed workers for IC generation and N-body work only.
 - **Grid size.** Powers of two (64, 128, 256, …) maximize FFT performance. The code also runs on non-power-of-two grids.
 - **Timestep.** `autoset_timestep = true` keeps $\Delta t$ near the CFL limit without manual tuning.
 - **`StepsBetweenSnapshots`.** Larger values skip more visualization updates per step, which is useful when the plot is the bottleneck.

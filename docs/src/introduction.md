@@ -48,7 +48,7 @@ A density-weighted volume integral of $Q$ defines the **quantum (gradient) energ
 \mathcal{Q} \;\equiv\; \int \rho Q\,d^3r \;=\; \frac{\hbar^2}{2m}\int |\nabla\sqrt{\rho}|^2 d^3r,
 ```
 
-where the surface term vanishes for any realistic NFW-like halo. The total energy $\mathcal{E} = \mathcal{K} + \mathcal{V} + \mathcal{Q}$ is conserved for an isolated, fully self-gravitating halo.
+where the surface term vanishes for any realistic NFW-like halo. The total energy $\mathcal{E} = \mathcal{K} + \mathcal{V} + \mathcal{Q}$ is approximately conserved for a virialized, isolated halo. In a simulation with a fixed baryonic background or an absorbing boundary, $\mathcal{E}$ drifts as mass and energy leave the domain; this drift is a physical effect of the setup, not a numerical artefact.
 
 ### 1.3 Dimensionless units
 
@@ -140,16 +140,16 @@ This makes the codebase approachable for new contributors and sustainable over t
 ### 3.2 Multi-level parallel execution
 
 - **Multi-threading** — launch Julia with `julia -t N`; multi-threaded FFTW can be enabled with `FFTW.set_provider!("mkl"); FFTW.set_num_threads(Threads.nthreads())`.
-- **Distributed memory** — set `distributed_memory = true` and `addprocs(N)`; WaveDM.jl uses Julia's native `Distributed.jl` (TCP/IP transport), with future MPI support planned.
+- **Distributed memory** — set `distributed_memory = true` and `addprocs(N)`; WaveDM.jl uses Julia's native `Distributed.jl` (TCP/IP transport), with future MPI support planned. The distributed FFT Poisson solver is not implemented yet, so the full SPE loop currently runs on a single process.
 - **GPU acceleration** — set `gpu = true`; WaveDM.jl dispatches to `CUDA.jl` for FFT and matrix-heavy work.
 
-The same script runs unchanged from a laptop to a multi-node cluster.
+The same script runs unchanged across CPU, multi-threaded, and GPU configurations; multi-node execution currently applies to initial-condition generation and N-body work.
 
 ### 3.3 Galaxy-simulation toolbox
 
 - **Initial conditions** for gNFW / NFW / Zhao profiles, SPARC late-type galaxies, SPARC early-type galaxies, dwarf spheroidals (e.g. Crater II), and the Milky Way.
 - **Trajectory lookback** of MW satellites from Battaglia et al. (2022) with optional LMC perturbations.
-- **Tidal field** evaluation at the satellite's instantaneous position along its lookback orbit, with the spatial average subtracted to remove spurious center-of-mass acceleration.
+- **Tidal field** evaluation at the satellite's instantaneous position along its lookback orbit, with the mass-weighted mean (center-of-mass) acceleration subtracted to remove spurious center-of-mass motion.
 - **Virial diagnostics** — total kinetic, potential, and quantum energies; radii enclosing 10 %–90 % mass fractions; velocity dispersion.
 - **Real-time visualization** via `GLMakie.jl` (`Realtime = true`) and headless `UnicodePlots.jl` (`unicode_plot = true`).
 
@@ -226,7 +226,7 @@ Use <code>:Elliptical</code> (gNFW halo + Jaffe stellar profile), <code>:cluster
 
 <div class="model-card">
 <h4>🧪 I want a non-astrophysics Schrödinger problem (NLO, BEC, …)</h4>
-Use <code>model = :MW</code> with a custom <code>IC = (x, y, z) -> …</code> and a custom <code>V = (x, y, z, ψ) -> …</code>. See [Examples §6](@ref) for the optical-lattice demo.
+Use <code>model = :MW</code> with a custom <code>IC_vel = (x, y, z) -> …</code> and a custom <code>V = (x, y, z, ψ) -> …</code>. See [Examples §6](@ref) for the optical-lattice demo.
 </div>
 
 After you have picked the model, run

@@ -5,15 +5,19 @@ function _implemented_model_list()
 end
 
 function _planned_model_list()
-    return [:SPARC_LTGs, :SPARC_Xray_ETGs, :SPARC_rotating_ETGs]
+    return [:SPARC_LTGs, :SPARC_Xray_ETGs, :SPARC_rotating_ETGs,]
 end
 
 function _planned_model_error(model)
     msg = """
     Model `$(model)` is not yet implemented in this release.
+    Its driver lives in `examples/` rather than in `generate_initial_conditions`.
 
-    Currently implemented models:
+    Implemented here:
         $(join(_implemented_model_list(), ", "))
+
+    Planned only (external driver):
+        $(join(_planned_model_list(), ", "))
 
     Other `baryon_mode`/galaxy variants of `:MW`, `:dwarf`, `:dwarf_NFW`,
     `:dwarf_Zhao`, `:Elliptical`, `:cluster_NFW`, `:cluster_Burkert` are
@@ -28,7 +32,8 @@ function _unknown_model_error(model)
     Unknown model: `$(model)`.
 
     Did you mean one of these?
-        $(join(_implemented_model_list(), ", "))
+        implemented here         : $(join(_implemented_model_list(), ", "))
+        planned (external driver): $(join(_planned_model_list(), ", "))
 
     Run `WaveDM.print_catalog()` or `WaveDM.list_supported_models()` to see
     the full list of supported `model = :...` keywords and what each one

@@ -385,7 +385,9 @@ end
 #
 #   * SPARC X-ray ETGs           — `rMin = 0.1 × Reff`,  `rMax = 4 × Reff`
 #   * SPARC rotating ETGs        — `rMax = 4 × max(Reff, Rexp)`
-#   * SPARC LTGs                 — `rMax = 2 × max(rs, RHI)`
+#   * SPARC LTGs                 — `rMin = (1-a) × Rflat`, `rMax = (1+a) × Rflat`
+#                                  with `a = 0.2` (the `a0_radius_range`
+#                                  default of `test_SPARC_LTGs`)
 #   * UFDs (Hayashi 2023)        — `rMin = b / 2`,       `rMax = 4 × b`
 #                                  where `b` is the projected half-light
 #                                  radius (the natural "Reff" analog for
@@ -394,10 +396,10 @@ end
 #                                  `minR = 8 kpc` / `maxR = 15 kpc` of
 #                                  the SPE driver.
 #
-# The function takes a `catalog::Symbol` (`:dwarf_UFDs`, `:SPARC_LTGs`,
-# `:SPARC_Xray_ETGs`, `:SPARC_rotating_ETGs`, or `:MW`) and an optional
-# `Galaxy_id` (1-based row index into the matching DataFrame), and returns
-# a `(minR_kpc, maxR_kpc)::Tuple{Float64,Float64}`.
+# The function takes a `catalog::Symbol` (`:dwarf_UFDs`,
+# `:SPARC_LTGs`, `:SPARC_Xray_ETGs`, `:SPARC_rotating_ETGs`, or `:MW`)
+# and an optional `Galaxy_id` (1-based row index into the matching
+# DataFrame), and returns a `(minR_kpc, maxR_kpc)::Tuple{Float64,Float64}`.
 # ===========================================================================
 
 """
@@ -418,7 +420,7 @@ clamp pattern used in `SPE-SPARC.jl`.
 | `catalog`            | source                                              |
 | -------------------- | --------------------------------------------------- |
 | `:dwarf_UFDs`        | Hayashi 2023 — `rMin = b/2`, `rMax = 4 × b` (kpc)   |
-| `:SPARC_LTGs`        | Lelli 2016c — `rMax = 2 × max(rs, RHI)` (kpc)       |
+| `:SPARC_LTGs`        | Lelli 2016c — `rMin = 0.8 × Rflat`, `rMax = 1.2 × Rflat` |
 | `:SPARC_Xray_ETGs`   | Lelli 2017 — `rMin = 0.1 × Reff`, `rMax = 4 × Reff` |
 | `:SPARC_rotating_ETGs` | Lelli 2017 — `rMax = 4 × max(Reff, Rexp)`           |
 | `:MW`                | falls back to `(minR_kpc, maxR_kpc)` (the SPE default) |
@@ -450,12 +452,23 @@ function default_RAR_radial_window(catalog::Symbol;
         1 ≤ Galaxy_id ≤ nrow(df) || throw(ArgumentError(
             "`Galaxy_id = $Galaxy_id` is out of range for `:SPARC_LTGs` (1..$(nrow(df)))."
         ))
-        # SPARC LTG column names are `rs` (scale radius, kpc) and `RHI`
-        # (HI disk radius, kpc).  Both are kpc in the loader.
-        rs_kpc  = Float64(df.rs[Galaxy_id])
-        RHI_kpc = Float64(df.RHI[Galaxy_id])
-        rmax_cat = 2 * max(rs_kpc, RHI_kpc)
-        rmin_cat = 0.0  # SPARC LTGs do not impose a fixed rMin in SPE-SPARC.jl
+        # `test_SPARC_LTGs` measures a0 inside
+        #     [Rflat (1 - a0_radius_range), Rflat (1 + a0_radius_range)]
+        # (SPE-SPARC.jl), i.e. a narrow annulus centred on the radius where
+        # the observed rotation curve is flat.  Mirror that window with the
+        # driver's own default `a0_radius_range = 0.2`.
+        #
+        # NOTE: this used to return `[0, 2 max(rs, RHI)]`, which is the *plot*
+        # x-range of the driver (`rMax` in the figure code), not its a0 window:
+        # the upper bound came out 1.2–30× too large (median ≈ 3.3×) and the
+        # comment claiming that "SPARC LTGs do not impose a fixed rMin" was
+        # wrong.  Callers reproducing a run with a different
+        # `a0_radius_range` (the paper used 0.5) must pass explicit
+        # `RAR_snapshot_minR_kpc` / `RAR_snapshot_maxR_kpc`.
+        a0_radius_range = 0.2
+        Rflat_kpc = Float64(df.Rflat[Galaxy_id])
+        rmin_cat = Rflat_kpc * (1 - a0_radius_range)
+        rmax_cat = Rflat_kpc * (1 + a0_radius_range)
     elseif catalog === :SPARC_Xray_ETGs
         df = AstroIC.load_SPARC_Xray_ETGs_data()
         1 ≤ Galaxy_id ≤ nrow(df) || throw(ArgumentError(

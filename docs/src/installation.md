@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-WaveDM.jl requires **Julia 1.11 or later**. Download Julia from the [official website](https://julialang.org/downloads/) and verify the installation:
+WaveDM.jl requires **Julia 1.12 or later** (the CI suite runs on Julia 1.12.6). Download Julia from the [official website](https://julialang.org/downloads/) and verify the installation:
 
 ```bash
 julia --version
@@ -139,6 +139,9 @@ addprocs(4)              # spawn four local workers
 
 then pass `distributed_memory = true` to `simulate_waveDM` / `SPE3D_waveDM`. For multi-node clusters use `addprocs([("node1", :auto), ("node2", :auto), ...])` with SSH or a cluster manager.
 
+!!! warning
+    The distributed FFT Poisson solver is not implemented in the current release. Distributed workers currently accelerate initial-condition generation and N-body work; the full SPE loop must run on a single process.
+
 ## Verifying the installation
 
 ```julia
@@ -149,7 +152,7 @@ pkg> test WaveDM
 
 ## Recommended workflow
 
-1. Use **Julia ≥ 1.11** (we test against the current LTS and the latest release).
+1. Use **Julia ≥ 1.10** (we test against the current LTS and the latest release).
 2. **Create a dedicated project environment** for each simulation campaign — reproducibility matters.
 3. Launch with **`julia -t auto`** for multi-threading; add `FFTW.set_num_threads(...)` for the FFT path.
 4. Use **GPU** for grids $\gtrsim 256^3$; switch back to CPU for very small problems where kernel launch overhead dominates.

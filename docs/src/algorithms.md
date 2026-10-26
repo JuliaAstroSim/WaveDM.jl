@@ -1,6 +1,6 @@
 # Algorithms
 
-This page describes the numerical methods used by WaveDM.jl. It mirrors the structure of §§2–3 of the accompanying paper and uses the same sign conventions. All equations are written in the dimensionless units introduced in [Introduction §1.3](introduction.md#13-dimensionless-units).
+This page describes the numerical methods used by WaveDM.jl. It mirrors the structure of §§2–3 of the accompanying paper (Meng & Dong 2026) and uses the same sign conventions. All equations are written in the dimensionless units introduced in [Introduction §1.3](introduction.md#13-dimensionless-units).
 
 ## 1. The Schrödinger–Poisson System
 
@@ -62,7 +62,7 @@ For a wave-CDM halo governed by the SPE, the **virial theorem** at virial equili
 2\,\mathcal K + 2\,\mathcal Q + \mathcal V = 0,
 ```
 
-which can be evaluated from a single simulation snapshot (or, equivalently, from single-epoch observational data of a realistic galaxy). This virial formula is the most stringent test available without time-series information.
+which can be evaluated from a single simulation snapshot (or, equivalently, from single-epoch observational data of a realistic galaxy). It is the cheapest global test of equilibrium, but it is only a necessary condition: a halo can satisfy the virial relation while its radial mass distribution and velocity field are still evolving (see Section 6.3 for the more stringent, spatially resolved test).
 
 ## 2. The Split-Step Fourier Method
 
@@ -80,7 +80,7 @@ with the **kinetic dispersion operator** $\hat D = \tfrac{i}{2}\nabla^2$ and the
 \psi(\mathbf r, t+\epsilon) \;\approx\; e^{\frac\epsilon 2 \hat N}\,e^{\epsilon \hat D}\,e^{\frac\epsilon 2 \hat N}\,\psi(\mathbf r, t).
 ```
 
-This is the "**kick–drift–kick**" (KDK) time-integration scheme. In Fourier space the drift is diagonal:
+This is the "**kick–drift–kick**" (KDK) time-integration scheme. For a real potential and no absorbing layer, both split operators are unitary, so the total mass is conserved to machine precision. In Fourier space the drift is diagonal:
 
 ```math
 e^{\epsilon \hat D}\;\longrightarrow\;e^{-\frac{i}{2}\epsilon\,k^2}.
@@ -105,7 +105,7 @@ Let $\mathcal F$ denote the forward FFT and $\mathcal F^{-1}$ its inverse. With 
 \end{aligned}
 ```
 
-Step (c) — the gravity update — is what makes the scheme a *self-consistent* SPE solver: the kinetic drift uses the old potential, but the second kick uses an updated potential that incorporates the new density field. This averaging is essential for second-order accuracy.
+Step (c) — the gravity update — is what makes the scheme a *self-consistent* SPE solver: the kinetic drift uses the old potential, but the second kick uses an updated potential that incorporates the new density field. This averaging is essential for second-order accuracy. In the implementation, step (c) is evaluated at the start of the next kick; because the half kick is a pure phase factor, $|\psi|^2$ is unchanged by it, so this is equivalent to evaluating the potential immediately after the drift.
 
 ### 2.3 Algorithm 1 — split-step Fourier loop
 
@@ -116,6 +116,10 @@ input : ψ(r, 0), Δt, T_max
 output: ψ(r, T_max)
 n_max      ← ⌊T_max / Δt⌋
 n_stride   ← ⌊T_snap / Δt⌋
+
+# initial potentials
+Φ_DM       ← F⁻¹{ −4π/k² · F{ |ψ(r,0)|² − ⟨|ψ(r,0)|²⟩ } }
+Φ_total    ← Φ_DM + Φ_baryon
 
 for n = 0, 1, …, n_max − 1 do
     # Step (a): first half potential kick
@@ -146,7 +150,7 @@ In code the steps (a), (b), (c), (d) map to [`apply_kick_step!`](@ref) and [`app
 
 ### 2.4 FFT complexity
 
-$\mathcal F$ and $\mathcal F^{-1}$ use `FFTW.jl` (CPU) or `CUDA.jl` (GPU). Both run in $\mathcal O(N\log N)$ for a grid with $N$ cells, so an entire KDK step is $\mathcal O(N\log N)$.
+$\mathcal F$ and $\mathcal F^{-1}$ use `FFTW.jl` (CPU) or `CUDA.jl` (GPU). For an $N^3$ grid a transform costs $\mathcal O(N^3\log N)$, so an entire KDK step has the same complexity.
 
 ## 3. Spatial Discretization
 
@@ -166,7 +170,7 @@ and grid coordinates are
 x_i = -\tfrac{L}{2} + i\,\Delta x,\; i = 0,\dots,N_x-1,
 ```
 
-with the same form for $y_j$, $z_k$ (keywords `Xmax`, `Ymax`, `Zmax` set the half-side lengths; the full side length is $L = 2X_{\max}$). Gradient operators on the grid are computed with a second-order central difference stencil.
+with the same form for $y_j$, $z_k$ (keywords `Xmax`, `Ymax`, `Zmax` set the half-side lengths; the full side length is $L = 2X_{\max}$). The time evolution uses the exact Fourier multiplier $e^{-ik^2\Delta t/2}$; finite differences with a second-order central stencil are used only for post-processing gradients (e.g. the density gradient).
 
 ### 3.2 Resolution criteria
 
@@ -198,9 +202,11 @@ where $\langle\rho\rangle$ is the spatial average of the density — subtracting
 
 To approximate isolated (vacuum) boundary conditions on a periodic domain, the box size should be at least eight times the halo scale radius, ensuring that no substantial bulk mass crosses the boundaries. This is the recommended choice for production runs.
 
+The JuliaAstroSim stack also provides a finite-difference Poisson solver (`PhysicalFDM.jl`), used for 1D and 2D verification problems. It requires a dense or sparse difference matrix of size $\mathcal O(N^{2d})$ and is not used for the 3D production runs, where the FFT solver is preferred.
+
 ### 4.2 Vacuum (isolated)
 
-`boundary = Vacuum()` uses the **four-step algorithm of James (1977)** for isolated systems. It is $\mathcal O(N^4)$ for an $N^3$ grid, so it is best reserved for **verification** of periodic-boundary runs at modest resolution.
+`boundary = Vacuum()` requests an **isolated, non-periodic** potential. The paper describes the four-step algorithm of James (1977), implemented in `PhysicalFFT.jl`: solve the Poisson equation with homogeneous Dirichlet boundaries, compute the induced surface charges, convolve them with the Green's function (in practice by direct summation over the boundary faces), and subtract the resulting boundary potential. That algorithm is $\mathcal O(N^4)$ for an $N^3$ grid. In the current `WaveDM.jl` driver, the same isolated-potential request is evaluated by mapping the grid density onto the mesh particles (with the mean subtracted in the kick-step solver) and calling the N-body tree solver in `AstroNbodySim.jl` with the configured `SofteningLength`; this avoids the $\mathcal O(N^4)$ surface sum but introduces a softening scale. Either route is intended for **verification** at modest resolution rather than for production runs.
 
 ### 4.3 Absorbing layer
 
@@ -230,7 +236,7 @@ WaveDM.jl tracks three volume-integrated energies:
 - **Gravitational potential** — $\mathcal V = \int \rho\,\Phi\,d^3 r$.
 - **Quantum gradient** — $\mathcal Q = \int |\nabla\sqrt\rho|^2 d^3 r$.
 
-The total energy $\mathcal E = \mathcal K + \mathcal V + \mathcal Q$ is *approximately* conserved for a virialized, isolated halo. In a fixed baryonic background with absorbing boundaries, however, $\mathcal E$ drifts downward (mass loss through the absorber) — this is a real physical effect, not a numerical artefact, and is monitored in real time.
+The total energy $\mathcal E = \mathcal K + \mathcal V + \mathcal Q$ is *approximately* conserved for a virialized, isolated halo. In a fixed baryonic background with absorbing boundaries, however, $\mathcal E$ drifts as mass and energy leave the domain; with a time-dependent external potential, energy can also be exchanged with the host. This is a real physical effect, not a numerical artefact, and is monitored in real time.
 
 ### 5.2 Timestep criterion
 
@@ -256,17 +262,29 @@ where the three terms limit phase variations from the **kinetic propagation**, t
 
 Pass `autoset_timestep = true` to use it; the safety factor $\zeta_t$ is set by `autoset_timestep_ratio` (default 0.9).
 
+**Implementation note.** `compute_timestep` evaluates the three limits as `2Δx²/π`, `2π/max|Φ|`, and `2π/(|κ| max|ψ|)`, then multiplies the minimum by `autoset_timestep_ratio`. The first expression corresponds to half of `4Δx²/π`; the paper's `2Δx²/(3π)` is a more conservative choice. The self-interaction limit in the code uses the field amplitude `max|ψ|` rather than the density `max|ψ|²`; for a strong nonlinear term this makes the automatic step less restrictive than the paper formula.
+
 ### 5.3 Simulation duration
 
-The ground-state oscillation period is $\tau_{00} \sim \hbar/(m_a v_{\rm vir}^2)$ [Chiang et al. 2021]. For Crater II ($v_{\rm vir}\approx 10$ km s$^{-1}$, $m_{22}=50.0$) one obtains $\tau_{00} \approx 3.75$ Myr. Simulations are typically run for several Gyr so that virial equilibrium is reached (≈ 1.5 Gyr for Crater II). Setting `Tmax = 5u"Gyr"` is a safe default for halos of Crater-II mass.
+The ground-state oscillation period is $\tau_{00} \sim \hbar/(m_a v_{\rm vir}^2)$ [Chiang et al. 2021]. For Crater II ($v_{\rm vir}\approx 10$ km s$^{-1}$, $m_{22}=50.0$) one obtains $\tau_{00} \approx 3.75$ Myr with the $\hbar/(m_a v_{\rm vir}^2)$ convention used in the paper. Some works define $\tau_{00}=2\pi\hbar/(m_a v_{\rm vir}^2)$, which is longer by a factor $2\pi$.
+
+The relaxation time is set by the crossing time
+`t_cross ≡ R_h/v_vir ≈ 0.74 Gyr (R_h/100 kpc)(130 km/s / v_vir)`.
+The Crater II runs in the paper start at $t=-6$ Gyr and reach virial equilibrium after approximately 4 Gyr of evolution (around $t\sim-2$ Gyr). The production choice used there is `Tmax = 6u"Gyr"`.
 
 ## 6. Quasi-Stationary Equilibrium (QSS) Diagnostics
 
-Three nested criteria are provided, in order from global to spatially resolved.
+Three nested criteria are provided, in order from global to spatially resolved. The same state is also referred to as a **non-equilibrium quasi-stationary state (NEQSS)**; global virialization is a necessary but not sufficient condition for it.
 
 ### 6.1 Overall energy terms (global, cheap)
 
-Monitor $\mathcal K(t)$, $\mathcal V(t)$, $\mathcal Q(t)$ and the second time derivative of the moment of inertia. After virialization, $\mathcal E$ approaches a constant and $d^2 I / dt^2 \to 0$.
+Monitor $\mathcal K(t)$, $\mathcal V(t)$, $\mathcal Q(t)$ and the virial term $2\mathcal K+2\mathcal Q+\mathcal V$. For the SPE, the second time derivative of the moment of inertia is
+
+```math
+\ddot I = \mathcal V + 2\mathcal K + 2\mathcal Q
+```
+
+[Hui et al. 2017]. After virialization, $\mathcal E$ approaches a constant and $\ddot I \to 0$, i.e. $2\mathcal K+2\mathcal Q+\mathcal V \approx 0$. This is a necessary but not sufficient condition for a quasi-stationary state. The Poisson equation fixes $\Phi$ only up to a spatial constant; for the energy diagnostics the zero point is fixed using the final snapshot. This changes only the zero point, not the gravitational field or the dynamics.
 
 **Use when:** the analysis only needs integrated halo properties; you want the cheapest indicator.
 
@@ -281,7 +299,7 @@ Track the radii enclosing fixed mass fractions (10 %, 20 %, …, 90 %). These ra
 For a halo in a quasi-stationary state supported by both velocity dispersion and rotational motion, the Jeans equation
 
 ```math
-\frac{d(\rho\sigma_r^2)}{dr} + \frac{2\beta(\rho\sigma_r^2)}{r} + \rho\frac{\langle v_\theta\rangle^2 + \langle v_\phi\rangle^2}{r} = -\rho\,\frac{d\Phi_{\rm total}}{dr} - \rho\,\frac{dQ}{dr},
+\frac{d(\rho\sigma_r^2)}{dr} + \frac{2\beta(\rho\sigma_r^2)}{r} - \rho\frac{\langle v_\theta\rangle^2 + \langle v_\phi\rangle^2}{r} = -\rho\,\frac{d\Phi_{\rm total}}{dr} - \rho\,\frac{dQ}{dr},
 ```
 
 where $\beta = 1 - (\sigma_\theta^2 + \sigma_\phi^2)/(2\sigma_r^2)$ is the velocity-anisotropy parameter and $Q$ is the quantum potential. The right-hand side represents the gravitational force and the quantum-pressure force; the three terms on the left correspond to the radial pressure-gradient term, the anisotropic-pressure correction, and centrifugal support from rotational streaming.
@@ -289,10 +307,10 @@ where $\beta = 1 - (\sigma_\theta^2 + \sigma_\phi^2)/(2\sigma_r^2)$ is the veloc
 Assuming isotropic velocity dispersion ($\beta \equiv 0$) and rearranging gives the predicted radial velocity dispersion
 
 ```math
-\sigma_r^2(r) = \frac{1}{\rho(r)} \int_r^\infty \rho(r')\left(\frac{d\Phi_{\rm total}}{dr'} + \frac{dQ}{dr'} + \frac{\langle v_\theta\rangle^2 + \langle v_\phi\rangle^2}{r'}\right) dr'.
+\sigma_r^2(r) = \frac{1}{\rho(r)} \int_r^\infty \rho(r')\left(\frac{d\Phi_{\rm total}}{dr'} + \frac{dQ}{dr'} - \frac{\langle v_\theta\rangle^2 + \langle v_\phi\rangle^2}{r'}\right) dr'.
 ```
 
-For an isolated halo this Jeans-derived $\sigma_r(r)$ matches the directly measured radial velocity dispersion in all three spherical components, validating the QSS. With a time-dependent tidal field the steady-state assumption breaks down; the simulated and Jeans-predicted $\sigma_r$ no longer agree, signalling a *tide-driven non-equilibrium state*.
+For an isolated halo this Jeans-derived $\sigma_r(r)$ matches the directly measured radial velocity dispersion, validating the QSS. With a time-dependent tidal field the steady-state assumption breaks down; the simulated and Jeans-predicted $\sigma_r$ no longer agree, signalling a *tide-driven non-equilibrium state*. The derivative $dQ/dr$ involves second derivatives of the density and is sensitive to grid noise, so the density field is normally smoothed before this term is evaluated.
 
 **Use when:** the science goal is to compare with integral-field-spectroscopy observations; this is a post-processing diagnostic because it requires the velocity moments on the grid.
 
@@ -310,11 +328,11 @@ with the density profile chosen from `gNFW`, `NFW`, `Zhao`, or a user-supplied f
 
 - **gNFW** — $\rho(r) = \rho_0 \, / \bigl[(r/r_s)^\beta (1 + r/r_s)^{3-\beta}\bigr]$.
 - **NFW** — $\beta = 1$ special case of gNFW.
-- **Zhao** — $\rho(r) = \rho_0 \, / \bigl[(r/r_s)^\gamma (1 + (r/r_s)^\alpha)^{(3-\gamma)/\alpha}\bigr]$.
+- **Zhao** — $\rho(r) = \rho_0\,(r/r_s)^{-\gamma}\bigl[1 + (r/r_s)^\alpha\bigr]^{(\gamma-\beta)/\alpha}$, with inner slope $\gamma$ and outer slope $\beta$.
 
 ### 7.2 Velocity field
 
-The phase $\theta(\mathbf r)$ encodes the initial velocity field through $\mathbf v = \nabla\theta$. WaveDM.jl uses **direct integration** of the velocity components by default. An alternative is to solve the Poisson equation $\nabla^2\theta = \nabla\cdot\mathbf v$ with homogeneous Dirichlet boundaries, which guarantees a curl-free field.
+The phase $\theta(\mathbf r)$ encodes the initial velocity field through $\mathbf v = \nabla\theta$. WaveDM.jl uses **direct integration** of the velocity components by default. An alternative is to solve the Poisson equation $\nabla^2\theta = \nabla\cdot\mathbf v$ with homogeneous Dirichlet boundaries. The reconstructed field is curl-free because it is the gradient of a scalar, not because of the Dirichlet condition; for a velocity field with non-zero curl, the reconstructed $\nabla\theta$ is generally not equivalent to the original $\mathbf v$.
 
 The velocity magnitude is taken from the local circular velocity $v_c = \sqrt{r\,d\Phi_{\rm total}/dr}$ and assembled as a weighted sum of rotation and random motion:
 
@@ -327,7 +345,7 @@ with $\zeta_{\rm vel}$ controlled by `velocity_ratio` and $\zeta_{\rm rot}$ by `
 
 ### 7.3 Pooling strategy (velocity coarse-graining)
 
-A fully random velocity field on each cell typically has too small a divergence, leading to underestimated phase gradients, repeated halo collapses, and unrealistic density distributions. To prevent this, WaveDM.jl implements a **pooling** strategy (`bulk_perturb = true`, default `bulk_size = 4`): within each $4\times 4\times 4$ block of cells the velocity vectors are reset to the value of a reference cell — either the block's corner, the box centre, or a randomly placed cell. The pooling preserves velocity coherence without introducing spurious gradients.
+A fully random velocity field on each cell typically has too small a divergence, leading to underestimated phase gradients, repeated halo collapses, and unrealistic density distributions. To prevent this, WaveDM.jl implements a **pooling** strategy (`bulk_perturb = true`): within each `bulk_size`³ block of cells the velocity vectors are reset to the value of a reference cell — either the block's corner, the box centre, or a randomly placed cell. The current code default is `bulk_size = 8`; the Crater II convergence runs in the paper used `bulk_size = 4`. The pooling preserves velocity coherence without introducing spurious gradients.
 
 For purely rotational velocity fields ($\zeta_{\rm rot}=1$) pooling is unnecessary; for mixed configurations it is a small but important correction.
 
@@ -351,7 +369,17 @@ with $r' = \sqrt{R^2 + (z/q)^2}$ in cylindrical coordinates. Sampling the baryon
 
 When `MW_tidal_field = true`, the gravitational potential of the MW (and, optionally, the LMC with `LMC_tidal_field = true`) is added to $\Phi_{\rm total}$ at every KDK step. The tidal field is evaluated at the satellite's instantaneous position $\mathbf r_{\rm sat}(t)$ along its lookback orbit (Section 9), so the wave-CDM halo experiences a time-dependent external potential.
 
-To prevent the tidal field from exerting a spurious net force on the halo, WaveDM.jl subtracts the spatial average of the tidal gradient over the computational domain (equivalently, the mean acceleration). Without this correction the halo would acquire unphysical center-of-mass motion.
+To prevent the tidal field from exerting a spurious net force on the halo, WaveDM.jl subtracts the **mass-weighted mean (center-of-mass) acceleration**
+
+```math
+\mathbf a_{\rm cm}(t)
+= \frac{\int \rho(\mathbf r,t)\,\mathbf g_{\rm tidal}(\mathbf r,t)\,d^3r}
+       {\int \rho(\mathbf r,t)\,d^3r},
+\qquad
+\mathbf g_{\rm tidal} = -\nabla\Phi_{\rm tidal},
+```
+
+from the tidal acceleration at every step. The potential is first referenced to its value at the density maximum, after which the gradient correction is applied. This removes the uniform translation component without changing the internal tidal field; without it the halo would acquire unphysical center-of-mass motion.
 
 ## 9. Trajectory Lookback
 
@@ -370,4 +398,39 @@ The following four axes are exercised in the validation suite (see [Tests](https
 - **Domain size $L$** — vary by factors of 0.67× and 1.33×. Boundary artifacts become visible at small $L/r_s$.
 - **Initial condition parameters** — $\zeta_{\rm rot}$ (rotation), $\zeta_{\rm pool}$ (`bulk_size`), and the absorber coefficient $\alpha$.
 
-The reference simulation uses $m_{22}=50$, $N_x=384$, $L=40$ kpc, $N_t=377$, $\zeta_{\rm rot}=0.9$, $\alpha=10$, $\zeta_{\rm pool}=4$, and $T_{\max}=3$ Gyr. Tests are run with the MW tidal field **disabled** so the halo is free to virialize cleanly.
+The reference simulation uses $m_{22}=50$, $N_x=384$, $L=40$ kpc, $N_t=377$, $\zeta_{\rm rot}=0.9$, $\alpha=10$, $\zeta_{\rm pool}=4$, and $T_{\max}=6$ Gyr. Tests are run with the MW tidal field **disabled** so the halo is free to virialize cleanly. The paper also varies the absorber strength ($\alpha=0,10,30,100$), the rotational fraction ($\zeta_{\rm rot}=0,0.3,0.6,0.9$), and the pooling size ($\zeta_{\rm pool}=1,4,8,16$).
+
+## 11. Baryon Gravity and Parallel Execution
+
+### 11.1 Baryon modes
+
+Baryons are controlled by `baryon_mode`:
+
+| Mode | Representation | Typical use |
+| --- | --- | --- |
+| `:ignored` | none | DM-only halos |
+| `:mesh` | same Cartesian grid as $\psi$ | extended baryons (dSph, ETG, ICM) |
+| `:particles_static` | $N$-body particles, fixed | non-evolving host potential |
+| `:particles_dynamic` | $N$-body particles, co-evolved | fully coupled wave + baryon dynamics |
+
+The mesh mode reuses the same FFT Poisson solver as the wave dark matter. Resolving a stellar or gaseous disc on the mesh typically requires $\Delta x \lesssim 0.05$ kpc, so the mesh mode is best suited to spatially extended baryonic distributions. Particle modes avoid this resolution constraint and are the recommended choice for disc-dominated galaxies.
+
+Particle forces are computed with either `DirectSum()` ($\mathcal O(N^2)$) or `Tree()` ($\mathcal O(N\log N)$) from `AstroNbodySim.jl`. Direct summation is suitable for $N\lesssim10^5$ and introduces no multipole truncation error; the tree is preferred at larger $N$. The tree solver follows the Gadget-2 framework: Peano–Hilbert keys define a global top-tree for work partitioning, an octree stores multipole data, and a cell is opened unless
+
+```math
+\frac{GM}{r^2}\left(\frac{l}{r}\right) \le \alpha\,|\mathbf a|,
+```
+
+where $M$ and $l$ are the node mass and side length, $r$ is the distance from the particle to the node, and $|\mathbf a|$ is the particle's acceleration from the previous step. When $\alpha\to0$ the tree degenerates to direct summation. Plummer softening prevents singular forces; the softening length is taken of order the mean interparticle spacing $d=(V/N)^{1/3}$, with a default of $0.1$ kpc in the current code.
+
+In `:particles_dynamic` mode the coupling is bidirectional: particles contribute $\Phi_{\rm baryon}$ to the grid every SPE step, and the wave-DM acceleration is interpolated back to the particle positions. The $N$-body integrator supports fixed and adaptive sub-steps, so multiple $N$-body steps are taken within one SPE step.
+
+### 11.2 Parallel execution
+
+WaveDM.jl combines three levels of parallelism:
+
+- **Shared memory.** Launch Julia with `julia -t N`; multi-threaded FFTW can be enabled with `FFTW.set_provider!("mkl")` and `FFTW.set_num_threads(Threads.nthreads())`.
+- **Distributed memory.** `distributed_memory = true` with `Distributed.jl` workers. In the current release the distributed FFT Poisson solver is **not implemented** (it raises an error); distributed workers are therefore useful for initial-condition generation and $N$-body work, but the full SSFM loop still runs on a single process. An MPI backend is planned.
+- **GPU.** `gpu = true` dispatches FFTs and element-wise operations to `CUDA.jl`. GPU acceleration is most useful for $N\gtrsim256^3$; on a 12 GB device, $N\gtrsim512$ becomes memory-limited.
+
+The same user script can switch between these backends through keyword arguments; no code changes are required.

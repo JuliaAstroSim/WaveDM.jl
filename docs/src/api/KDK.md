@@ -6,7 +6,7 @@ CurrentModule = WaveDM
 
 The KDK module implements the split-step Fourier method using a "**kick–drift–kick**" (KDK) algorithm to evolve the Schrödinger–Poisson equation. The scheme is a second-order Strang splitting that decouples the kinetic and potential parts of the Hamiltonian.
 
-The full mathematical derivation is given in [Algorithms §2](algorithms.md#2-the-split-step-fourier-method); this page documents the two low-level entry points that the main loop calls.
+The full mathematical derivation is given in [Algorithms §2](../algorithms.md#2-the-split-step-fourier-method); this page documents the two low-level entry points that the main loop calls.
 
 ## Core Functions
 
@@ -16,7 +16,7 @@ The full mathematical derivation is given in [Algorithms §2](algorithms.md#2-th
 apply_kick_step!
 ```
 
-The kick step **fuses steps (a), (c) and the start of (d)** of Algorithm 1 in the paper: it computes the gravitational potential from the current wavefunction, optionally adds the tidal field, applies the half-timestep potential operator, and returns the Fourier transform of the kicked wavefunction ready for the drift step.
+Each call performs **step (c), then step (a)** of Algorithm 1 in the paper: it computes the gravitational potential from the current wavefunction (including the tidal field, if enabled), applies the half-timestep potential operator, and returns the Fourier transform of the kicked wavefunction ready for the drift step. The closing half kick, step (d), is applied by the **next iteration's** kick call; with `KDK_flag = true` the kick length is `dt/2`, so consecutive kick–drift–kick steps form the symmetric Strang sequence.
 
 The implementation handles:
 
@@ -62,7 +62,7 @@ The second-order Strang split applied over a single timestep $\Delta t$ is
 
 In Fourier space the drift is diagonal: $e^{\Delta t \hat D} \to e^{-\frac{i}{2}\Delta t\,k^2}$.
 
-### Step (a) + (c) + start of (d) — `apply_kick_step!`
+### Steps (c) + (a) — `apply_kick_step!`
 
 1. Compute the gravitational potential from the current density:
 
@@ -99,7 +99,14 @@ In Fourier space the drift is diagonal: $e^{\Delta t \hat D} \to e^{-\frac{i}{2}
    \psi \;\leftarrow\; \psi \odot \mathcal B(\mathbf r).
    ```
 
-The boundary mask is set up by `setup_absorption_boundary(Xmax, Ymax, Zmax, x, y, z, absorb_coeff, dt)` and is zero (full absorption) in the outermost $\sim L/50$ cells of the box, with a smooth $\tanh$ transition.
+The boundary mask is set up by `setup_absorption_boundary(Xmax, Ymax, Zmax, x, y, z, absorb_coeff, dt)`. It multiplies $\psi$ by
+
+```math
+\mathcal B(\mathbf r)
+= \exp\!\left[-\alpha\left(6-\sum_{\text{faces}}\tanh\frac{x_i\pm L/2}{L/50}\right)\Delta t\right],
+```
+
+so the damping is strongest at the box faces and decays smoothly into the interior over a transition layer of width $\sim L/50$. The factor is not strictly zero at the boundary; with the default $\alpha=10$ it is $\exp(-\alpha\,\Delta t)$ at a face for a field that is uniform in the other two directions.
 
 ## Sign Convention
 

@@ -104,6 +104,8 @@ export ufd_index, MW_satellite_index,
 # `src/ic/catalog.jl` for the per-catalog recipes (mirrors `SPE-SPARC.jl`).
 export default_RAR_radial_window
 
+export Lelli2017_RAR, Lelli2017_RAR_inv
+
 # Re-export commonly used functions for API compatibility
 export setup_grid, setup_coordinates, compute_timestep
 export setup_initial_conditions, solve_vector_equation

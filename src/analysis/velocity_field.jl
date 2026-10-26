@@ -130,5 +130,5 @@ function compute_vr_mean_shell(r_mass_center, rho, vr, r_center_kpc, uL, uV, Δr
     v = vr[mask]
     ok = .!isnan.(w) .& .!isnan.(v)
     count(ok) == 0 && return NaN
-    return sum(w[ok] .* v[ok]) / sum(w[ok]) * uV   # rho 加权平均 ⟨v_r⟩, km/s
+    return sum(w[ok] .* v[ok]) / sum(w[ok]) * uV   # rho-weighted mean ⟨v_r⟩, km/s
 end
