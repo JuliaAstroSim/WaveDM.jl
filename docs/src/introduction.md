@@ -226,7 +226,7 @@ Use <code>:Elliptical</code> (gNFW halo + Jaffe stellar profile), <code>:cluster
 
 <div class="model-card">
 <h4>🧪 I want a non-astrophysics Schrödinger problem (NLO, BEC, …)</h4>
-Use <code>model = :MW</code> with a custom <code>IC_vel = (x, y, z) -> …</code> and a custom <code>V = (x, y, z, ψ) -> …</code>. See [Examples §6](@ref) for the optical-lattice demo.
+Use <code>model = :MW</code> with a custom <code>IC_vel = (x, y, z) -> …</code> and a custom <code>V = (x, y, z, ψ) -> …</code>. See [Examples](examples.md) for the optical-lattice demo.
 </div>
 
 After you have picked the model, run

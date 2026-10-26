@@ -414,6 +414,6 @@ A halo is **virialized** when the total energy $\mathcal E = \mathcal K + \mathc
 
 ## Next steps
 
-- The full list of keyword arguments is in [Simulation API](@ref).
+- The full list of keyword arguments is in [Simulation](api/simulation.md).
 - The mathematical background of the KDK solver is in [Algorithms](@ref).
 - If you build something useful on top of WaveDM.jl, consider opening a PR — see the [contribution guide](https://github.com/JuliaAstroSim/WaveDM.jl/blob/main/CONTRIBUTING.md).

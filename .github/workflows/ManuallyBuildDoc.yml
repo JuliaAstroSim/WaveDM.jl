@@ -4,12 +4,25 @@ on:
   [workflow_dispatch]
 
 # 64-bit Julia only
+#
+# 部署认证统一用 `GITHUB_TOKEN`（HTTPS）而不是 `DOCUMENTER_KEY`（SSH deploy key）：
+# Documenter 的 GitHubActions 配置里
+#   authentication_method(::GitHubActions) = env_nonempty("DOCUMENTER_KEY") ? SSH : HTTPS
+# 因此 env 里不提供 DOCUMENTER_KEY 时，deploydocs 会自动用
+#   https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
+# 推送 gh-pages，只需 `contents: write` 权限，无需维护 SSH key。
+#
+# 注意：本包 `docs/make.jl` 目前**没有**启用 `deploydocs`（被注释掉），此 workflow
+# 只做构建校验；上面这套认证配置是为将来启用部署时无需再改 workflow。
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: julia-actions/setup-julia@latest
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
           version: '1.12.6'
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
@@ -23,7 +36,6 @@ jobs:
           FFTW.set_provider!("mkl")'
       - name: Build and deploy doc
         env:
-          #GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Deploying to else where, so use SSH instead
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=docs --color=yes docs/make.jl

@@ -9,7 +9,7 @@ julia> using WaveDM
 julia> WaveDM.print_catalog()
 ```
 
-If you see a table of supported models and ultra-faint dwarf galaxies, the install worked. If you see a `Package WaveDM not found`, go back to [Installation](@ref).
+If you see a table of supported models and ultra-faint dwarf galaxies, the install worked. If you see a `Package WaveDM not found`, go back to [Installation](installation.md).
 
 ## 1 · What's in WaveDM.jl — pick your model
 
@@ -103,4 +103,4 @@ Use `:ignored` until you have a reason not to. Each model only accepts a subset 
 
 - [Examples](@ref) — 10 worked scripts, from a 30-second smoke test to Crater II with the MW + LMC tidal field.
 - [Algorithms](@ref) — the math behind the SPE, the KDK integrator, the resolution criteria.
-- [API / configs](@ref) — every keyword argument of `simulate_waveDM`.
+- [Configs](api/configs.md) — every keyword argument of `simulate_waveDM`.

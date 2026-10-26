@@ -41,7 +41,7 @@ Thin compatibility wrapper around `ParallelBackend` so that the
 existing call sites (`config_device.gpu`, `config_device.DeviceArray`,
 `config_device.DA`) keep working.
 The preferred way to construct a
-backend is now [`select_backend`](@ref), which picks the best kind
+backend is now `select_backend`, which picks the best kind
 (`:serial` / `:threads` / `:distributed` / `:gpu`) automatically.
 
 # Fields

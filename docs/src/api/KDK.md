@@ -117,7 +117,7 @@ so the damping is strongest at the box faces and decays smoothly into the interi
 | Drift in code | `exp.(im .* Laplacian .* dt/2)` | matches $e^{-i k^2 \Delta t/2}$ for the convention $k \to (2\pi k_{\rm code})$ |
 | Kick in code | `exp.(-im .* potential_all .* dt_kick)` | matches $e^{-i\Phi\Delta t/2}$ |
 
-The drift implementation in [`setup_fft_operators`](@ref) uses the convention
+The drift implementation in `setup_fft_operators` uses the convention
 
 ```math
 \nabla^2 \;\longrightarrow\; -(2\pi k_x)^2 - (2\pi k_y)^2 - (2\pi k_z)^2,

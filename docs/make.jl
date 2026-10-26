@@ -31,12 +31,11 @@ makedocs(
             # "assets/WaveDM_architecture.png",
             # "assets/style.css",
         # ],
+        # Documenter 1.x only accepts `ico` / `css` / `js` entries in `assets`;
+        # everything else under docs/src (png/pdf/svg/html…) is copied to the
+        # build directory automatically and is referenced by relative links.
         assets = [
-            "assets/alpha_small.ico",
-            "assets/ma_constraints.png",
-            "assets/ma_constraints.pdf",
-            "assets/ma_constraints.svg",
-            "assets/ma_constraints.html",
+            "assets/small_alpha.ico",
         ],
         analytics = "UA-153693590-1",
         highlights = ["llvm", "yaml"],

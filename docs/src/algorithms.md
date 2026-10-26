@@ -146,7 +146,7 @@ end
 return ψ(r, T_max)
 ```
 
-In code the steps (a), (b), (c), (d) map to [`apply_kick_step!`](@ref) and [`apply_drift_step!`](@ref) in the KDK module — see [KDK API](@ref) for signatures.
+In code the steps (a), (b), (c), (d) map to [`apply_kick_step!`](@ref) and [`apply_drift_step!`](@ref) in the KDK module — see [KDK](api/KDK.md) for signatures.
 
 ### 2.4 FFT complexity
 

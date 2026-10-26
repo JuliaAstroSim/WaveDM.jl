@@ -28,14 +28,14 @@ Carries the grid geometry and the precomputed coordinate arrays that the rest of
 
 ### `DeviceConfig`
 
-Thin compatibility wrapper around [`PhysicalMeshes.ParallelBackend`](https://github.com/JuliaAstroSim/PhysicalMeshes.jl). The preferred way to construct a backend is now [`select_backend`](@ref), which auto-detects the best kind (`:serial` / `:threads` / `:distributed` / `:gpu`) for the current process.
+Thin compatibility wrapper around [`PhysicalMeshes.ParallelBackend`](https://github.com/JuliaAstroSim/PhysicalMeshes.jl). The preferred way to construct a backend is now `select_backend`, which auto-detects the best kind (`:serial` / `:threads` / `:distributed` / `:gpu`) for the current process.
 
 - `backend::ParallelBackend` — the actual backend object.
 - `DeviceArray` — convenience alias of `backend.device_array` (the conversion function: `cu` on GPU, `collect` on CPU).
 - `DA` — convenience alias of `backend.distribute_array` (the array constructor: `DArray` for distributed runs, `collect` otherwise).
 - `gpu::Bool` — `true` dispatches to `CUDA.jl`, `false` stays on CPU.
 - `kind::Symbol` — one of `:serial`, `:threads`, `:distributed`, `:gpu`.
-- `nthreads`, `nworkers`, `pids` — process topology detected by [`detect_resources`](@ref).
+- `nthreads`, `nworkers`, `pids` — process topology detected by `detect_resources`.
 
 Constructors:
 
@@ -87,7 +87,7 @@ Filter = t -> t in [
 
 ### `InitialConditionsConfig`
 
-Drives [`generate_initial_conditions`](@ref). Fields: `model`, `baryon_mode`, `Np`, `pids`, `bulk_perturb`, `bulk_size`, `bulk_shift_size`, `bulk_center_size`, `reset_velocity`, `static`, `FDM_mass_ratio`, `FDM_radius_ratio`, `rotational_ratio`, `velocity_ratio`, `rotational_ratio_baryon`, `velocity_ratio_baryon`, `velocity_falling`, `MW_disk_RC`, `GravitySolver`, `SofteningLength`.
+Drives `generate_initial_conditions`. Fields: `model`, `baryon_mode`, `Np`, `pids`, `bulk_perturb`, `bulk_size`, `bulk_shift_size`, `bulk_center_size`, `reset_velocity`, `static`, `FDM_mass_ratio`, `FDM_radius_ratio`, `rotational_ratio`, `velocity_ratio`, `rotational_ratio_baryon`, `velocity_ratio_baryon`, `velocity_falling`, `MW_disk_RC`, `GravitySolver`, `SofteningLength`.
 
 The current defaults are `bulk_size = 8` and `SofteningLength = 0.1u"kpc"`; the Crater II runs in the paper used `bulk_size = 4`.
 
